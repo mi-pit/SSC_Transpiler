@@ -21,7 +21,6 @@ from Visitors import CBaseVisitor, SuperCVisitor
 #     new Classname() || new_Classname()
 #
 # FIXME:
-#   ss return type conversion
 #   "forward" declaration
 
 FILE_NAME: str = sys.argv[1]
@@ -60,9 +59,8 @@ def main():
 
     visitor = SuperCVisitor(token_stream)
 
-    # Traverse the tree and collect all superstructs
-    for ext_decl in tree.translationUnit().externalDeclaration():
-        visitor.visit(ext_decl)
+    visitor.visit(tree)
+    print(visitor.var_types)
 
     token_stream.fill()
     tokens = token_stream.tokens
