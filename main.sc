@@ -97,12 +97,9 @@ static int static_adder( int a, int b )
 
 static void do_nothing( superstruct Adder *a, superstruct Adder *b )
 {
-    ( void ) a->plus( b->x );
+    ( void ) a;
+    ( void ) b;
 }
-
-#define and &&
-#define or  ||
-#define not !
 
 int main( void )
 {
@@ -112,6 +109,8 @@ int main( void )
     struct Inner in_2 = { .x = 1 };
 
     const char *string = "this is a superstruct test file";
+
+    static superstruct List *null_ls = NULL;
 
     superstruct List *ls = List.init(); // superstruct
     assert( ls != NULL );
@@ -123,5 +122,5 @@ int main( void )
 
     assert( static_adder( 1, 2 ) == 3 );
 
-    assert( add.plus( y ) == x + y and not not false ); // abort
+    assert( add.plus( 123 ) == x + 123 && false ); // abort
 }

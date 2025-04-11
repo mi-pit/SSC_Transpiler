@@ -1,6 +1,7 @@
 from CBaseVisitor import CBaseVisitor
 from CLexer import CLexer
 from SuperStruct import SuperStruct, get_text_separated
+from Variable import Variable
 
 
 class SuperCVisitor(CBaseVisitor):
@@ -9,9 +10,10 @@ class SuperCVisitor(CBaseVisitor):
         self.superstructs: list[SuperStruct] = []
         self.skip_intervals = []
         self.superstruct_names: set[str] = set()
-        self.var_types: dict = {}
+        self.var_types: dict[str, Variable] = {}
+        self.replacements = set()
 
-    def lookup_variable_type(self, varname):
+    def lookup_variable(self, varname: str) -> Variable | None:
         return self.var_types.get(varname, None)
 
     def get_original_text(self, ctx):
@@ -40,43 +42,56 @@ class SuperCVisitor(CBaseVisitor):
         print("--- End context ---\n")
 
     def visitDeclaration(self, ctx):
-        decl_specs = get_text_separated(ctx.declarationSpecifiers())
+        decl_specs: str = get_text_separated(ctx.declarationSpecifiers())
         if "superstruct" in decl_specs:
-            struct_type = decl_specs.replace("superstruct", "struct").strip()
-
             for init_decl in ctx.initDeclaratorList().initDeclarator():
-                var_name = init_decl.declarator().getText().split('=')[0].strip()  # fixme
-                self.var_types[var_name] = struct_type
+                declarator = init_decl.declarator()  # pointer? directDeclarator
+                variable = Variable(decl_specs,
+                                    bool(declarator.pointer()) if declarator.pointer() else None,
+                                    declarator.directDeclarator().Identifier().getText())
+                self.var_types[variable.name] = variable
 
     def visitPostfixExpression(self, ctx):
-        if ctx.getChildCount() >= 4:
-            obj_expr = get_text_separated(ctx.getChild(0))
-            operator = get_text_separated(ctx.getChild(1))
-            method_name = get_text_separated(ctx.getChild(2))
-            arg_exprs = get_text_separated(ctx.getChild(3))
+        if ctx.getChildCount() < 4:
+            return self.visitChildren(ctx)
 
-            if operator in [".", "->"]:
-                print(f"\n✅ Found method call: {obj_expr}{operator}{method_name}{arg_exprs}")
-                self.show_in_context(ctx.start)
-                # You need to know the object type here; assume a lookup function
-                obj_type = self.lookup_variable_type(obj_expr)
-                if obj_type and obj_type in self.superstruct_names:
-                    new_func = f"{obj_type}__{method_name}"
+        operator = get_text_separated(ctx.getChild(1))
+        if operator not in [".", "->"]:
+            return self.visitChildren(ctx)
 
-                    if operator == ".":
-                        obj_expr = f"&{obj_expr}"  # Pass address of object
+        obj_expr = get_text_separated(ctx.getChild(0))
+        method_name = get_text_separated(ctx.getChild(2))
+        arguments_ls = [get_text_separated(ctx.getChild(i)) for i in range(3, ctx.getChildCount())]
+        args_str = "".join(arguments_ls[1:-1])
 
-                    new_call = f"{new_func}({obj_expr}"
-                    if arg_exprs != "()":
-                        new_call += ", " + arg_exprs[1:-1]  # remove parens
-                    new_call += ")"
+        # print(f"✅ Found method call: {obj_expr}{operator}{method_name}({args_str})")
+        # self.show_in_context(ctx.start)
 
-                    print(f"Transformed call: {ctx.getText()} → {new_call}")
+        variable: Variable = self.lookup_variable(obj_expr)
+        ss_name = variable.var_type.split()[-1]
+        if not variable or ss_name not in self.superstruct_names:
+            return self.visitChildren(ctx)
 
-                    # Optional: replace in token stream if doing string replacement
-                    return new_call
+        new_func = f"{ss_name}__{method_name}"
 
-        return self.visitChildren(ctx)
+        if operator == ".":
+            obj_expr = "&" + obj_expr
+
+        new_call = f"{new_func}({obj_expr}"
+        if args_str != "":
+            new_call += ", " + args_str
+        new_call += ")"
+
+        # print(f"Transformed call: {ctx.getText()} → {new_call}")
+
+        # Identify the start and end indices of the expression (the range we need to replace)
+        start_idx = ctx.start.tokenIndex
+        end_idx = ctx.stop.tokenIndex
+
+        # Store the replacement with the token range and the new call
+        self.replacements.add((start_idx, end_idx, new_call))
+
+        return new_call
 
     def visitSuperStructSpecifier(self, ctx):
         name = ctx.Identifier().getText()
@@ -108,4 +123,4 @@ class SuperCVisitor(CBaseVisitor):
                 ss.methods.append((specifiers, declarator, decl_list, compound_statement))
 
         self.superstructs.append(ss)
-        self.superstruct_names.update(ss.name)
+        self.superstruct_names.add(ss.name)
