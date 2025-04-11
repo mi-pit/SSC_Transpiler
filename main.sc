@@ -95,24 +95,33 @@ static int static_adder( int a, int b )
     return a + b;
 }
 
+static void do_nothing( superstruct Adder *a, superstruct Adder *b )
+{
+    ( void ) a->plus( b->x );
+}
+
+#define and &&
+#define or  ||
+#define not !
+
 int main( void )
 {
     struct Inner {
         int x;
-    };
-    struct Inner a = { .x = 1 };
+    } in_1            = { .x = 1 };
+    struct Inner in_2 = { .x = 1 };
 
     const char *string = "this is a superstruct test file";
 
-    superstruct List *ls = List_init(); // superstruct
+    superstruct List *ls = List.init(); // superstruct
     assert( ls != NULL );
-    assert( ls->at_last() == NULL ); // List__at_last( ls )
+    assert( ls->at_last() == NULL ); // => List__at_last( ls )
 
     const int x = 12, y = 21;
     superstruct Adder add = { .x = x };
-    assert( add->plus( y ) == x + y ); // should this be `add->plus()` or `add.plus()`?
+    assert( add.plus( y ) == x + y );
 
     assert( static_adder( 1, 2 ) == 3 );
 
-    return 0;
+    assert( add.plus( y ) == x + y and not not false ); // abort
 }

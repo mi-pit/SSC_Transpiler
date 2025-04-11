@@ -17,6 +17,7 @@ class SuperStruct:
         self.token_stream = token_stream
 
     def replace_keywords_in_tokens(self, ctx, keyword_dict):
+        """Replaces keywords in keyword_dict::keys with their corresponding values"""
         start_idx, stop_idx = ctx.getSourceInterval()
         tokens = self.token_stream.getTokens(start_idx, stop_idx + 1)
 
