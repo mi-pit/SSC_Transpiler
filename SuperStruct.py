@@ -106,13 +106,13 @@ class SuperStruct:
     def to_c_code(self) -> tuple[str, list[str]]:
         header_code: list[str] = []
 
-        struct_header = f"/* superstruct {self.name} */\n"
+        struct_header = f"\n/* superstruct {self.name} */\n"
         struct_header += f"struct {self.name} {{"
         for field in self.fields:
             # FIXME?
             replaced = field.replace("superstruct", "struct")
             struct_header += f"{replaced}"
-        struct_header += "};\n\n"
+        struct_header += "};\n"
 
         header_code.append(struct_header)
 

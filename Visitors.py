@@ -1,3 +1,5 @@
+import re
+
 from CBaseVisitor import CBaseVisitor
 from CLexer import CLexer
 from SuperStruct import SuperStruct, get_text_separated
@@ -12,6 +14,7 @@ class SuperCVisitor(CBaseVisitor):
         self.superstruct_names: set[str] = set()
         self.var_types: dict[str, Variable] = {}
         self.replacements: set = set()
+        self.functions: list = []
 
     def lookup_variable(self, varname: str) -> Variable | None:
         return self.var_types.get(varname, None)
@@ -40,6 +43,15 @@ class SuperCVisitor(CBaseVisitor):
             prefix = ">> " if (i + 1) == line_num else "   "
             print(f"{prefix}{i + 1:4}: {lines[i]}")
         print("--- End context ---\n")
+
+    def visitFunctionDefinition(self, ctx):
+        specs = get_text_separated(ctx.declarationSpecifiers())
+        func_name = get_text_separated(ctx.declarator())
+        ctx_text: str = f"{specs} {func_name}"
+        prototype = ctx_text.split(";")[-1].replace("superstruct", "struct").strip() + ";"
+        self.functions.append(prototype)
+        # should this save the main function?
+        return self.visitChildren(ctx)
 
     def visitDeclaration(self, ctx):
         decl_specs: str = get_text_separated(ctx.declarationSpecifiers())
