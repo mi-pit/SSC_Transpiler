@@ -1,0 +1,63 @@
+#include <assert.h> /**/
+#include <err.h>    /* warn */
+#include <stdint.h> /* size_t, uint64_t */
+#include <stdio.h>  /* printf */
+#include <stdlib.h> /* alloc */
+
+
+#define NUMBERS_LIST_DEFAULT_CAP 128
+
+
+superstruct NumbersList
+{
+    uint64_t *numbers;
+    size_t len, cap;
+
+    int init()
+    {
+        this->numbers = calloc( NUMBERS_LIST_DEFAULT_CAP, sizeof( uint64_t ) );
+        if ( this->numbers == NULL )
+            return -1;
+
+        this->len = 0;
+        this->cap = NUMBERS_LIST_DEFAULT_CAP;
+        return 0;
+    }
+
+    int append( uint64_t num )
+    {
+        if ( this->len + 1 > this->cap )
+        {
+            warnx( "list buffer out of memory; resize not implemented yet" );
+            return -1;
+        }
+        this->numbers[ this->len++ ] = num;
+        return 0;
+    }
+
+    void print()
+    {
+        printf( "[" );
+        for ( size_t i = 0; i < this->len; ++i )
+            printf( " %llu", this->numbers[ i ] );
+        printf( " ]" );
+    }
+};
+
+
+static int add_ints( int a, int b )
+{
+    return a + b;
+}
+
+
+int main( int argc, const char *const argv[ const ] )
+{
+    superstruct NumbersList ls = { 0 };
+    assert( ls.init() == 0 );
+
+    for ( uint64_t i = 0; i < 128; ++i )
+        ls.append( i );
+
+    ls.print();
+}
