@@ -23,12 +23,28 @@ superstruct Adder
 
     void add( int add )
     {
-        this->x += add;
+        this->x = this->plus( add );
     }
 
     int plus( int add )
     {
         return this->x + add;
+    }
+
+    int static_add( int a, int b )
+    {
+        UNUSED( this );
+        return a + b;
+    }
+
+    void double1()
+    {
+        this->add( this->x );
+    }
+
+    void double2()
+    {
+        this->x = this->plus( this->static_add( 0, this->x ) );
     }
 };
 
@@ -113,8 +129,8 @@ int main( void )
     static superstruct List *null_ls = NULL;
 
     superstruct List *ls = List.init(); // superstruct
-    assert( ls != NULL );
-    assert( ls->at_last() == NULL ); // => List__at_last( ls )
+    assert( ls != NULL );               // after List.init()
+    assert( ls->at_last() == NULL );    // => List__at_last( ls )
 
     const int x = 12, y = 21;
     superstruct Adder add = { .x = x };

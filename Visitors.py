@@ -11,16 +11,16 @@ class SuperCVisitor(CBaseVisitor):
         self.skip_intervals = []
         self.superstruct_names: set[str] = set()
         self.var_types: dict[str, Variable] = {}
-        self.replacements = set()
+        self.replacements: set = set()
 
     def lookup_variable(self, varname: str) -> Variable | None:
         return self.var_types.get(varname, None)
 
-    def get_original_text(self, ctx):
+    def get_original_text(self, ctx) -> str:
         start, stop = ctx.getSourceInterval()
         return self.token_stream.getText(start, stop)
 
-    def show_in_context(self, token):
+    def show_in_context(self, token) -> None:
         if isinstance(token, int):
             tok = self.token_stream.get(token)
         else:
