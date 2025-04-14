@@ -9,6 +9,8 @@
 !*.sc
 !*.ssc
 
+!SSC_code
+
 # for conversions
 !*.g4
 !*.py
