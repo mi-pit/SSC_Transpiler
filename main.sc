@@ -46,6 +46,11 @@ superstruct Adder
     {
         this->x = this->plus( this->static_add( 0, this->x ) );
     }
+
+    void print( /* void (todo) */ )
+    {
+        printf( "%d", this->x );
+    }
 };
 
 superstruct Adder *Adder_init( int x )
@@ -103,6 +108,7 @@ superstruct List
 
         ++this->len;
         memcpy( this->at_last(), data, this->el_size );
+        return RV_SUCCESS;
     }
 };
 

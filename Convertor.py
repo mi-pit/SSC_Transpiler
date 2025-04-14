@@ -36,7 +36,10 @@ def extract_preprocessor_directives(token_stream):
     return directives
 
 
-def create_header_file(superstructs: list[SuperStruct], directives: list[str]):
+def create_header_file(visitor, directives: list[str]):
+    superstructs: list[SuperStruct] = visitor.superstructs
+    static_headers = visitor.functions
+
     with open(METHODS_FILE_NAME, "w") as c_file, \
             open(HEADER_FILE_NAME, "w") as header_file:
         c_file.write(f'#include "{HEADER_FILE_NAME}"\n\n')
@@ -46,6 +49,8 @@ def create_header_file(superstructs: list[SuperStruct], directives: list[str]):
                           f"#define {file_guard_token}\n")
 
         header_file.write("\n".join(directives) + "\n/* ---- END OF DIRECTIVES ---- */\n\n\n")
+
+        header_file.write("\n".join(static_headers) + "\n")
 
         # All transformed super-structs (structs and methods)
         for ss in superstructs:
@@ -91,7 +96,7 @@ def replace_method_calls(tokens, skip_indices: set[int], replacements):
     return transformed_code
 
 
-def main():
+def main() -> None:
     try:
         input_stream = FileStream(FILE_NAME, encoding="UTF-8")
     except EncodingWarning:
@@ -109,14 +114,14 @@ def main():
     visitor.visit(tree)
 
     token_stream.fill()
-    tokens = token_stream.tokens
+    tokens: list = token_stream.tokens
 
     # Flatten out the skip intervals into a set of token indices
     skip_indices: set[int] = set()
     for start, end in visitor.skip_intervals:
         skip_indices.update(list(range(start, end + 1)))
 
-    transformed_code = replace_method_calls(tokens, skip_indices, visitor.replacements)
+    transformed_code: list[str] = replace_method_calls(tokens, skip_indices, visitor.replacements)
 
     # main C
     with open(FILE_NAME + ".c", "w") as f:
@@ -127,7 +132,7 @@ def main():
         f.write("".join(transformed_code) + "\n")
 
     directives: list[str] = extract_preprocessor_directives(token_stream)
-    create_header_file(visitor.superstructs, directives)
+    create_header_file(visitor, directives)
 
 
 if __name__ == '__main__':
