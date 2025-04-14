@@ -45,6 +45,10 @@ class SuperCVisitor(CBaseVisitor):
         print("--- End context ---\n")
 
     def visitFunctionDefinition(self, ctx):
+        if not ctx.declarationSpecifiers():
+            return self.visitChildren(ctx)
+
+        # self.show_in_context(ctx.start)
         specs = get_text_separated(ctx.declarationSpecifiers())
         func_name = get_text_separated(ctx.declarator())
         ctx_text: str = f"{specs} {func_name}"
@@ -55,8 +59,12 @@ class SuperCVisitor(CBaseVisitor):
 
     def visitDeclaration(self, ctx):
         decl_specs: str = get_text_separated(ctx.declarationSpecifiers())
+        # self.show_in_context(ctx.start)
         if "superstruct" in decl_specs:
-            for init_decl in ctx.initDeclaratorList().initDeclarator():
+            decl_ls = ctx.initDeclaratorList()
+            if not decl_ls:
+                return
+            for init_decl in decl_ls.initDeclarator():
                 declarator = init_decl.declarator()  # pointer? directDeclarator
                 variable = Variable(decl_specs,
                                     bool(declarator.pointer()) if declarator.pointer() else None,
@@ -64,6 +72,8 @@ class SuperCVisitor(CBaseVisitor):
                 self.var_types[variable.name] = variable
 
     def visitPostfixExpression(self, ctx):
+        # print(f'For "{get_text_separated(ctx)}"')
+        # self.show_in_context(ctx.start)
         if ctx.getChildCount() < 4:
             return self.visitChildren(ctx)
 
@@ -76,12 +86,15 @@ class SuperCVisitor(CBaseVisitor):
         arguments_ls = [get_text_separated(ctx.getChild(i)) for i in range(3, ctx.getChildCount())]
         args_str = "".join(arguments_ls[1:-1])
 
-        # print(f"✅ Found method call: {obj_expr}{operator}{method_name}({args_str})")
+        # print(f"> Found method call: {obj_expr}{operator}{method_name}({args_str})")
         # self.show_in_context(ctx.start)
 
         variable: Variable = self.lookup_variable(obj_expr)
+        if not variable:
+            return self.visitChildren(ctx)
+
         ss_name = variable.var_type.split()[-1]
-        if not variable or ss_name not in self.superstruct_names:
+        if ss_name not in self.superstruct_names:
             return self.visitChildren(ctx)
 
         new_func = f"{ss_name}__{method_name}"

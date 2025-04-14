@@ -1,0 +1,13 @@
+TODO:
+    static void methodname() { ... }
+        => ‹non-static› void Classname_methodname() { ... }
+    Classname.methodname()
+        => Classname__methodname()
+
+Maybe?:
+    new Classname() || new_Classname()
+
+
+FIXME:
+    superstruct variable declaration (without assignment) doesn't get recognized as such;
+        method calls don't get translated
