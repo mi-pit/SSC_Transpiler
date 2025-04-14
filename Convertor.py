@@ -11,23 +11,6 @@ HEADER_FILE_NAME: str = FILE_NAME + "--header.h"
 METHODS_FILE_NAME: str = FILE_NAME + "--code.c"
 
 
-# TODO:
-#   [IN .h FILE] variable->function( args )
-#     => Classname__function( &variable, args )
-#
-#   static void methodname() { ... }
-#     => [non-static] void Classname_methodname() { ... }
-#   Classname.methodname()
-#     => Classname__methodname()
-#
-#   Maybe?:
-#     new Classname() || new_Classname()
-#
-# FIXME:
-#   "forward" declaration
-#       maybe function headers in a master file
-
-
 def extract_preprocessor_directives(token_stream):
     directives: list[str] = []
     for token in token_stream.tokens:

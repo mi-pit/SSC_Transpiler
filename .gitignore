@@ -1,18 +1,22 @@
 *
 
 !.gitignore
+!README.md
 
-# test files
+!TODO.txt
+
+# test files (can't decide on the file extention, though .sc is already taken)
 !*.sc
+!*.ssc
 
 # for conversions
 !*.g4
 !*.py
 
 # can be generated with `antlr4 C.g4 -Dlanguage=Python3 -visitor -listener`
-CVisitor.py
-CListener.py
-CParser.py
-CLexer.py
+# CVisitor.py
+# CListener.py
+# CParser.py
+# CLexer.py
 
 !transpiler.sh
