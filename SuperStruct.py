@@ -9,6 +9,10 @@ def get_text_separated(token):
     return " ".join([get_text_separated(child) for child in token.getChildren()])
 
 
+def get_keyword_replaced(word: str, keyword_dict: dict[str, str]) -> str:
+    return keyword_dict.get(word, word)
+
+
 class SuperStruct:
     def __init__(self, name, token_stream):
         self.name: str = name
@@ -17,31 +21,104 @@ class SuperStruct:
         self.token_stream = token_stream
 
     def replace_keywords_in_tokens(self, ctx, keyword_dict):
-        """Replaces keywords in keyword_dict::keys with their corresponding values"""
+        """
+        Replaces keywords in keyword_dict::keys with their corresponding values.
+        Also replaces method calls
+        example: obj->methodname() => Classname_methodname(obj)
+        """
         start_idx, stop_idx = ctx.getSourceInterval()
         tokens = self.token_stream.getTokens(start_idx, stop_idx + 1)
 
         result = ""
+        skips = set()
         for i in range(len(tokens)):
-            tok_text = tokens[i].text
+            if i in skips:
+                continue
+            tok_text: str = tokens[i].text
 
-            if tok_text in keyword_dict:
-                result += keyword_dict.get(tok_text)
-            else:
-                result += tok_text
+            method_call_next = i + 3 < len(tokens) and \
+                               re.search("(\\.|->)", tokens[i + 1].text) and \
+                               tokens[i + 3].text == "("
+
+            if method_call_next:
+                next_tok, res = self.replace_method_calls(tokens, i, keyword_dict)
+                skips.update(list(range(i, next_tok)))
+                result += res
+                continue
+
+            result += get_keyword_replaced(tok_text, keyword_dict)
 
         return result
 
-    def to_c_code(self) -> str:
-        out_str = f"/* superstruct {self.name} */\n"
-        out_str += f"struct {self.name} {{"
-        for field in self.fields:
-            # FIXME?!
-            replaced = field.replace("superstruct", "struct")
-            out_str += f"{replaced}"
-        out_str += "};\n\n\n"
+    def replace_method_calls(self, tokens, i, keyword_dict):
+        """
+        Replaces a method call like obj.method(...) or obj->method(...)
+        with Class__method(local__obj, ...)
+        Supports nested calls.
+        Returns: (next_index_to_continue_from, rewritten_string)
+        """
+        object_name = get_keyword_replaced(tokens[i].text, keyword_dict)
+        operator = tokens[i + 1].text
+        method_name = tokens[i + 2].text
+        open_paren = tokens[i + 3].text
+        assert open_paren == "("
 
+        class_name = self.name
+        local_obj = f"&{object_name}" if operator == "." else object_name
+        new_call = f"{class_name}__{method_name}({local_obj}"
+
+        # recursively handle nested method calls
+        args_tokens = []
+        j = i + 4
+        paren_count = 1
+
+        while j < len(tokens) and paren_count > 0:
+            tok = tokens[j]
+
+            if tok.text == "(":
+                paren_count += 1
+            elif tok.text == ")":
+                paren_count -= 1
+
+            # Check for method call start in nested args
+            if (j + 3 < len(tokens) and
+                    re.search(r"(\.|->)", tokens[j + 1].text) and
+                    tokens[j + 3].text == "(" and
+                    paren_count > 0):
+                # Recursively replace
+                nested_end, nested_str = self.replace_method_calls(tokens, j, keyword_dict)
+                args_tokens.append(nested_str)
+                j = nested_end
+                continue
+
+            if paren_count > 0:
+                args_tokens.append(get_keyword_replaced(tok.text, keyword_dict))
+
+            j += 1
+
+        args_str = "".join(args_tokens).strip()
+        if args_str:
+            new_call += f", {args_str}"
+        new_call += ")"
+
+        return j, new_call
+
+    def to_c_code(self) -> tuple[str, list[str]]:
+        header_code: list[str] = []
+
+        struct_header = f"/* superstruct {self.name} */\n"
+        struct_header += f"struct {self.name} {{"
+        for field in self.fields:
+            # FIXME?
+            replaced = field.replace("superstruct", "struct")
+            struct_header += f"{replaced}"
+        struct_header += "};\n\n"
+
+        header_code.append(struct_header)
+
+        out_str = ""
         for method_tuple in self.methods:
+            curr_method_str = ""
             specifiers, declarator, decl_list, compound_statement = method_tuple
 
             this_object_name = "local__" + self.name
@@ -55,32 +132,35 @@ class SuperStruct:
                         spec_str += "struct " + ss_spec.Identifier().getText()
                     else:
                         spec_str += get_text_separated(spec)
-                    out_str += spec_str + " "
+                    curr_method_str += spec_str + " "
 
             if declarator.pointer():
-                out_str += declarator.pointer().getText()
+                curr_method_str += declarator.pointer().getText()
 
             assert declarator.directDeclarator()
             # original function name, params list
             direct_decl = declarator.directDeclarator()
             function_name = self.name + "__" + direct_decl.directDeclarator().getText()
-            out_str += function_name + "(" + ss_struct_specifier_str + " *" + this_object_name
+            curr_method_str += function_name + "(" + ss_struct_specifier_str + " *" + this_object_name
             if direct_decl.parameterTypeList():
                 params_ls = direct_decl.parameterTypeList().parameterList().parameterDeclaration()
 
                 for param in params_ls:
                     param_spec = [spec.getText() for spec in param.declarationSpecifiers().declarationSpecifier()]
-                    out_str += ", " + " ".join(param_spec) + " " + param.declarator().getText()
+                    curr_method_str += ", " + " ".join(param_spec) + " " + param.declarator().getText()
 
-            out_str += ") "
+            curr_method_str += ")"
 
             if decl_list:
                 # don't know what this is
                 print(decl_list.getText())
 
+            header_code.append(curr_method_str + ";")
+
+            out_str += curr_method_str
             keyword_dict = {"this": this_object_name, "superstruct": "struct"}
             out_str += self.replace_keywords_in_tokens(compound_statement, keyword_dict)
 
             out_str += "\n\n"  # one empty line between
 
-        return out_str
+        return out_str, header_code
