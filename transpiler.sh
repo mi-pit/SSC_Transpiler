@@ -9,4 +9,5 @@ clang-format -i "$ORIGINAL_C_CODE_FILE"
 clang-format -i "$STRUCT_CODE_FILE"
 clang-format -i "$HEADER_FILE"
 
-gcc -Wpedantic -Wall -Wextra -Werror -o ${"$1"%.*} "$ORIGINAL_C_CODE_FILE" "$STRUCT_CODE_FILE" "$HEADER_FILE"
+echo "$ORIGINAL_C_CODE_FILE" "$STRUCT_CODE_FILE"
+gcc --std=c99 -Wpedantic -Wall -Wextra -Werror -o "${1%.*}" "$ORIGINAL_C_CODE_FILE" "$STRUCT_CODE_FILE"

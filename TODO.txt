@@ -3,7 +3,6 @@ TODO:
         => ‹non-static› void Classname_methodname() { ... }
     Classname.methodname()
         => Classname__methodname()
-
 Maybe?:
     new Classname() || new_Classname()
 
@@ -11,3 +10,4 @@ Maybe?:
 FIXME:
     superstruct variable declaration (without assignment) doesn't get recognized as such;
         method calls don't get translated
+    static method declaration in header

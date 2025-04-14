@@ -60,4 +60,9 @@ int main( int argc, const char *const argv[ const ] )
         ls.append( i );
 
     ls.print();
+
+    assert( add_ints( 1, 2 ) == 3 );
+    if ( argc < 20 )
+        return argv[ 1 ][ 0 ] == 'A';
+    return 0;
 }
