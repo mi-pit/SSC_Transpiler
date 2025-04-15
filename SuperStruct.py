@@ -143,11 +143,8 @@ class SuperStruct:
             function_name = self.name + "__" + direct_decl.directDeclarator().getText()
             curr_method_str += function_name + "(" + ss_struct_specifier_str + " *" + this_object_name
             if direct_decl.parameterTypeList():
-                params_ls = direct_decl.parameterTypeList().parameterList().parameterDeclaration()
-
-                for param in params_ls:
-                    param_spec = [spec.getText() for spec in param.declarationSpecifiers().declarationSpecifier()]
-                    curr_method_str += ", " + " ".join(param_spec) + " " + param.declarator().getText()
+                curr_method_str += ", "
+                curr_method_str += get_text_separated(direct_decl.parameterTypeList()).replace("superstruct", "struct")
 
             curr_method_str += ")"
 

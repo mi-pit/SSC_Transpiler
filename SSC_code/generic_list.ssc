@@ -1,0 +1,493 @@
+
+#include "***REMOVED***Clibs/Dev/errors.h" /* RVs, fwarn* */
+#include "***REMOVED***Clibs/Dev/pointer_utils.h"
+#include "***REMOVED***Clibs/extra_types.h" /* byte */
+#include "***REMOVED***Clibs/misc.h"        /* cmpeq() */
+
+#include <stdbool.h> /* ... */
+#include <stdio.h>   /* *print* */
+#include <stdlib.h>  /* malloc, free, bsearch, qsort */
+#include <string.h>  /* mem* */
+
+#define LIST_DEF_SIZE 64
+
+#define LIST_CAP_SIZE_RATIO 2
+
+
+#define ListIndexOOBExceptionString( LIST, INDEX ) \
+    "index %zu out of bounds for list of size %zu", INDEX, ( LIST )->size - 1
+
+#define ListEmptyExceptionString "list is empty"
+
+#define ListNullPointerExceptionString( ARG ) #ARG " may not be null"
+
+
+/**
+ * A dynamic array. (List)<br>
+ * The List can store any elements of arbitrary size.
+ * <p>
+ * A new List can (and should) be created with list_init_* functions
+ * <p>
+ * list_init_type* functions take as its `type' argument the C keyword
+ * e.g. 'char'
+ * <br>
+ * list_init_size* functions take as its `el_size' argument
+ * the number of bytes (acquired by sizeof)
+ * for the desired type to be stored
+ * <p>
+ * The list_init_*_p functions take a second parameter
+ * – a constant for the print functions. This field can be changed
+ * later with list_set_print_mode().
+ * <p>
+ * list_init_* functions allocate and initialize a List
+ * with these default values:
+ * @code
+ * List::capacity = LIST_DEF_SIZE
+ * List::size     = 0
+ * List::items    = pointer to heap allocated memory of width ‹capacity›, set to 0
+ * List::el_size  = width of a single element
+ * @endcode
+ *
+ * @attention
+ * All elements must be the same number of bytes long
+*/
+
+superstruct dynamic_array
+{
+    size_t capacity; // Amount of allocated memory slots for items
+    size_t size;     // Number of items stored in List
+    void *items;     // Array of any type
+    size_t el_size;  // sizeof a single item
+
+
+    /* –––––––––––––––––––––––––––––– METHODS –––––––––––––––––––––––––––––– */
+
+    void *at__non_safe( size_t idx )
+    {
+        return ( byte * ) this->items + idx * this->el_size;
+    }
+
+
+    /* Immutable */
+    const void *see( size_t idx )
+    {
+        if ( idx >= this->size )
+            return ( void * ) fwarnx_ret( NULL,
+                                          ListIndexOOBExceptionString( this, idx ) );
+
+        return this->at__non_safe( idx );
+    }
+
+    const void *peek()
+    {
+        if ( this->size == 0 )
+            return ( void * ) fwarnx_ret( NULL, ListEmptyExceptionString );
+
+        return this->at__non_safe( this->size - 1 );
+    }
+
+
+    /* Mutable */
+    void *at( size_t idx )
+    {
+        if ( idx >= this->size )
+            return ( void * ) fwarnx_ret( NULL,
+                                          ListIndexOOBExceptionString( this, idx ) );
+
+        return this->at__non_safe( idx );
+    }
+
+    void *at_last()
+    {
+        if ( this->size == 0 )
+            return ( void * ) fwarnx_ret( NULL, ListEmptyExceptionString );
+
+        return this->at__non_safe( this->size - 1 );
+    }
+
+
+    /**
+     * Changes (realloc) the lists capacity to be the smallest possible power of two
+     * capable of holding its items + `min_cap_add`
+     * \n
+     * Therefore, the List always has enough space
+     * to hold all of its items + min_cap_add
+     * @return -1 if realloc fails, else 0
+     */
+    Private int upsize( size_t min_cap_add )
+    {
+        const size_t min_new_cap = this->capacity + min_cap_add;
+
+        size_t new_capacity = this->capacity;
+        while ( new_capacity < min_new_cap )
+            new_capacity *= LIST_CAP_SIZE_RATIO;
+
+        void *tmp = realloc( this->items, new_capacity * this->el_size );
+        if ( tmp == NULL )
+            return fwarn_ret( RV_ERROR, "realloc" );
+
+        this->items    = tmp;
+        this->capacity = new_capacity;
+        return RV_SUCCESS;
+    }
+
+    /**
+     * Changes (realloc) the lists capacity to be half as large\n
+     * @return -1 if realloc fails, else 0
+     */
+    Private int downsize()
+    {
+        const size_t new_cap = this->capacity / LIST_CAP_SIZE_RATIO;
+
+        void *tmp = realloc( this->items, new_cap * this->el_size );
+        if ( tmp == NULL )
+            return fwarn_ret( RV_ERROR, "realloc" );
+
+        this->items    = tmp;
+        this->capacity = new_cap;
+        return RV_SUCCESS;
+    }
+
+
+    int set_at( size_t index, const void *data )
+    {
+        if ( index >= this->size )
+            return fwarnx_ret( RV_EXCEPTION, ListIndexOOBExceptionString( this, index ) );
+
+        if ( data == NULL )
+            return fwarnx_ret( RV_EXCEPTION, ListNullPointerExceptionString( data ) );
+
+        memcpy( ( ( byte * ) this->items ) + ( index * this->el_size ),
+                data,
+                this->el_size );
+
+        return RV_SUCCESS;
+    }
+
+
+    int append( const void *data )
+    {
+        if ( this->size + 1 >= this->capacity )
+            if ( this->upsize( 1 ) != RV_SUCCESS )
+                return f_stack_trace( RV_ERROR );
+
+        ++this->size;
+        memcpy( this->at_last(), data, this->el_size );
+
+        return RV_SUCCESS;
+    }
+
+    int extend( const void *array, size_t len )
+    {
+        if ( this->capacity < this->size + len )
+            if ( this->upsize( len ) != RV_SUCCESS )
+                return f_stack_trace( RV_ERROR );
+
+        memcpy( this->at__non_safe( this->size ), array, len * this->el_size );
+
+        this->size += len;
+
+        return RV_SUCCESS;
+    }
+
+    int extend_list( const superstruct dynamic_array *app )
+    {
+        if ( this->size + app->size >= this->capacity )
+            if ( this->upsize( app->size ) != RV_SUCCESS )
+                return f_stack_trace( RV_ERROR );
+
+        memcpy( this->at__non_safe( this->size ), app->items, app->size * app->el_size );
+
+        this->size += app->size;
+
+        return RV_SUCCESS;
+    }
+
+    int insert( size_t at, const void *data )
+    {
+        if ( at > this->size )
+            return fwarnx_ret( RV_EXCEPTION, ListIndexOOBExceptionString( this, at ) );
+
+        if ( this->size + 1 >= this->capacity )
+            if ( this->upsize( 1 ) != RV_SUCCESS )
+                return f_stack_trace( RV_ERROR );
+
+        memmove( this->at__non_safe( at + 1 ),
+                 this->at__non_safe( at ),
+                 ( this->size - at ) * this->el_size );
+
+        memcpy( this->at__non_safe( at ), data, this->el_size );
+
+        ++this->size;
+
+        return RV_SUCCESS;
+    }
+
+
+    inline void remove_last_nonsafe()
+    {
+        memset( this->at_last(), 0, this->el_size );
+        --this->size;
+    }
+
+    int pop( void *container )
+    {
+        if ( this->size == 0 )
+            return fwarnx_ret( RV_EXCEPTION, ListEmptyExceptionString );
+
+        if ( this->capacity / LIST_CAP_SIZE_RATIO > this->size )
+            if ( this->downsize() != RV_SUCCESS )
+                return f_stack_trace( RV_ERROR );
+
+        if ( container != NULL )
+            // copy popped element to container
+            memcpy( container, this->at_last(), this->el_size );
+
+        this->remove_last_nonsafe();
+
+        return RV_SUCCESS;
+    }
+
+    int remove( size_t index, void *container )
+    {
+        if ( index >= this->size )
+            return fwarnx_ret( RV_EXCEPTION, ListIndexOOBExceptionString( this, index ) );
+
+        if ( index == this->size - 1 )
+            return this->pop( container );
+
+        if ( this->capacity / LIST_CAP_SIZE_RATIO > this->size )
+            if ( this->downsize() != RV_SUCCESS )
+                return f_stack_trace( RV_ERROR );
+
+        if ( container != NULL )
+            memcpy( container, this->at( index ), this->el_size );
+
+        memmove( this->at( index ),
+                 this->at( index - 1 ),
+                 ( this->size - index ) * this->el_size );
+
+        --this->size;
+
+        return RV_SUCCESS;
+    }
+
+    int remove_fast( size_t index, void *container )
+    {
+        if ( index >= this->size )
+            return fwarnx_ret( RV_EXCEPTION, ListIndexOOBExceptionString( this, index ) );
+
+        if ( this->capacity / LIST_CAP_SIZE_RATIO > this->size )
+            if ( this->downsize() != RV_SUCCESS )
+                return RV_ERROR;
+
+        if ( container != NULL )
+            // put element at index into the container
+            memmove( container, this->at( index ), this->el_size );
+
+        // put last element at ‹index›
+        memmove( this->at( index ), this->at_last(), this->el_size );
+
+        // pop last element
+        this->remove_last_nonsafe();
+
+        return RV_SUCCESS;
+    }
+
+
+    const void *bsearch_p( const void *needle,
+                           int ( *cmp )( const void *, const void * ) )
+    {
+        return bsearch( needle, this->items, this->size, this->el_size, cmp );
+    }
+
+    int64_t bsearch_i( const void *needle, int ( *cmp )( const void *, const void * ) )
+    {
+        const byte *res = this->bsearch_p( needle, cmp );
+        if ( res == NULL )
+            return -1;
+        return res - ( byte * ) this->items;
+    }
+
+    const void *lsearch_p( const void *needle )
+    {
+        for ( size_t i = 0; i < this->size; ++i )
+            if ( cmpeq( memcmp( this->see( i ), needle, this->el_size ) ) )
+                return this->see( i );
+
+        return NULL;
+    }
+
+    int64_t lsearch_i( const void *needle )
+    {
+        const byte *res = this->lsearch_p( needle );
+        if ( res == NULL )
+            return -1;
+        return res - ( byte * ) this->items;
+    }
+
+    void sort( int ( *cmp )( const void *, const void * ) )
+    {
+        qsort( this->items, this->size, this->el_size, cmp );
+    }
+
+
+    int reverse()
+    {
+        if ( this->size == 0 )
+            return RV_SUCCESS;
+
+        void *buffer = malloc( this->el_size );
+        if ( buffer == NULL )
+            return fwarn_ret( RV_ERROR, "buffer allocation" );
+
+        byte *l = thsi->items;
+        byte *r = this->at__non_safe( this->size - 1 );
+
+        for ( size_t i = 0; i < this->size / 2; ++i )
+        {
+            // [ _ ], [ l, ..., m, ..., r ] –> [ l ], [ l, ..., m, ..., r ]
+            memcpy( buffer, l, this->el_size );
+
+            // [ l ], [ l, ..., m, ..., r ] –> [ l ], [ r, ..., m, ..., r ]
+            memcpy( l, r, this->el_size );
+
+            // [ l ], [ r, ..., m, ..., r ] –> [ l ], [ r, ..., m, ..., l ]
+            memcpy( r, buffer, this->el_size );
+
+            l += this->el_size;
+            r += this->el_size;
+        }
+
+        free( buffer );
+
+        return RV_SUCCESS;
+    }
+
+    superstruct dynamic_array *reversed()
+    {
+        superstruct dynamic_array *rev;
+        if ( this->copy( &rev ) != RV_SUCCESS )
+            return ( void * ) f_stack_trace( NULL );
+
+        if ( rev->reverse( rev ) != RV_SUCCESS )
+        {
+            rev->destroy();
+            free( rev );
+            return ( void * ) f_stack_trace( NULL );
+        }
+        return rev;
+    }
+
+
+    int copy( superstruct dynamic_array * *new_ls_cont )
+    {
+        superstruct dynamic_array *new_ls = list_init_size( ls->el_size );
+        if ( new_ls == NULL )
+            return RV_ERROR;
+
+        if ( new_ls->extend_list( ls ) != RV_SUCCESS )
+        {
+            new_ls->destroy();
+            free( new_ls );
+            return f_stack_trace( RV_ERROR );
+        }
+
+        *new_ls_cont = new_ls;
+
+        return RV_SUCCESS;
+    }
+
+    superstruct dynamic_array *copy_p()
+    {
+        superstruct dynamic_array *new_ls;
+        if ( this->copy( &new_ls ) )
+            return NULL;
+        return new_ls;
+    }
+
+    void *items_copy()
+    {
+        void *copy = calloc( this->size, this->el_size );
+        if ( copy == NULL )
+            return ( void * ) fwarn_ret( NULL, "calloc" );
+
+        memcpy( copy, this->items, this->size * this->el_size );
+        return copy;
+    }
+
+    void destroy()
+    {
+        free_n( ls->items );
+    }
+
+
+    void print()
+    {
+        printf( "list: size=%zu, capacity=%zu", this->size, this->cap );
+    }
+};
+
+superstruct dynamic_array *init_size( size_t el_size )
+{
+    superstruct dynamic_array *ls = calloc( 1, sizeof( superstruct dynamic_array ) );
+    if ( ls == NULL )
+        return ( void * ) fwarn_ret( NULL, "calloc" );
+
+    ls->items = calloc( LIST_DEF_SIZE, el_size );
+    if ( ls->items == NULL )
+    {
+        free( ls );
+        return ( void * ) fwarn_ret( NULL, "calloc" );
+    }
+    ls->capacity = LIST_DEF_SIZE;
+    ls->el_size  = el_size;
+    return ls;
+}
+
+superstruct dynamic_array *list_init_size_p( size_t el_size, int mode )
+{
+    superstruct dynamic_array *new_ls = list_init_size( el_size );
+    if ( new_ls == NULL )
+        return ( void * ) f_stack_trace( NULL );
+
+    new_ls->def_print_mode = mode;
+    return new_ls;
+}
+
+#define list_init_type( type ) list_init_size( sizeof( type ) )
+
+
+int list_cmp_size( const void *l1, const void *l2 )
+{
+    const superstruct dynamic_array *ls_1 =
+            deref_as( const superstruct dynamic_array *, l1 );
+    const superstruct dynamic_array *ls_2 =
+            deref_as( const superstruct dynamic_array *, l2 );
+
+    return cmp_size_t( &ls_1->size, &ls_2->size );
+}
+
+int list_cmp_elsize( const void *l1, const void *l2 )
+{
+    const superstruct dynamic_array *ls_1 =
+            deref_as( const superstruct dynamic_array *, l1 );
+    const superstruct dynamic_array *ls_2 =
+            deref_as( const superstruct dynamic_array *, l2 );
+
+    return cmp_size_t( &ls_1->el_size, &ls_2->el_size );
+}
+
+
+int main()
+{
+    superstruct dynamic_array ls = list_init_type( int );
+    assert( ls != NULL );
+
+    ls.print();
+    ls.append( 0 );
+    ls.print();
+
+    ls.destroy();
+    free( ls );
+}
