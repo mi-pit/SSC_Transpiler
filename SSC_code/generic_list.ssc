@@ -1,9 +1,10 @@
 
-#include "***REMOVED***Clibs/Dev/errors.h" /* RVs, fwarn* */
-#include "***REMOVED***Clibs/Dev/pointer_utils.h"
-#include "***REMOVED***Clibs/extra_types.h" /* byte */
-#include "***REMOVED***Clibs/misc.h"        /* cmpeq() */
+#include "***REMOVED***CLibs/Dev/errors.h" /* RVs, fwarn* */
+#include "***REMOVED***CLibs/Dev/pointer_utils.h"
+#include "***REMOVED***CLibs/extra_types.h" /* byte */
+#include "***REMOVED***CLibs/misc.h"        /* cmpeq() */
 
+#include <assert.h>  /**/
 #include <stdbool.h> /* ... */
 #include <stdio.h>   /* *print* */
 #include <stdlib.h>  /* malloc, free, bsearch, qsort */
@@ -114,7 +115,7 @@ superstruct dynamic_array
      * to hold all of its items + min_cap_add
      * @return -1 if realloc fails, else 0
      */
-    Private int upsize( size_t min_cap_add )
+    int upsize( size_t min_cap_add )
     {
         const size_t min_new_cap = this->capacity + min_cap_add;
 
@@ -135,7 +136,7 @@ superstruct dynamic_array
      * Changes (realloc) the lists capacity to be half as large\n
      * @return -1 if realloc fails, else 0
      */
-    Private int downsize()
+    int downsize()
     {
         const size_t new_cap = this->capacity / LIST_CAP_SIZE_RATIO;
 
@@ -172,7 +173,7 @@ superstruct dynamic_array
                 return f_stack_trace( RV_ERROR );
 
         ++this->size;
-        memcpy( this->at_last(), data, this->el_size );
+        memcpy( this->at__non_safe( this->size ), data, this->el_size );
 
         return RV_SUCCESS;
     }
@@ -224,7 +225,7 @@ superstruct dynamic_array
     }
 
 
-    inline void remove_last_nonsafe()
+    void remove_last_nonsafe()
     {
         memset( this->at_last(), 0, this->el_size );
         --this->size;
@@ -341,7 +342,7 @@ superstruct dynamic_array
         if ( buffer == NULL )
             return fwarn_ret( RV_ERROR, "buffer allocation" );
 
-        byte *l = thsi->items;
+        byte *l = this->items;
         byte *r = this->at__non_safe( this->size - 1 );
 
         for ( size_t i = 0; i < this->size / 2; ++i )
@@ -370,7 +371,7 @@ superstruct dynamic_array
         if ( this->copy( &rev ) != RV_SUCCESS )
             return ( void * ) f_stack_trace( NULL );
 
-        if ( rev->reverse( rev ) != RV_SUCCESS )
+        if ( rev->reverse() != RV_SUCCESS )
         {
             rev->destroy();
             free( rev );
@@ -382,11 +383,11 @@ superstruct dynamic_array
 
     int copy( superstruct dynamic_array * *new_ls_cont )
     {
-        superstruct dynamic_array *new_ls = list_init_size( ls->el_size );
+        superstruct dynamic_array *new_ls = list_init_size( this->el_size );
         if ( new_ls == NULL )
             return RV_ERROR;
 
-        if ( new_ls->extend_list( ls ) != RV_SUCCESS )
+        if ( new_ls->extend_list( this ) != RV_SUCCESS )
         {
             new_ls->destroy();
             free( new_ls );
@@ -418,19 +419,19 @@ superstruct dynamic_array
 
     void destroy()
     {
-        free_n( ls->items );
+        free_n( this->items );
     }
 
 
-    void print()
+    void print_meta()
     {
-        printf( "list: size=%zu, capacity=%zu", this->size, this->cap );
+        printf( "list: size=%zu, capacity=%zu\n", this->size, this->capacity );
     }
 };
 
-superstruct dynamic_array *init_size( size_t el_size )
+superstruct dynamic_array *list_init_size( size_t el_size )
 {
-    superstruct dynamic_array *ls = calloc( 1, sizeof( superstruct dynamic_array ) );
+    superstruct dynamic_array *ls = new ( superstruct dynamic_array );
     if ( ls == NULL )
         return ( void * ) fwarn_ret( NULL, "calloc" );
 
@@ -443,16 +444,6 @@ superstruct dynamic_array *init_size( size_t el_size )
     ls->capacity = LIST_DEF_SIZE;
     ls->el_size  = el_size;
     return ls;
-}
-
-superstruct dynamic_array *list_init_size_p( size_t el_size, int mode )
-{
-    superstruct dynamic_array *new_ls = list_init_size( el_size );
-    if ( new_ls == NULL )
-        return ( void * ) f_stack_trace( NULL );
-
-    new_ls->def_print_mode = mode;
-    return new_ls;
 }
 
 #define list_init_type( type ) list_init_size( sizeof( type ) )
@@ -481,13 +472,14 @@ int list_cmp_elsize( const void *l1, const void *l2 )
 
 int main()
 {
-    superstruct dynamic_array ls = list_init_type( int );
+    superstruct dynamic_array *ls = list_init_type( int );
     assert( ls != NULL );
 
-    ls.print();
-    ls.append( 0 );
-    ls.print();
+    int INT = 0;
+    ls->print_meta();
+    ls->append( &INT );
+    ls->print_meta();
 
-    ls.destroy();
+    ls->destroy();
     free( ls );
 }
