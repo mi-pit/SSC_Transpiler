@@ -19,6 +19,16 @@ def extract_preprocessor_directives(token_stream):
     return directives
 
 
+def remove_static_functions(functions: list[str]) -> list[str]:
+    picked_functions = []
+    for func in functions:
+        if "static" in func:
+            continue
+        picked_functions.append(func)
+
+    return picked_functions
+
+
 def create_header_file(visitor, directives: list[str]):
     superstructs: list[SuperStruct] = visitor.superstructs
     static_headers = visitor.functions
@@ -104,6 +114,7 @@ def main() -> None:
     for start, end in visitor.skip_intervals:
         skip_indices.update(list(range(start, end + 1)))
 
+    visitor.functions = remove_static_functions(visitor.functions)
     transformed_code: list[str] = replace_method_calls(tokens, skip_indices, visitor.replacements)
 
     # main C
