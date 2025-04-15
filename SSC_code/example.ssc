@@ -24,6 +24,11 @@ superstruct NumbersList
         return 0;
     }
 
+    void destroy()
+    {
+        free( this->numbers );
+    }
+
     int append( uint64_t num )
     {
         if ( this->len + 1 > this->cap )
@@ -40,7 +45,7 @@ superstruct NumbersList
         printf( "[" );
         for ( size_t i = 0; i < this->len; ++i )
             printf( " %llu", this->numbers[ i ] );
-        printf( " ]" );
+        printf( " ]\n" );
     }
 };
 
@@ -56,13 +61,18 @@ int main( int argc, const char *const argv[ const ] )
     superstruct NumbersList ls = { 0 };
     assert( ls.init() == 0 );
 
-    for ( uint64_t i = 0; i < 128; ++i )
-        ls.append( i );
+    for ( uint64_t i = 0; i < ls.cap; ++i )
+        if ( ls.append( i ) != 0 )
+            warnx( "ls.append(%llu)", i );
 
     ls.print();
 
     assert( add_ints( 1, 2 ) == 3 );
-    if ( argc < 20 )
-        return argv[ 1 ][ 0 ] == 'A';
+    assert( add_ints( 0, 3 ) == 3 );
+
+    ls.destroy();
+
+    if ( argc < 20 || argv[ 0 ][ 0 ] == '_' )
+        return 1;
     return 0;
 }
