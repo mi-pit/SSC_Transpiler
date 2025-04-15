@@ -95,11 +95,12 @@ def replace_method_calls(tokens, skip_indices: set[int], replacements):
 def main() -> None:
     try:
         input_stream = FileStream(FILE_NAME, encoding="UTF-8")
-    except EncodingWarning:
+    except:
         try:
             input_stream = FileStream(FILE_NAME)
-        except EncodingWarning:
-            raise EncodingWarning()
+        except:
+            print(f"Could not open '{FILE_NAME}'", file=sys.stderr)
+            exit(1)
     lexer = CLexer(input_stream)
     token_stream = CommonTokenStream(lexer)
     parser = CParser(token_stream)

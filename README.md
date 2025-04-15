@@ -1,4 +1,4 @@
-# Super-C transpiler
+# SuperStruct-C transpiler
 
 ## requires
 
