@@ -1,10 +1,13 @@
 import re
 import sys
+
 from antlr4 import *
+
 from CLexer import CLexer
 from CParser import CParser
-from SuperStruct import SuperStruct
+
 from Visitors import CBaseVisitor, SuperCVisitor
+from SuperStruct import SuperStruct
 
 FILE_NAME: str = sys.argv[1]
 HEADER_FILE_NAME: str = FILE_NAME + "--header.h"

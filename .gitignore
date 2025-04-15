@@ -5,8 +5,7 @@
 
 !TODO.txt
 
-# test files (can't decide on the file extention, though .sc is already taken)
-!*.sc
+# test files
 !*.ssc
 
 !SSC_code

@@ -1,7 +1,7 @@
-#include "../CLibs/Dev/errors.h"        /* warn */
-#include "../CLibs/misc.h"              /* UNUSED */
-#include "../CLibs/string_utils.h"      /* str_t */
-#include "../CLibs/Structs/dynstring.h" /* Dynstr */
+#include "../../CLibs/Dev/errors.h"        /* warn */
+#include "../../CLibs/misc.h"              /* UNUSED */
+#include "../../CLibs/string_utils.h"      /* str_t */
+#include "../../CLibs/Structs/dynstring.h" /* Dynstr */
 
 #include <assert.h>
 #include <ctype.h>
