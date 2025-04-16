@@ -118,6 +118,7 @@ class SuperStruct:
 
         for method_tuple in self.methods:
             curr_method_str = ""
+            curr_method_is_private = False
             specifiers, declarator, decl_list, compound_statement = method_tuple
 
             this_object_name = "local__" + self.name
@@ -129,12 +130,14 @@ class SuperStruct:
                     if spec.typeSpecifier() and spec.typeSpecifier().superStructSpecifier():
                         ss_spec = spec.typeSpecifier().superStructSpecifier()
                         spec_str += "struct " + ss_spec.Identifier().getText()
+                    elif get_text_separated(spec) == "private":
+                        curr_method_is_private = True
                     else:
                         spec_str += get_text_separated(spec)
                     curr_method_str += spec_str + " "
 
             if declarator.pointer():
-                curr_method_str += declarator.pointer().getText()
+                curr_method_str += get_text_separated(declarator.pointer())
 
             assert declarator.directDeclarator()
             # original function name, params list
@@ -151,7 +154,8 @@ class SuperStruct:
                 # don't know what this is
                 print(decl_list.getText())
 
-            header_code.append(curr_method_str + ";")
+            if not curr_method_is_private:
+                header_code.append(curr_method_str + ";")
 
             out_str += curr_method_str
             keyword_dict = {"this": this_object_name, "superstruct": "struct"}
