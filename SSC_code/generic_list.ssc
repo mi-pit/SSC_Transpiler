@@ -417,6 +417,22 @@ superstruct dynamic_array
         return copy;
     }
 
+
+    /* ====== GETTERS ====== */
+    void *get_items()
+    {
+        return this->items;
+    }
+    void *get_size()
+    {
+        return this->size;
+    }
+    void *get_el_size()
+    {
+        return this->el_size;
+    }
+
+
     void destroy()
     {
         free_n( this->items );

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# TODO: options
+
 if ! test -f "$1"; then
   echo "File '$1' does not exist."
 fi
