@@ -14,7 +14,9 @@ class SuperCVisitor(CBaseVisitor):
         self.superstruct_names: set[str] = set()
         self.var_types: dict[str, Variable] = {}
         self.replacements: set = set()
+
         self.functions: list = []
+        self.private_functions: list = []
 
     def lookup_variable(self, varname: str) -> Variable | None:
         return self.var_types.get(varname, None)

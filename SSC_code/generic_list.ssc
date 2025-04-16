@@ -5,7 +5,7 @@
 #include "***REMOVED***CLibs/misc.h"        /* cmpeq() */
 
 #include <assert.h>  /**/
-#include <stdbool.h> /* ... */
+#include <stdbool.h> /**/
 #include <stdio.h>   /* *print* */
 #include <stdlib.h>  /* malloc, free, bsearch, qsort */
 #include <string.h>  /* mem* */
@@ -63,6 +63,7 @@ superstruct dynamic_array
 
     /* –––––––––––––––––––––––––––––– METHODS –––––––––––––––––––––––––––––– */
 
+  private
     void *at__non_safe( size_t idx )
     {
         return ( byte * ) this->items + idx * this->el_size;
@@ -115,6 +116,7 @@ superstruct dynamic_array
      * to hold all of its items + min_cap_add
      * @return -1 if realloc fails, else 0
      */
+  private
     int upsize( size_t min_cap_add )
     {
         const size_t min_new_cap = this->capacity + min_cap_add;
@@ -136,6 +138,7 @@ superstruct dynamic_array
      * Changes (realloc) the lists capacity to be half as large\n
      * @return -1 if realloc fails, else 0
      */
+  private
     int downsize()
     {
         const size_t new_cap = this->capacity / LIST_CAP_SIZE_RATIO;
@@ -423,11 +426,11 @@ superstruct dynamic_array
     {
         return this->items;
     }
-    void *get_size()
+    size_t get_size()
     {
         return this->size;
     }
-    void *get_el_size()
+    size_t get_el_size()
     {
         return this->el_size;
     }
