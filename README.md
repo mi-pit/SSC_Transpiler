@@ -62,6 +62,18 @@ int main(void) {
 
 ### Compilation
 
+`transpiler.sh` generates three files:
+
+`"‹.scc file›.c"` – this file contains all regular C code (except directives)
+
+`"‹.ssc file›--code.c"` – this file contains all superstruct methods and C-structs
+
+`"‹.ssc file›--header.h"` – this file contains all directives and function prototypes
+
+both .c files contain (as the first line) `#include "‹.ssc file›--header.h"`
+
+#### Example:
+
 ```bash
 # in git repo directory
 cd SSC_code
