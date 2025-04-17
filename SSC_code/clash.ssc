@@ -1,0 +1,14 @@
+superstruct superstruct_clash { // invalid SSC syntax (redefinition)
+    int a;
+};
+
+struct superstruct_clash {
+    double b;
+};
+
+int main() {
+    superstruct superstruct_clash c = { .b = 1 };
+    (void) c;
+
+    return 0;
+}
