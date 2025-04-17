@@ -1,13 +1,19 @@
 superstruct classname {
     int x;
+
+    void method() {
+        (void) this;
+    }
 };
 
 void test()
 {
-    void *a = classname.methodname();
+    // void *a = classname.methodname();
 }
 
 int main( void )
 {
+    superstruct classname *obj = 0;
+    obj->method();
     return 0;
 }

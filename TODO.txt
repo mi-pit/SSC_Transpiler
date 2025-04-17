@@ -1,12 +1,6 @@
 TODO:
-    static void methodname() { ... }
-        => ‹non-static› void Classname_methodname() { ... }
-    Classname.methodname()
-        => Classname__methodname()
-
+    private superstructs
+    ... lambda functions?
 
 FIXME:
-    [in C.g4] function-like macro invocation with C-keyword as a parameter
-    superstruct variable declaration (without assignment) doesn't get recognized as such;
-        method calls don't get translated
-    static method declaration in superstruct
+    ? [in C.g4] function-like macro invocation with C-keyword as a parameter

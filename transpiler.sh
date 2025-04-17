@@ -18,7 +18,7 @@ while getopts ":ch" o; do
     ;;
   esac
 done
-echo "shift $((OPTIND - 1))"
+# echo "shift $((OPTIND - 1))"
 shift $((OPTIND - 1))
 
 if ! test -f "$1"; then
