@@ -51,8 +51,8 @@ def create_header_file(visitor, directives: list[str]):
         # All transformed super-structs (structs and methods)
         for ss in superstructs:
             code, ls = ss.to_c_code()
-            c_file.write(code + "\n")
-            header_file.write("\n".join(ls) + "\n")
+            c_file.write(code + "\n\n")
+            header_file.write("\n".join(ls) + "\n\n")
 
         header_file.write(f"\n\n#endif /* {file_guard_token} */\n")
 
@@ -61,11 +61,8 @@ def replace_method_calls(tokens, skip_indices: set[int], replacements):
     transformed_code = []
     n_skips = 0
     for i, token in enumerate(tokens):
-        skip = False
         if n_skips > 0:
             n_skips -= 1
-            skip = True
-        if skip:
             continue
 
         if i in skip_indices or token.type == Token.EOF or token.text.startswith("#"):

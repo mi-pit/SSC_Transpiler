@@ -1,8 +1,7 @@
-
 #include "***REMOVED***CLibs/Dev/errors.h" /* RVs, fwarn* */
-#include "***REMOVED***CLibs/Dev/pointer_utils.h"
-#include "***REMOVED***CLibs/extra_types.h" /* byte */
-#include "***REMOVED***CLibs/misc.h"        /* cmpeq() */
+#include "***REMOVED***CLibs/Dev/pointer_utils.h" /* deref_as */
+#include "***REMOVED***CLibs/extra_types.h"       /* byte */
+#include "***REMOVED***CLibs/misc.h"              /* cmpeq() */
 
 #include <assert.h>  /**/
 #include <stdbool.h> /**/
@@ -228,6 +227,7 @@ superstruct dynamic_array
     }
 
 
+  private
     void remove_last_nonsafe()
     {
         memset( this->at_last(), 0, this->el_size );
@@ -386,7 +386,7 @@ superstruct dynamic_array
 
     int copy( superstruct dynamic_array * *new_ls_cont )
     {
-        superstruct dynamic_array *new_ls = list_init_size( this->el_size );
+        superstruct dynamic_array *new_ls = dynamic_array.new( this->el_size );
         if ( new_ls == NULL )
             return RV_ERROR;
 
@@ -446,28 +446,30 @@ superstruct dynamic_array
     {
         printf( "list: size=%zu, capacity=%zu\n", this->size, this->capacity );
     }
+
+
+    /* ================ CONSTRUCTOR ================ */
+
+    static superstruct dynamic_array *new ( size_t el_size )
+    {
+        superstruct dynamic_array *ls = calloc( 1, sizeof( superstruct dynamic_array ) );
+        if ( ls == NULL )
+            return ( void * ) fwarn_ret( NULL, "calloc" );
+
+        ls->items = calloc( LIST_DEF_SIZE, el_size );
+        if ( ls->items == NULL )
+        {
+            free( ls );
+            return ( void * ) fwarn_ret( NULL, "calloc" );
+        }
+        ls->capacity = LIST_DEF_SIZE;
+        ls->el_size  = el_size;
+        return ls;
+    }
 };
 
-superstruct dynamic_array *list_init_size( size_t el_size )
-{
-    superstruct dynamic_array *ls = new ( superstruct dynamic_array );
-    if ( ls == NULL )
-        return ( void * ) fwarn_ret( NULL, "calloc" );
 
-    ls->items = calloc( LIST_DEF_SIZE, el_size );
-    if ( ls->items == NULL )
-    {
-        free( ls );
-        return ( void * ) fwarn_ret( NULL, "calloc" );
-    }
-    ls->capacity = LIST_DEF_SIZE;
-    ls->el_size  = el_size;
-    return ls;
-}
-
-#define list_init_type( type ) list_init_size( sizeof( type ) )
-
-
+/*
 int list_cmp_size( const void *l1, const void *l2 )
 {
     const superstruct dynamic_array *ls_1 =
@@ -487,11 +489,14 @@ int list_cmp_elsize( const void *l1, const void *l2 )
 
     return cmp_size_t( &ls_1->el_size, &ls_2->el_size );
 }
+*/
 
 
 int main()
 {
-    superstruct dynamic_array *ls = list_init_type( int );
+    superstruct dynamic_array *ls = dynamic_array.new( sizeof( int ) );
+    ( void ) dynamic_array.new( 1 );
+    free( dynamic_array.new( 1 ) );
     assert( ls != NULL );
 
     int INT = 0;

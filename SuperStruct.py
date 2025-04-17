@@ -15,12 +15,16 @@ def get_keyword_replaced(word: str, keyword_dict: dict[str, str]) -> str:
 
 class SuperStruct:
     def __init__(self, name, token_stream):
-        self.name: str = name
-        self.fields: list[str] = []
-        self.methods = []
         self.token_stream = token_stream
 
-    def replace_keywords_in_tokens(self, ctx, keyword_dict):
+        self.name: str = name
+        self.fields: list[str] = []
+
+        self.methods = []
+
+        self.static_methods: set[str] = set()
+
+    def replace_tokens(self, ctx, keyword_dict: dict[str, str]) -> str:
         """
         Replaces keywords in keyword_dict::keys with their corresponding values.
         Also replaces method calls
@@ -64,8 +68,12 @@ class SuperStruct:
         assert open_paren == "("
 
         class_name = self.name
-        local_obj = f"&{object_name}" if operator == "." else object_name
-        new_call = f"{class_name}__{method_name}({local_obj}"
+
+        if tokens[i].text == self.name:
+            new_call = f"{class_name}__{method_name}("
+        else:
+            local_obj = f"&{object_name}" if operator == "." else object_name
+            new_call = f"{class_name}__{method_name}({local_obj}"
 
         # recursively handle nested method calls
         args_tokens = []
@@ -98,7 +106,9 @@ class SuperStruct:
 
         args_str = "".join(args_tokens).strip()
         if args_str:
-            new_call += f", {args_str}"
+            if tokens[i].text != self.name:
+                new_call += ", "
+            new_call += f"{args_str}"
         new_call += ")"
 
         return j, new_call
@@ -119,6 +129,7 @@ class SuperStruct:
         for method_tuple in self.methods:
             curr_method_str = ""
             curr_method_is_private = False
+            curr_method_is_static = False
             specifiers, declarator, decl_list, compound_statement = method_tuple
 
             this_object_name = "local__" + self.name
@@ -132,6 +143,8 @@ class SuperStruct:
                         spec_str += "struct " + ss_spec.Identifier().getText()
                     elif get_text_separated(spec) == "private":
                         curr_method_is_private = True
+                    elif get_text_separated(spec) == "static":
+                        curr_method_is_static = True  # don't paste
                     else:
                         spec_str += get_text_separated(spec)
                     curr_method_str += spec_str + " "
@@ -143,9 +156,15 @@ class SuperStruct:
             # original function name, params list
             direct_decl = declarator.directDeclarator()
             function_name = self.name + "__" + direct_decl.directDeclarator().getText()
-            curr_method_str += function_name + "(" + ss_struct_specifier_str + " *" + this_object_name
+            curr_method_str += function_name + "("
+            if curr_method_is_static:
+                self.static_methods.add(function_name)
+            else:
+                curr_method_str += ss_struct_specifier_str + " *" + this_object_name
+
             if direct_decl.parameterTypeList():
-                curr_method_str += ", "
+                if not curr_method_is_static:
+                    curr_method_str += ", "
                 curr_method_str += get_text_separated(direct_decl.parameterTypeList()).replace("superstruct", "struct")
 
             curr_method_str += ")"
@@ -159,7 +178,7 @@ class SuperStruct:
 
             out_str += curr_method_str
             keyword_dict = {"this": this_object_name, "superstruct": "struct"}
-            out_str += self.replace_keywords_in_tokens(compound_statement, keyword_dict)
+            out_str += self.replace_tokens(compound_statement, keyword_dict)
 
             out_str += "\n\n"  # one empty line between
 
