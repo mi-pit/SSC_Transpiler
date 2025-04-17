@@ -60,6 +60,7 @@ postfixExpression
     : (primaryExpression | '__extension__'? '(' typeName ')' '{' initializerList ','? '}') (
         '[' expression ']'
         | '(' argumentExpressionList? ')'
+        | ('.' | '->') Identifier '(' argumentExpressionList? ')'
         | ('.' | '->') Identifier
         | '++'
         | '--'
