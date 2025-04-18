@@ -231,8 +231,8 @@ typeSpecifier
 
 /* my stuff */
 superStructSpecifier
-    : Superstruct Identifier '{' superStructBody '}' ';'
-    | Superstruct Identifier
+    : 'superstruct' Identifier '{' superStructBody '}'
+    | 'superstruct' Identifier
     ;
 
 superStructBody
