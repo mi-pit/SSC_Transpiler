@@ -57,6 +57,17 @@ def create_header_file(visitor, directives: list[str]):
         header_file.write(f"\n\n#endif /* {file_guard_token} */\n")
 
 
+def show_tokens_in_interval(token_stream, start_idx, stop_idx):
+    """
+    Prints all tokens between start_idx and stop_idx (inclusive).
+    Useful for debugging.
+    """
+    tokens = token_stream.getTokens(start_idx, stop_idx)
+    for token in tokens:
+        print(f"{token.text}", end="")
+    print()
+
+
 def replace_method_calls(tokens, skip_indices: set[int], replacements):
     transformed_code = []
     n_skips = 0
@@ -118,13 +129,14 @@ def main() -> None:
     visitor.functions = remove_static_functions(visitor.functions)
     transformed_code: list[str] = replace_method_calls(tokens, skip_indices, visitor.replacements)
 
-    # main C
-    with open(FILE_NAME + ".c", "w") as f:
-        # header with all directives and structs
-        f.write(f"#include \"{HEADER_FILE_NAME}\"\n")
+    if [string for string in transformed_code if string.strip()]:
+        # main C
+        with open(FILE_NAME + ".c", "w") as f:
+            # header with all directives and structs
+            f.write(f"#include \"{HEADER_FILE_NAME}\"\n")
 
-        # Original non-superstruct code
-        f.write("".join(transformed_code) + "\n")
+            # Original non-superstruct code
+            f.write("".join(transformed_code) + "\n")
 
     directives: list[str] = extract_preprocessor_directives(token_stream)
     create_header_file(visitor, directives)

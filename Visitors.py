@@ -68,6 +68,11 @@ class SuperCVisitor(CBaseVisitor):
             return self.visitChildren(ctx)
         for init_decl in decl_ls.initDeclarator():
             declarator = init_decl.declarator()  # pointer? directDeclarator
+            if not declarator or not declarator.directDeclarator() or not declarator.directDeclarator().Identifier():
+                # print(f"declarator: {get_text_separated(declarator)}")
+                # self.show_in_context(init_decl.start)
+                continue
+
             variable = Variable(decl_specs,
                                 bool(declarator.pointer()) if declarator.pointer() else None,
                                 declarator.directDeclarator().Identifier().getText())

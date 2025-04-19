@@ -143,6 +143,7 @@ class SuperStruct:
                         spec_str += "struct " + ss_spec.Identifier().getText()
                     elif get_text_separated(spec) == "private":
                         curr_method_is_private = True
+                        curr_method_str += "static"
                     elif get_text_separated(spec) == "static":
                         curr_method_is_static = True  # don't paste
                     else:

@@ -3,4 +3,5 @@ TODO:
     ... lambda functions?
 
 FIXME:
+    pure methods (methods that don't change the ss)
     ? [in C.g4] function-like macro invocation with C-keyword as a parameter
