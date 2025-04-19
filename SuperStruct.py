@@ -130,6 +130,7 @@ class SuperStruct:
             curr_method_str = ""
             curr_method_is_private = False
             curr_method_is_static = False
+            curr_method_is_pure = False
             specifiers, declarator, decl_list, compound_statement = method_tuple
 
             this_object_name = "local__" + self.name
@@ -138,16 +139,19 @@ class SuperStruct:
             if specifiers:
                 for spec in specifiers.declarationSpecifier():
                     spec_str = ""
+                    spec_text = get_text_separated(spec)
                     if spec.typeSpecifier() and spec.typeSpecifier().superStructSpecifier():
                         ss_spec = spec.typeSpecifier().superStructSpecifier()
                         spec_str += "struct " + ss_spec.Identifier().getText()
-                    elif get_text_separated(spec) == "private":
+                    elif spec_text == "private":
                         curr_method_is_private = True
                         curr_method_str += "static"
-                    elif get_text_separated(spec) == "static":
+                    elif spec_text == "static":
                         curr_method_is_static = True  # don't paste
+                    elif spec_text == "pure":
+                        curr_method_is_pure = True
                     else:
-                        spec_str += get_text_separated(spec)
+                        spec_str += spec_text
                     curr_method_str += spec_str + " "
 
             if declarator.pointer():
@@ -156,12 +160,14 @@ class SuperStruct:
             assert declarator.directDeclarator()
             # original function name, params list
             direct_decl = declarator.directDeclarator()
-            function_name = self.name + "__" + direct_decl.directDeclarator().getText()
+            function_name = self.name + "__" + get_text_separated(direct_decl.directDeclarator())
             curr_method_str += function_name + "("
             if curr_method_is_static:
                 self.static_methods.add(function_name)
+            elif curr_method_is_pure:
+                curr_method_str += "const " + ss_struct_specifier_str + "*" + this_object_name
             else:
-                curr_method_str += ss_struct_specifier_str + " *" + this_object_name
+                curr_method_str += ss_struct_specifier_str + "*" + this_object_name
 
             if direct_decl.parameterTypeList():
                 if not curr_method_is_static:

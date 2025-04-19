@@ -16,7 +16,7 @@ class SuperCVisitor(CBaseVisitor):
         self.replacements: set = set()
 
         self.functions: list = []
-        self.private_functions: list = []
+        # self.private_functions: list = []
 
     def lookup_variable(self, varname: str) -> Variable | None:
         return self.var_types.get(varname, None)
@@ -137,14 +137,13 @@ class SuperCVisitor(CBaseVisitor):
         name = ctx.Identifier().getText()
         ss = SuperStruct(name, self.token_stream)
 
-        # print(ctx.getText())
-
         if not ctx.superStructBody():
             # not an ss definition, but a declaration; TODO
             return
 
         # Track this superstruct's token interval to exclude from raw C output
-        self.skip_intervals.append(ctx.getSourceInterval())
+        start, stop = ctx.getSourceInterval()
+        self.skip_intervals.append((start, stop + 2))  # + 2 to include "};"
 
         for member_ctx in ctx.superStructBody().superStructMember():
             decl = member_ctx.declaration()
