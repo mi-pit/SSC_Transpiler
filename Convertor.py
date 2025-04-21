@@ -1,3 +1,4 @@
+import os.path
 import re
 import sys
 
@@ -10,8 +11,8 @@ from Visitors import CBaseVisitor, SuperCVisitor
 from SuperStruct import SuperStruct
 
 FILE_NAME: str = sys.argv[1]
-HEADER_FILE_NAME: str = FILE_NAME + "--header.h"
-METHODS_FILE_NAME: str = FILE_NAME + "--code.c"
+HEADER_FILE_NAME: str = os.path.basename(FILE_NAME) + "--header.h"
+METHODS_FILE_NAME: str = os.path.basename(FILE_NAME) + "--code.c"
 
 
 def extract_preprocessor_directives(token_stream):
