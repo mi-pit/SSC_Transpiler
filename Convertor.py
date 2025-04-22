@@ -102,6 +102,8 @@ def replace_method_calls(tokens, skip_indices: set[int], replacements):
 
 
 def main() -> None:
+    superstruct_list_defined: list[str] = sys.argv[2].split(",") if len(sys.argv) > 2 else []
+
     try:
         input_stream = FileStream(FILE_NAME, encoding="UTF-8")
     except:
@@ -116,6 +118,7 @@ def main() -> None:
     tree = parser.compilationUnit()
 
     visitor = SuperCVisitor(token_stream)
+    visitor.superstruct_names.update(superstruct_list_defined)
 
     visitor.visit(tree)
 

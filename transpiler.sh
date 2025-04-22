@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if ! test -f "$1"; then
-  echo "File '$1' does not exist."
+  echo "File '$1' does not exist." >&2
   exit 1
 fi
 
@@ -11,7 +11,8 @@ NON_SS_CODE_FILE="$1.c"
 STRUCT_CODE_FILE="$1--code.c"
 HEADER_FILE="$1--header.h"
 
-if ! python3.10 "$SCRIPT_DIR/Convertor.py" "$1"; then
+if ! python3.10 "$SCRIPT_DIR/Convertor.py" "$1" "$2"; then
+  echo "Conversion failed" >&2
   exit 1
 fi
 
