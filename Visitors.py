@@ -9,14 +9,14 @@ from Variable import Variable
 class SuperCVisitor(CBaseVisitor):
     def __init__(self, tokens):
         self.token_stream = tokens
-        self.superstructs: list[SuperStruct] = []
-        self.skip_intervals = []
-        self.superstruct_names: set[str] = set()
-        self.var_types: dict[str, Variable] = {}
         self.replacements: set = set()
+        self.skip_intervals = []
+
+        self.var_types: dict[str, Variable] = {}
+        self.superstructs: list[SuperStruct] = []
+        self.superstruct_names: set[str] = set()
 
         self.functions: list = []
-        # self.private_functions: list = []
 
     def lookup_variable(self, varname: str) -> Variable | None:
         return self.var_types.get(varname, None)

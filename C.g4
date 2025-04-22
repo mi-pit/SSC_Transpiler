@@ -318,6 +318,8 @@ functionSpecifier
     | '__stdcall'
     | gccAttributeSpecifier
     | '__declspec' '(' Identifier ')'
+    | Identifier // macros
+    | Identifier '(' argumentExpressionList ')' // macros
     ;
 
 alignmentSpecifier
@@ -533,8 +535,14 @@ translationUnit
 externalDeclaration
     : functionDefinition
     | declaration
+//    | topLevelMacro
     | ';' // stray ;
     ;
+
+//topLevelMacro
+//    : Identifier
+//    | Identifier '(' identifierList? ')'
+//    ;
 
 functionDefinition
     : declarationSpecifiers? declarator declarationList? compoundStatement
