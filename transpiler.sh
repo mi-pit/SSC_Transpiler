@@ -21,8 +21,13 @@ if ! test -f "$NON_SS_CODE_FILE"; then
   NON_SS_CODE_FILE=""
 else
   clang-format -i "$NON_SS_CODE_FILE"
+  gcc -Wall -Wextra -pedantic -fsyntax-only "$NON_SS_CODE_FILE"
 fi
+
 clang-format -i "$STRUCT_CODE_FILE"
+gcc -Wall -Wextra -pedantic -fsyntax-only "$STRUCT_CODE_FILE"
+
 clang-format -i "$HEADER_FILE"
+gcc -Wall -Wextra -pedantic -fsyntax-only "$HEADER_FILE"
 
 exit 0
