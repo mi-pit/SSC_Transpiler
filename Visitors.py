@@ -16,7 +16,7 @@ class SuperCVisitor(CBaseVisitor):
         self.superstructs: list[SuperStruct] = []
         self.superstruct_names: set[str] = set()
 
-        self.functions: list = []
+        self.functions: list[str] = []
 
     def lookup_variable(self, varname: str) -> Variable | None:
         return self.var_types.get(varname, None)
@@ -50,10 +50,10 @@ class SuperCVisitor(CBaseVisitor):
         if not ctx.declarationSpecifiers():
             return self.visitChildren(ctx)
 
-        specs = get_text_separated(ctx.declarationSpecifiers())
-        func_name = get_text_separated(ctx.declarator())
+        specs: str = get_text_separated(ctx.declarationSpecifiers())
+        func_name: str = get_text_separated(ctx.declarator())
         ctx_text: str = f"{specs} {func_name}"
-        prototype = ctx_text.split(";")[-1].replace("superstruct", "struct").strip() + ";"
+        prototype: str = ctx_text.split(";")[-1].replace("superstruct", "struct").strip() + ";"
         self.functions.append(prototype)
         # should this save the main function?
         return self.visitChildren(ctx)
@@ -138,7 +138,7 @@ class SuperCVisitor(CBaseVisitor):
         ss = SuperStruct(name, self.token_stream)
 
         if not ctx.superStructBody():
-            # not an ss definition, but a declaration; TODO
+            # not an ss definition, but a declaration; TODO?
             return
 
         # Track this superstruct's token interval to exclude from raw C output

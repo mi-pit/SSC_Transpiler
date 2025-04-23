@@ -10,10 +10,6 @@ from CParser import CParser
 from Visitors import CBaseVisitor, SuperCVisitor
 from SuperStruct import SuperStruct
 
-FILE_NAME: str = sys.argv[1]
-HEADER_FILE_NAME: str = os.path.basename(FILE_NAME) + "--header.h"
-METHODS_FILE_NAME: str = os.path.basename(FILE_NAME) + "--code.c"
-
 
 def extract_preprocessor_directives(token_stream):
     directives: list[str] = []
@@ -24,38 +20,43 @@ def extract_preprocessor_directives(token_stream):
 
 
 def remove_static_functions(functions: list[str]) -> list[str]:
-    picked_functions = []
+    picked_functions: list[str] = []
     for func in functions:
-        if "static" in func:
-            continue
-        picked_functions.append(func)
+        if "static" not in func:
+            picked_functions.append(func)
 
     return picked_functions
 
 
-def create_header_file(visitor, directives: list[str]):
+def get_include_string(file_name: str) -> str:
+    return f'#include "{os.path.basename(file_name)}\n"'
+
+
+def create_ss_files(header_file_name: str, methods_file_name: str, visitor: SuperCVisitor,
+                    directives: list[str]) -> None:
     superstructs: list[SuperStruct] = visitor.superstructs
-    static_headers = visitor.functions
+    regular_fnc_headers = visitor.functions
 
-    with open(METHODS_FILE_NAME, "w") as c_file, \
-            open(HEADER_FILE_NAME, "w") as header_file:
-        c_file.write(f'#include "{HEADER_FILE_NAME}"\n\n')
-
-        file_guard_token = re.sub("[^a-zA-Z]", "_", HEADER_FILE_NAME.upper()) + "_H"
+    with open(header_file_name, "w") as header_file:
+        file_guard_token = re.sub("[^a-zA-Z]", "_", header_file_name.upper()) + "_H"
         header_file.write(f"#ifndef {file_guard_token} /* guard */\n"
                           f"#define {file_guard_token}\n")
 
         header_file.write("\n".join(directives) + "\n/* ---- END OF DIRECTIVES ---- */\n\n\n")
-
-        header_file.write("\n".join(static_headers) + "\n")
-
-        # All transformed super-structs (structs and methods)
-        for ss in superstructs:
-            code, ls = ss.to_c_code()
-            c_file.write(code + "\n\n")
-            header_file.write("\n".join(ls) + "\n\n")
+        header_file.write("\n".join(regular_fnc_headers) + "\n")
 
         header_file.write(f"\n\n#endif /* {file_guard_token} */\n")
+
+        if len(superstructs) == 0:
+            return
+
+        with open(methods_file_name, "w") as c_file:
+            c_file.write(f'#include "{os.path.basename(header_file_name)}"\n\n')
+            # All transformed super-structs (structs and methods)
+            for ss in superstructs:
+                code, headers = ss.to_c_code()
+                c_file.write(code + "\n\n")
+                header_file.write("\n".join(headers) + "\n\n")
 
 
 def show_tokens_in_interval(token_stream, start_idx, stop_idx):
@@ -101,50 +102,97 @@ def replace_method_calls(tokens, skip_indices: set[int], replacements):
     return transformed_code
 
 
-def main() -> None:
-    superstruct_list_defined: list[str] = sys.argv[2].split(",") if len(sys.argv) > 2 else []
+def main(args: 'CommandLineArgs') -> None:
+    for filename in args.files:
+        name_of_files: str = remove_filename_extention(filename)
 
-    try:
-        input_stream = FileStream(FILE_NAME, encoding="UTF-8")
-    except:
+        header_file_name: str = name_of_files + ".h"
+        methods_file_name: str = name_of_files + "-ss.c"
+        c_code_file_name: str = name_of_files + ".c"
+
+        # print([header_file_name, methods_file_name, c_code_file_name])
+
         try:
-            input_stream = FileStream(FILE_NAME)
+            input_stream = FileStream(filename, encoding="UTF-8")
         except:
-            print(f"Could not open '{FILE_NAME}'", file=sys.stderr)
-            exit(1)
-    lexer = CLexer(input_stream)
-    token_stream = CommonTokenStream(lexer)
-    parser = CParser(token_stream)
-    tree = parser.compilationUnit()
+            try:
+                input_stream = FileStream(filename)
+            except:
+                print(f"Could not open '{filename}'", file=sys.stderr)
+                exit(1)
+        lexer = CLexer(input_stream)
+        token_stream = CommonTokenStream(lexer)
+        parser = CParser(token_stream)
+        tree = parser.compilationUnit()
+        # print(tree.toStringTree(recog=parser))
 
-    visitor = SuperCVisitor(token_stream)
-    visitor.superstruct_names.update(superstruct_list_defined)
+        visitor = SuperCVisitor(token_stream)
+        visitor.superstruct_names.update(args.structs)
 
-    visitor.visit(tree)
+        visitor.visit(tree)
 
-    token_stream.fill()
-    tokens: list = token_stream.tokens
+        token_stream.fill()
+        tokens: list = token_stream.tokens
 
-    # Flatten out the skip intervals into a set of token indices
-    skip_indices: set[int] = set()
-    for start, end in visitor.skip_intervals:
-        skip_indices.update(list(range(start, end + 1)))
+        # Flatten out the skip intervals into a set of token indices
+        skip_indices: set[int] = set()
+        for start, end in visitor.skip_intervals:
+            skip_indices.update(list(range(start, end + 1)))
 
-    visitor.functions = remove_static_functions(visitor.functions)
-    transformed_code: list[str] = replace_method_calls(tokens, skip_indices, visitor.replacements)
+        visitor.functions = remove_static_functions(visitor.functions)
+        transformed_code: list[str] = replace_method_calls(tokens, skip_indices, visitor.replacements)
 
-    if [string for string in transformed_code if string.strip()]:
-        # main C
-        with open(FILE_NAME + ".c", "w") as f:
-            # header with all directives and structs
-            f.write(f"#include \"{HEADER_FILE_NAME}\"\n")
+        if [string for string in transformed_code if string.strip()]:
+            # main C
+            with open(c_code_file_name, "w") as f:
+                # header with all directives and structs
+                f.write(f"#include \"{os.path.basename(header_file_name)}\"\n")
 
-            # Original non-superstruct code
-            f.write("".join(transformed_code) + "\n")
+                # Original non-superstruct code
+                f.write("".join(transformed_code) + "\n")
 
-    directives: list[str] = extract_preprocessor_directives(token_stream)
-    create_header_file(visitor, directives)
+        directives: list[str] = extract_preprocessor_directives(token_stream)
+        create_ss_files(header_file_name, methods_file_name, visitor, directives)
+
+
+class CommandLineArgs:
+    def __init__(self, files=None, structs=None):
+        if files is None:
+            files = []
+        if structs is None:
+            structs = []
+        self.files: list[str] = files
+        self.structs: list = structs
+
+    def __str__(self) -> str:
+        return f"{{ {', '.join(self.files)} | {', '.join(self.structs) if self.structs else '‹›'} }}"
+
+
+def remove_filename_extention(filename: str) -> str:
+    return filename[:filename.rfind(".")]
+
+
+def process_argv() -> CommandLineArgs:
+    opts = CommandLineArgs()
+    # print(sys.argv[1:])
+    for arg in sys.argv[1:]:
+        if arg.startswith("-"):  # option
+            if arg.startswith("--structs="):
+                structs_strings: str = arg.split("=")[1]
+                structs_ls: list[str] = structs_strings.split(",")
+                opts.structs.extend(structs_ls)
+            else:
+                print("Invalid option: " + arg, file=sys.stderr)
+        else:
+            opts.files.append(arg)
+
+    if not opts.files:
+        raise FileNotFoundError("No file given")
+
+    return opts
 
 
 if __name__ == '__main__':
-    main()
+    args = process_argv()
+    # print(args)
+    main(args)
