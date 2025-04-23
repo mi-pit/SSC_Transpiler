@@ -33,10 +33,24 @@
 
 grammar C;
 
+macro
+    : Identifier
+    | Identifier '(' argumentExpressionList ')'
+    ;
+
+stringLiteral
+    : StringLiteral
+    | macro
+    ;
+
+compoundStringLiteral
+    : stringLiteral+
+    ;
+
 primaryExpression
     : Identifier
     | Constant
-    | StringLiteral+
+    | compoundStringLiteral
     | '(' expression ')'
     | genericSelection
     | '__extension__'? '(' compoundStatement ')' // Blocks (GCC extension)
@@ -318,8 +332,7 @@ functionSpecifier
     | '__stdcall'
     | gccAttributeSpecifier
     | '__declspec' '(' Identifier ')'
-    | Identifier // macros
-    | Identifier '(' argumentExpressionList ')' // macros
+    | macro
     ;
 
 alignmentSpecifier
@@ -354,7 +367,7 @@ vcSpecificModifer
     ;
 
 gccDeclaratorExtension
-    : '__asm' '(' StringLiteral+ ')'
+    : '__asm' '(' compoundStringLiteral ')'
     | gccAttributeSpecifier
     ;
 
@@ -450,7 +463,7 @@ designator
     ;
 
 staticAssertDeclaration
-    : '_Static_assert' '(' constantExpression ',' StringLiteral+ ')' ';'
+    : '_Static_assert' '(' constantExpression ',' compoundStringLiteral ')' ';'
     ;
 
 statement
@@ -535,14 +548,9 @@ translationUnit
 externalDeclaration
     : functionDefinition
     | declaration
-//    | topLevelMacro
+    | macro
     | ';' // stray ;
     ;
-
-//topLevelMacro
-//    : Identifier
-//    | Identifier '(' identifierList? ')'
-//    ;
 
 functionDefinition
     : declarationSpecifiers? declarator declarationList? compoundStatement

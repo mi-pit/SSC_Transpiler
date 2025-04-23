@@ -9,6 +9,21 @@ else:
 
 class CVisitor(ParseTreeVisitor):
 
+    # Visit a parse tree produced by CParser#macro.
+    def visitMacro(self, ctx:CParser.MacroContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by CParser#stringLiteral.
+    def visitStringLiteral(self, ctx:CParser.StringLiteralContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by CParser#compoundStringLiteral.
+    def visitCompoundStringLiteral(self, ctx:CParser.CompoundStringLiteralContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by CParser#primaryExpression.
     def visitPrimaryExpression(self, ctx:CParser.PrimaryExpressionContext):
         return self.visitChildren(ctx)

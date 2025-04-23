@@ -8,6 +8,33 @@ else:
 # This class defines a complete listener for a parse tree produced by CParser.
 class CListener(ParseTreeListener):
 
+    # Enter a parse tree produced by CParser#macro.
+    def enterMacro(self, ctx:CParser.MacroContext):
+        pass
+
+    # Exit a parse tree produced by CParser#macro.
+    def exitMacro(self, ctx:CParser.MacroContext):
+        pass
+
+
+    # Enter a parse tree produced by CParser#stringLiteral.
+    def enterStringLiteral(self, ctx:CParser.StringLiteralContext):
+        pass
+
+    # Exit a parse tree produced by CParser#stringLiteral.
+    def exitStringLiteral(self, ctx:CParser.StringLiteralContext):
+        pass
+
+
+    # Enter a parse tree produced by CParser#compoundStringLiteral.
+    def enterCompoundStringLiteral(self, ctx:CParser.CompoundStringLiteralContext):
+        pass
+
+    # Exit a parse tree produced by CParser#compoundStringLiteral.
+    def exitCompoundStringLiteral(self, ctx:CParser.CompoundStringLiteralContext):
+        pass
+
+
     # Enter a parse tree produced by CParser#primaryExpression.
     def enterPrimaryExpression(self, ctx:CParser.PrimaryExpressionContext):
         pass
