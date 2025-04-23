@@ -1,0 +1,12 @@
+#include "cross-struct.h"
+
+superstruct Adder;
+
+int main( void )
+{
+    superstruct Adder *adder = Adder.new( 1 );
+    adder->add( 122 );
+    if ( adder->plus( 321 ) != 444 )
+        return 1;
+    return 0;
+}
