@@ -553,7 +553,7 @@ directive
 externalDeclaration
     : functionDefinition
     | declaration
-    | macro
+    | directive
     | ';' // stray ;
     ;
 

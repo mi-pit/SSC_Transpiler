@@ -11,14 +11,6 @@ from Visitors import SSCBaseVisitor, SuperCVisitor
 from SuperStruct import SuperStruct
 
 
-def extract_preprocessor_directives(token_stream):
-    directives: list[str] = []
-    for token in token_stream.tokens:
-        if token.text.startswith("#") and not token.text.startswith("#undef"):
-            directives.append(token.text)
-    return directives
-
-
 def remove_static_functions(functions: list[str]) -> list[str]:
     picked_functions: list[str] = []
     for func in functions:
@@ -32,17 +24,16 @@ def get_include_string(file_name: str) -> str:
     return f'#include "{os.path.basename(file_name)}\n"'
 
 
-def create_ss_files(header_file_name: str, methods_file_name: str, visitor: SuperCVisitor,
-                    directives: list[str]) -> None:
+def create_ss_files(header_file_name: str, methods_file_name: str, visitor: SuperCVisitor) -> None:
     superstructs: list[SuperStruct] = visitor.superstructs
     regular_fnc_headers = visitor.functions
 
     with open(header_file_name, "w") as header_file:
-        file_guard_token = re.sub("[^a-zA-Z]", "_", header_file_name.upper()) + "_H"
+        file_guard_token = "SSC__" + re.sub("[^a-zA-Z]", "_", os.path.basename(header_file_name).upper())
         header_file.write(f"#ifndef {file_guard_token} /* guard */\n"
                           f"#define {file_guard_token}\n")
 
-        header_file.write("\n".join(directives) + "\n/* ---- END OF DIRECTIVES ---- */\n\n\n")
+        header_file.write("\n".join(visitor.directives) + "\n/* ---- END OF DIRECTIVES ---- */\n\n\n")
         header_file.write("\n".join(regular_fnc_headers) + "\n")
 
         if len(superstructs) != 0:
@@ -149,8 +140,7 @@ def main(args: 'CommandLineArgs') -> None:
                 # Original non-superstruct code
                 f.write("".join(transformed_code) + "\n")
 
-        directives: list[str] = extract_preprocessor_directives(token_stream)
-        create_ss_files(header_file_name, methods_file_name, visitor, directives)
+        create_ss_files(header_file_name, methods_file_name, visitor)
 
 
 class CommandLineArgs:

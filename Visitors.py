@@ -17,6 +17,7 @@ class SuperCVisitor(SSCBaseVisitor):
         self.superstruct_names: set[str] = superstruct_names
 
         self.functions: list[str] = []
+        self.directives: list[str] = []
 
     def lookup_variable(self, varname: str) -> Variable | None:
         return self.var_types.get(varname, None)
@@ -45,6 +46,10 @@ class SuperCVisitor(SSCBaseVisitor):
             prefix = ">> " if (i + 1) == line_num else "   "
             print(f"{prefix}{i + 1:4}: {lines[i]}")
         print("--- End context ---\n")
+
+    def visitDirective(self, ctx):
+        self.directives.append(get_text_separated(ctx).strip())
+        return self.visitChildren(ctx)
 
     def visitFunctionDefinition(self, ctx):
         if not ctx.declarationSpecifiers():

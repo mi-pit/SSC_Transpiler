@@ -8,17 +8,15 @@
 
 # test files
 !*.ssc
-
 !SSC_code
 
 # for conversions
 !*.g4
 !*.py
+!transpiler.sh
 
 # can be generated with `antlr4 C.g4 -Dlanguage=Python3 -visitor -listener`
 # CVisitor.py
 # CListener.py
 # CParser.py
 # CLexer.py
-
-!transpiler.sh
