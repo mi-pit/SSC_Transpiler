@@ -64,19 +64,20 @@ int main(void) {
 
 `transpiler.sh` generates three files:
 
-`"‹.scc file›.c"` – this file contains all regular C code (except directives)
+`‹ssc file›.ssc` – source code for SuperStructC
 
-`"‹.ssc file›--code.c"` – this file contains all superstruct methods and C-structs
+`"‹scc file›.c"` – this file contains all regular C code (except directives)
 
-`"‹.ssc file›--header.h"` – this file contains all directives and function prototypes
+`"‹ssc file›-ss.c"` – this file contains all superstruct methods and C-structs
 
-both .c files contain (as the first line) `#include "‹.ssc file›--header.h"`
+`"‹ssc file›.h"` – this file contains all directives and function prototypes
+
+both .c files contain (as the first line) `#include "‹ssc file›.h"`
 
 #### Example:
 
 ```bash
 # in git repo directory
-cd SSC_code
-../transpiler.sh example.ssc
-./example
+./transpiler.sh SSC_code/example.ssc
+cat SSC_code/example.c SSC_code/example-ss.c SSC_code/example.h
 ```
