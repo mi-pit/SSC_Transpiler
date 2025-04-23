@@ -138,6 +138,7 @@ class SuperCVisitor(CBaseVisitor):
         ss = SuperStruct(name, self.token_stream)
 
         if not ctx.superStructBody():
+            self.superstruct_names.add(ctx.Identifier().getText())
             # not an ss definition, but a declaration; TODO?
             return
 

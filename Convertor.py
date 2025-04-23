@@ -103,6 +103,7 @@ def replace_method_calls(tokens, skip_indices: set[int], replacements):
 
 
 def main(args: 'CommandLineArgs') -> None:
+    superstructs = args.structs
     for filename in args.files:
         name_of_files: str = remove_filename_extention(filename)
 
@@ -127,9 +128,10 @@ def main(args: 'CommandLineArgs') -> None:
         # print(tree.toStringTree(recog=parser))
 
         visitor = SuperCVisitor(token_stream)
-        visitor.superstruct_names.update(args.structs)
+        visitor.superstruct_names.update(superstructs)
 
         visitor.visit(tree)
+        superstructs.update(visitor.superstruct_names)
 
         token_stream.fill()
         tokens: list = token_stream.tokens
@@ -160,9 +162,9 @@ class CommandLineArgs:
         if files is None:
             files = []
         if structs is None:
-            structs = []
+            structs = set()
         self.files: list[str] = files
-        self.structs: list = structs
+        self.structs: set[str] = structs
 
     def __str__(self) -> str:
         return f"{{ {', '.join(self.files)} | {', '.join(self.structs) if self.structs else '‹›'} }}"
@@ -180,7 +182,7 @@ def process_argv() -> CommandLineArgs:
             if arg.startswith("--structs="):
                 structs_strings: str = arg.split("=")[1]
                 structs_ls: list[str] = structs_strings.split(",")
-                opts.structs.extend(structs_ls)
+                opts.structs.update(structs_ls)
             else:
                 print("Invalid option: " + arg, file=sys.stderr)
         else:

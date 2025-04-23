@@ -12,6 +12,10 @@ function parse_args() {
       structs="${1#*=}"
       shift
       ;;
+    --help)
+      echo "Imagine a help message here [TODO]"
+      exit 0
+      ;;
     -*)
       echo "Unknown option: $1" >&2
       shift
