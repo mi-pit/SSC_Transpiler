@@ -2,6 +2,8 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+VERBOSE=true
+
 function parse_args() {
   structs=""
   positional_args=()
@@ -16,8 +18,12 @@ function parse_args() {
       echo "Imagine a help message here [TODO]"
       exit 0
       ;;
+    --silent)
+      VERBOSE=false
+      shift
+      ;;
     -*)
-      echo "Unknown option: $1" >&2
+      echo "Unknown option: '$1'" >&2
       shift
       ;;
     *)
@@ -28,33 +34,39 @@ function parse_args() {
   done
 }
 
+function echo-if-not-silent() {
+  if $VERBOSE; then
+    echo $@
+  fi
+}
+
 parse_args "$@"
 # echo "Structs: $structs"
 # echo "Positional: ${positional_args[@]}"
 
-echo -n "> Converting '$@' ..."
+echo-if-not-silent -n "> Converting '$@' ..."
 
-if ! python3.10 "$SCRIPT_DIR/Convertor.py" "$@"; then
-  echo -e "\nerror: Conversion failed" >&2
+if ! python3.10 "$SCRIPT_DIR/Convertor.py" $structs ${positional_args[@]}; then
+  echo -e "error: Conversion failed" >&2
   exit 1
 else
-  echo " done"
+  echo-if-not-silent " done"
 fi
 
 function format_and_test_file_if_exists() {
   local file="$1"
 
   if [[ -f "$file" ]]; then
-    echo "> Formatting $file with clang-format..."
+    echo-if-not-silent "> Formatting $file with clang-format..."
     clang-format -i "$file"
 
-    echo "> Checking syntax of $file with gcc..."
+    echo-if-not-silent "> Checking syntax of $file with gcc..."
     gcc -Werror -Wall -Wextra -pedantic -fsyntax-only "$file"
 
     if [[ $? -eq 0 ]]; then
-      echo ">> Syntax check passed for $file"
+      echo-if-not-silent ">> Syntax check passed for $file"
     else
-      echo ">> Syntax check failed for $file"
+      echo-if-not-silent ">> Syntax check failed for $file"
     fi
   fi
 }
