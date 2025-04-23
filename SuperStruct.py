@@ -1,6 +1,6 @@
 import re
 
-from CLexer import CLexer
+from SSCLexer import SSCLexer
 
 
 def get_text_separated(token):

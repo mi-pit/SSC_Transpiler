@@ -1,7 +1,7 @@
 import re
 
-from CBaseVisitor import CBaseVisitor
-from CLexer import CLexer
+from SSCBaseVisitor import SSCBaseVisitor
+from SSCLexer import SSCLexer
 from SuperStruct import SuperStruct, get_text_separated
 from Variable import Variable
 

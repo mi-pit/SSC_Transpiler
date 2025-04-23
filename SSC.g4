@@ -31,7 +31,7 @@
 // $antlr-format alignTrailingComments true, columnLimit 150, minEmptyLines 1, maxEmptyLinesToKeep 1, reflowComments false, useTab false
 // $antlr-format allowShortRulesOnASingleLine false, allowShortBlocksOnASingleLine true, alignSemicolons hanging, alignColons hanging
 
-grammar C;
+grammar SSC;
 
 macro
     : Identifier
@@ -543,6 +543,11 @@ compilationUnit
 
 translationUnit
     : externalDeclaration+
+    ;
+
+directive
+    : SingleLineMacro
+    | MultiLineMacro
     ;
 
 externalDeclaration
@@ -1123,12 +1128,12 @@ fragment SChar
     | '\\\r\n' // Added line
     ;
 
-MultiLineMacro
-    : '#' (~[\n]*? '\\' '\r'? '\n')+ ~ [\n]+ -> channel (HIDDEN)
+SingleLineMacro
+    : '#' ~[\n]*? '\r'? '\n'
     ;
 
-Directive
-    : '#' ~ [\n]* -> channel (HIDDEN)
+MultiLineMacro
+    : '#' (~[\n]*? '\\' '\r'? '\n')+ ~ [\n]+
     ;
 
 // ignore the following asm blocks:

@@ -4,8 +4,8 @@ import sys
 
 from antlr4 import *
 
-from CLexer import CLexer
-from CParser import CParser
+from SSCLexer import SSCLexer
+from SSCParser import SSCParser
 
 from Visitors import CBaseVisitor, SuperCVisitor
 from SuperStruct import SuperStruct
