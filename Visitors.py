@@ -7,14 +7,14 @@ from Variable import Variable
 
 
 class SuperCVisitor(CBaseVisitor):
-    def __init__(self, tokens):
+    def __init__(self, tokens, superstruct_names: set[str]):
         self.token_stream = tokens
         self.replacements: set = set()
         self.skip_intervals = []
 
         self.var_types: dict[str, Variable] = {}
         self.superstructs: list[SuperStruct] = []
-        self.superstruct_names: set[str] = set()
+        self.superstruct_names: set[str] = superstruct_names
 
         self.functions: list[str] = []
 

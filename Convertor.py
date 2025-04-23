@@ -125,11 +125,9 @@ def main(args: 'CommandLineArgs') -> None:
         tree = parser.compilationUnit()
         # print(tree.toStringTree(recog=parser))
 
-        visitor = SuperCVisitor(token_stream)
-        visitor.superstruct_names.update(superstructs)
+        visitor = SuperCVisitor(token_stream, superstructs)
 
         visitor.visit(tree)
-        superstructs.update(visitor.superstruct_names)
 
         token_stream.fill()
         tokens: list = token_stream.tokens
