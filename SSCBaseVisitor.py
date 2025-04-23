@@ -1,7 +1,7 @@
-from CVisitor import CVisitor
+from SSCVisitor import SSCVisitor
 
 
-class CBaseVisitor(CVisitor):
+class SSCBaseVisitor(SSCVisitor):
     def visitChildren(self, node):
         result = None
         for i in range(node.getChildCount()):

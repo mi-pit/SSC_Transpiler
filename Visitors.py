@@ -6,7 +6,7 @@ from SuperStruct import SuperStruct, get_text_separated
 from Variable import Variable
 
 
-class SuperCVisitor(CBaseVisitor):
+class SuperCVisitor(SSCBaseVisitor):
     def __init__(self, tokens, superstruct_names: set[str]):
         self.token_stream = tokens
         self.replacements: set = set()

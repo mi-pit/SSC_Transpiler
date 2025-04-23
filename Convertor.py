@@ -7,7 +7,7 @@ from antlr4 import *
 from SSCLexer import SSCLexer
 from SSCParser import SSCParser
 
-from Visitors import CBaseVisitor, SuperCVisitor
+from Visitors import SSCBaseVisitor, SuperCVisitor
 from SuperStruct import SuperStruct
 
 
@@ -119,9 +119,9 @@ def main(args: 'CommandLineArgs') -> None:
             except:
                 print(f"Could not open '{filename}'", file=sys.stderr)
                 exit(1)
-        lexer = CLexer(input_stream)
+        lexer = SSCLexer(input_stream)
         token_stream = CommonTokenStream(lexer)
-        parser = CParser(token_stream)
+        parser = SSCParser(token_stream)
         tree = parser.compilationUnit()
         # print(tree.toStringTree(recog=parser))
 
