@@ -45,18 +45,16 @@ def create_ss_files(header_file_name: str, methods_file_name: str, visitor: Supe
         header_file.write("\n".join(directives) + "\n/* ---- END OF DIRECTIVES ---- */\n\n\n")
         header_file.write("\n".join(regular_fnc_headers) + "\n")
 
+        if len(superstructs) != 0:
+            with open(methods_file_name, "w") as c_file:
+                c_file.write(f'#include "{os.path.basename(header_file_name)}"\n\n')
+                # All transformed super-structs (structs and methods)
+                for ss in superstructs:
+                    code, headers = ss.to_c_code()
+                    c_file.write(code + "\n\n")
+                    header_file.write("\n".join(headers) + "\n\n")
+
         header_file.write(f"\n\n#endif /* {file_guard_token} */\n")
-
-        if len(superstructs) == 0:
-            return
-
-        with open(methods_file_name, "w") as c_file:
-            c_file.write(f'#include "{os.path.basename(header_file_name)}"\n\n')
-            # All transformed super-structs (structs and methods)
-            for ss in superstructs:
-                code, headers = ss.to_c_code()
-                c_file.write(code + "\n\n")
-                header_file.write("\n".join(headers) + "\n\n")
 
 
 def show_tokens_in_interval(token_stream, start_idx, stop_idx):
