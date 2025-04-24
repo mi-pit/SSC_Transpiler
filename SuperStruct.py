@@ -19,8 +19,9 @@ class SuperStruct:
 
         self.name: str = name
         self.fields: list[str] = []
+        self.is_private: bool = False
 
-        self.methods = []
+        self.methods: list[tuple] = []
 
         self.static_methods: set[str] = set()
 
@@ -116,15 +117,19 @@ class SuperStruct:
     def to_c_code(self) -> tuple[str, list[str]]:
         header_code: list[str] = []
 
-        out_str = f"\n/* superstruct {self.name} */\n"
-        out_str += f"struct {self.name} {{"
+        struct_definition = f"\n/* superstruct {self.name} */\n"
+        struct_definition += f"struct {self.name} {{"
         for field in self.fields:
-            # FIXME?
             replaced = field.replace("superstruct", "struct")
-            out_str += f"{replaced}"
-        out_str += "};\n\n"
+            struct_definition += f"{replaced}"
+        struct_definition += "};\n"
 
-        header_code.append(f"struct {self.name};")
+        if self.is_private:
+            header_code.append(f"struct {self.name};")
+            out_str = struct_definition
+        else:
+            header_code.append(struct_definition)
+            out_str = ""
 
         for method_tuple in self.methods:
             curr_method_str = ""

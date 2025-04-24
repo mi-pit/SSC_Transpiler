@@ -245,7 +245,7 @@ typeSpecifier
 
 /* my stuff */
 superStructSpecifier
-    : 'superstruct' Identifier '{' superStructBody '}'
+    : 'private'? 'superstruct' Identifier '{' superStructBody '}'
     | 'superstruct' Identifier
     ;
 
@@ -327,6 +327,8 @@ typeQualifier
 
 functionSpecifier
     : 'inline'
+    | 'private'
+    | 'pure'
     | '_Noreturn'
     | '__inline__' // GCC extension
     | '__stdcall'

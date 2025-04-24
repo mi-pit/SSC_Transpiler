@@ -44,13 +44,13 @@ parse_args "$@"
 # echo "Structs: $structs"
 # echo "Positional: ${positional_args[@]}"
 
-echo-if-not-silent -n "> Converting '$@' ..."
+echo-if-not-silent "> Converting '$@' ..."
 
 if ! python3.10 "$SCRIPT_DIR/Convertor.py" $structs ${positional_args[@]}; then
   echo -e "error: Conversion failed" >&2
   exit 1
 else
-  echo-if-not-silent " done"
+  echo-if-not-silent ">> Conversion success"
 fi
 
 function format_and_test_file_if_exists() {

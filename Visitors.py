@@ -147,6 +147,8 @@ class SuperCVisitor(SSCBaseVisitor):
             # not an ss definition, but a declaration; TODO?
             return
 
+        ss.is_private = ctx.getChild(0).getText() == "private" if ctx.getChildCount() > 0 else False
+
         # Track this superstruct's token interval to exclude from raw C output
         start, stop = ctx.getSourceInterval()
         self.skip_intervals.append((start, stop + 2))  # + 2 to include "};"
