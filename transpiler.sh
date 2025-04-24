@@ -4,6 +4,22 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 VERBOSE=true
 
+function show_single_help_line() {
+  echo -e "    $1\n        $2"
+}
+
+function show_help_message() {
+  show_single_help_line "Usage" "./transpiler.sh [files|options]"
+  show_single_help_line "--help" "Show this message"
+  show_single_help_line "--structs='...'" "Pre-define superstruct names (needed for recognition of foreign ss's)"
+  show_single_help_line "--silent" "Don't yap about everything that happens (still shows errors)"
+}
+
+if [[ $# -eq 0 ]]; then
+  show_help_message
+  exit 1
+fi
+
 function parse_args() {
   structs=""
   positional_args=()
@@ -15,7 +31,7 @@ function parse_args() {
       shift
       ;;
     --help)
-      echo "Imagine a help message here [TODO]"
+      show_help_message
       exit 0
       ;;
     --silent)

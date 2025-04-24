@@ -25,22 +25,19 @@ def get_include_string(file_name: str) -> str:
 
 
 def create_ss_files(header_file_name: str, methods_file_name: str, visitor: SuperCVisitor) -> None:
-    superstructs: list[SuperStruct] = visitor.superstructs
-    regular_fnc_headers = visitor.functions
-
     with open(header_file_name, "w") as header_file:
         file_guard_token = "SSC__" + re.sub("[^a-zA-Z]", "_", os.path.basename(header_file_name).upper())
         header_file.write(f"#ifndef {file_guard_token} /* guard */\n"
                           f"#define {file_guard_token}\n")
 
         header_file.write("\n".join(visitor.directives) + "\n/* ---- END OF DIRECTIVES ---- */\n\n\n")
-        header_file.write("\n".join(regular_fnc_headers) + "\n")
+        header_file.write("\n".join(visitor.functions) + "\n")
 
-        if len(superstructs) != 0:
+        if len(visitor.superstructs) != 0:
             with open(methods_file_name, "w") as c_file:
                 c_file.write(f'#include "{os.path.basename(header_file_name)}"\n\n')
                 # All transformed super-structs (structs and methods)
-                for ss in superstructs:
+                for ss in visitor.superstructs:
                     code, headers = ss.to_c_code()
                     c_file.write(code + "\n\n")
                     header_file.write("\n".join(headers) + "\n\n")
