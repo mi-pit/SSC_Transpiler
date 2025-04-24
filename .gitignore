@@ -4,7 +4,7 @@
 !README.md
 !LICENSE.txt
 
-!TODO.txt
+!.clang-format
 
 # test files
 !*.ssc
