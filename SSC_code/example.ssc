@@ -115,7 +115,7 @@ int main( int argc, const char *const argv[ const ] )
     ls.print();
 
     {
-        superstruct NumbersList *ls_p = new ( superstruct NumbersList );
+        superstruct NumbersList *ls_p = calloc( 1, sizeof( superstruct NumbersList ) );
         assert( ls_p->init() == 0 );
         ls_p->print();
         ls_p->destroy();

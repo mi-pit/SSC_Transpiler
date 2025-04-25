@@ -20,4 +20,9 @@ superstruct Adder
         new_adder->num               = num;
         return new_adder;
     }
+
+    static void free( superstruct Adder * adder )
+    {
+        free( adder );
+    }
 };

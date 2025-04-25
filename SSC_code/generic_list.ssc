@@ -40,7 +40,7 @@
  * @attention
  * All elements must be the same number of bytes long
 */
-superstruct List
+private superstruct List
 {
     size_t capacity; // Amount of allocated memory slots for items
     size_t size;     // Number of items stored in List
@@ -50,8 +50,7 @@ superstruct List
 
     /* –––––––––––––––––––––––––––––– METHODS –––––––––––––––––––––––––––––– */
 
-    private
-    pure void *at__non_safe( size_t idx )
+    private pure void *at__non_safe( size_t idx )
     {
         return ( byte * ) this->items + idx * this->el_size;
     }
@@ -103,8 +102,7 @@ superstruct List
      * to hold all of its items + min_cap_add
      * @return -1 if realloc fails, else 0
      */
-    private
-    int upsize( size_t min_cap_add )
+    private int upsize( size_t min_cap_add )
     {
         const size_t min_new_cap = this->capacity + min_cap_add;
 
@@ -125,8 +123,7 @@ superstruct List
      * Changes (realloc) the lists capacity to be half as large\n
      * @return -1 if realloc fails, else 0
      */
-    private
-    int downsize()
+    private int downsize()
     {
         const size_t new_cap = this->capacity / LIST_CAP_SIZE_RATIO;
 
@@ -215,8 +212,7 @@ superstruct List
     }
 
 
-    private
-    void remove_last_nonsafe()
+    private void remove_last_nonsafe()
     {
         memset( this->at_last(), 0, this->el_size );
         --this->size;

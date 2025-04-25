@@ -6,7 +6,8 @@ int main( void )
 {
     superstruct Adder *adder = Adder.new( 1 );
     adder->add( 122 );
-    if ( adder->plus( 321 ) != 444 )
-        return 1;
-    return 0;
+
+    int exit_value = adder->plus( 321 ) != 444 ? 1 : 0;
+    Adder.free( adder );
+    return exit_value;
 }
