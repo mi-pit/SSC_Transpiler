@@ -34,20 +34,20 @@ class SuperStruct:
         start_idx, stop_idx = ctx.getSourceInterval()
         tokens = self.token_stream.getTokens(start_idx, stop_idx + 1)
 
-        result = ""
-        skips = set()
+        result: str = ""
+        skips: set[int] = set()
         for i in range(len(tokens)):
             if i in skips:
                 continue
             tok_text: str = tokens[i].text
 
             method_call_next = i + 3 < len(tokens) and \
-                               re.search("(\\.|->)", tokens[i + 1].text) and \
+                               tokens[i + 1].text in (".", "->") and \
                                tokens[i + 3].text == "("
 
             if method_call_next:
                 next_tok, res = self.replace_method_calls(tokens, i, keyword_dict)
-                skips.update(list(range(i, next_tok)))
+                skips.update(range(i, next_tok))
                 result += res
                 continue
 
@@ -55,7 +55,7 @@ class SuperStruct:
 
         return result
 
-    def replace_method_calls(self, tokens, i, keyword_dict):
+    def replace_method_calls(self, tokens, i: int, keyword_dict: dict[str, str]):
         """
         Replaces a method call like obj.method(...) or obj->method(...)
         with Class__method(local__obj, ...)
@@ -69,7 +69,6 @@ class SuperStruct:
         assert open_paren == "("
 
         class_name = self.name
-
         if tokens[i].text == self.name:
             new_call = f"{class_name}__{method_name}("
         else:
@@ -160,12 +159,12 @@ class SuperStruct:
                     curr_method_str += spec_str + " "
 
             if declarator.pointer():
-                curr_method_str += get_text_separated(declarator.pointer())
+                curr_method_str += "*"
 
             assert declarator.directDeclarator()
             # original function name, params list
             direct_decl = declarator.directDeclarator()
-            function_name = self.name + "__" + get_text_separated(direct_decl.directDeclarator())
+            function_name = self.name + "__" + direct_decl.directDeclarator().getText()
             curr_method_str += function_name + "("
             if curr_method_is_static:
                 self.static_methods.add(function_name)
@@ -183,7 +182,7 @@ class SuperStruct:
 
             if decl_list:
                 # don't know what this is
-                print(decl_list.getText())
+                print("ATTENTION: found method decl_list", decl_list.getText())
 
             if not curr_method_is_private:
                 header_code.append(curr_method_str + ";")
