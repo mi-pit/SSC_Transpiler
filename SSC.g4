@@ -34,18 +34,8 @@
 
 grammar SSC;
 
-macro
-    : Identifier
-    | Identifier '(' argumentExpressionList ')'
-    ;
-
-stringLiteral
-    : StringLiteral
-    | macro
-    ;
-
 compoundStringLiteral
-    : stringLiteral+
+    : StringLiteral (StringLiteral | Identifier | Identifier '(' argumentExpressionList ')')*
     ;
 
 primaryExpression
@@ -335,7 +325,6 @@ functionSpecifier
     | '__stdcall'
     | gccAttributeSpecifier
     | '__declspec' '(' Identifier ')'
-    | macro
     ;
 
 alignmentSpecifier

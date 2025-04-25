@@ -12,9 +12,6 @@ from SuperStruct import SuperStruct
 from ArgsProcessing import CommandLineArgs, process_argv
 
 
-# import cProfile
-
-
 def remove_static_functions(functions: list[str]) -> list[str]:
     picked_functions: list[str] = []
     for func in functions:
@@ -153,4 +150,3 @@ if __name__ == '__main__':
     args = process_argv()
     # print(args)
     main(args)
-    # cProfile.run("main(args)")
