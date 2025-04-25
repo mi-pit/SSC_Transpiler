@@ -26,17 +26,22 @@
  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-/** C 2011 grammar built from the C11 Spec */
+/** SSC grammar based on the antlr
+  * C 2011 grammar built from the C11 Spec */
 
 // $antlr-format alignTrailingComments true, columnLimit 150, minEmptyLines 1, maxEmptyLinesToKeep 1, reflowComments false, useTab false
 // $antlr-format allowShortRulesOnASingleLine false, allowShortBlocksOnASingleLine true, alignSemicolons hanging, alignColons hanging
 
-grammar C;
+grammar SSC;
+
+compoundStringLiteral
+    : StringLiteral (StringLiteral | Identifier | Identifier '(' argumentExpressionList ')')*
+    ;
 
 primaryExpression
     : Identifier
     | Constant
-    | StringLiteral+
+    | compoundStringLiteral
     | '(' expression ')'
     | genericSelection
     | '__extension__'? '(' compoundStatement ')' // Blocks (GCC extension)
@@ -60,6 +65,7 @@ postfixExpression
     : (primaryExpression | '__extension__'? '(' typeName ')' '{' initializerList ','? '}') (
         '[' expression ']'
         | '(' argumentExpressionList? ')'
+        | ('.' | '->') Identifier '(' argumentExpressionList? ')'
         | ('.' | '->') Identifier
         | '++'
         | '--'
@@ -230,8 +236,8 @@ typeSpecifier
 
 /* my stuff */
 superStructSpecifier
-    : Superstruct Identifier '{' superStructBody '}' ';'
-    | Superstruct Identifier
+    : 'private'? 'superstruct' Identifier '{' superStructBody '}'
+    | 'superstruct' Identifier
     ;
 
 superStructBody
@@ -312,6 +318,8 @@ typeQualifier
 
 functionSpecifier
     : 'inline'
+    | 'private'
+    | 'pure'
     | '_Noreturn'
     | '__inline__' // GCC extension
     | '__stdcall'
@@ -351,7 +359,7 @@ vcSpecificModifer
     ;
 
 gccDeclaratorExtension
-    : '__asm' '(' StringLiteral+ ')'
+    : '__asm' '(' compoundStringLiteral ')'
     | gccAttributeSpecifier
     ;
 
@@ -447,7 +455,7 @@ designator
     ;
 
 staticAssertDeclaration
-    : '_Static_assert' '(' constantExpression ',' StringLiteral+ ')' ';'
+    : '_Static_assert' '(' constantExpression ',' compoundStringLiteral ')' ';'
     ;
 
 statement
@@ -529,9 +537,15 @@ translationUnit
     : externalDeclaration+
     ;
 
+directive
+    : SingleLineMacro
+    | MultiLineMacro
+    ;
+
 externalDeclaration
     : functionDefinition
     | declaration
+    | directive
     | ';' // stray ;
     ;
 
@@ -1106,12 +1120,12 @@ fragment SChar
     | '\\\r\n' // Added line
     ;
 
-MultiLineMacro
-    : '#' (~[\n]*? '\\' '\r'? '\n')+ ~ [\n]+ -> channel (HIDDEN)
+SingleLineMacro
+    : '#' ~[\n]*? '\r'? '\n'
     ;
 
-Directive
-    : '#' ~ [\n]* -> channel (HIDDEN)
+MultiLineMacro
+    : '#' (~[\n]*? '\\' '\r'? '\n')+ ~ [\n]+
     ;
 
 // ignore the following asm blocks:

@@ -1,20 +1,23 @@
 import re
 
-from CBaseVisitor import CBaseVisitor
-from CLexer import CLexer
+from SSCBaseVisitor import SSCBaseVisitor
+from SSCLexer import SSCLexer
 from SuperStruct import SuperStruct, get_text_separated
 from Variable import Variable
 
 
-class SuperCVisitor(CBaseVisitor):
-    def __init__(self, tokens):
+class SuperCVisitor(SSCBaseVisitor):
+    def __init__(self, tokens, superstruct_names: set[str]):
         self.token_stream = tokens
-        self.superstructs: list[SuperStruct] = []
-        self.skip_intervals = []
-        self.superstruct_names: set[str] = set()
-        self.var_types: dict[str, Variable] = {}
         self.replacements: set = set()
-        self.functions: list = []
+        self.skip_intervals = []
+
+        self.var_types: dict[str, Variable] = {}
+        self.superstructs: list[SuperStruct] = []
+        self.superstruct_names: set[str] = superstruct_names
+
+        self.functions: list[str] = []
+        self.directives: list[str] = []
 
     def lookup_variable(self, varname: str) -> Variable | None:
         return self.var_types.get(varname, None)
@@ -44,36 +47,47 @@ class SuperCVisitor(CBaseVisitor):
             print(f"{prefix}{i + 1:4}: {lines[i]}")
         print("--- End context ---\n")
 
+    def visitDirective(self, ctx):
+        self.directives.append(get_text_separated(ctx).strip())
+        return self.visitChildren(ctx)
+
     def visitFunctionDefinition(self, ctx):
         if not ctx.declarationSpecifiers():
             return self.visitChildren(ctx)
 
-        # self.show_in_context(ctx.start)
-        specs = get_text_separated(ctx.declarationSpecifiers())
-        func_name = get_text_separated(ctx.declarator())
+        specs: str = get_text_separated(ctx.declarationSpecifiers())
+        func_name: str = get_text_separated(ctx.declarator())
         ctx_text: str = f"{specs} {func_name}"
-        prototype = ctx_text.split(";")[-1].replace("superstruct", "struct").strip() + ";"
+        prototype: str = ctx_text.split(";")[-1].replace("superstruct", "struct").strip() + ";"
         self.functions.append(prototype)
         # should this save the main function?
         return self.visitChildren(ctx)
 
     def visitDeclaration(self, ctx):
         decl_specs: str = get_text_separated(ctx.declarationSpecifiers())
-        # self.show_in_context(ctx.start)
-        if "superstruct" in decl_specs:
-            decl_ls = ctx.initDeclaratorList()
-            if not decl_ls:
-                return
-            for init_decl in decl_ls.initDeclarator():
-                declarator = init_decl.declarator()  # pointer? directDeclarator
-                variable = Variable(decl_specs,
-                                    bool(declarator.pointer()) if declarator.pointer() else None,
-                                    declarator.directDeclarator().Identifier().getText())
-                self.var_types[variable.name] = variable
+        if "superstruct" not in decl_specs:
+            return self.visitChildren(ctx)
+
+        decl_ls = ctx.initDeclaratorList()
+        if not decl_ls:
+            return self.visitChildren(ctx)
+        for init_decl in decl_ls.initDeclarator():
+            declarator = init_decl.declarator()  # pointer? directDeclarator
+            if not declarator or not declarator.directDeclarator() or not declarator.directDeclarator().Identifier():
+                # print(f"declarator: {get_text_separated(declarator)}")
+                # self.show_in_context(init_decl.start)
+                continue
+
+            variable = Variable(decl_specs,
+                                bool(declarator.pointer()) if declarator.pointer() else None,
+                                declarator.directDeclarator().Identifier().getText())
+            self.var_types[variable.name] = variable
+
+        return self.visitChildren(ctx)
 
     def visitPostfixExpression(self, ctx):
-        # print(f'For "{get_text_separated(ctx)}"')
-        # self.show_in_context(ctx.start)
+        # print(f'Postfix Expression: "{get_text_separated(ctx)}"')
+
         if ctx.getChildCount() < 4:
             return self.visitChildren(ctx)
 
@@ -90,22 +104,26 @@ class SuperCVisitor(CBaseVisitor):
         # self.show_in_context(ctx.start)
 
         variable: Variable = self.lookup_variable(obj_expr)
-        if not variable:
+        is_static_call = obj_expr in self.superstruct_names
+        if not variable and not is_static_call:
             return self.visitChildren(ctx)
 
-        ss_name = variable.var_type.split()[-1]
-        if ss_name not in self.superstruct_names:
-            return self.visitChildren(ctx)
+        if is_static_call:
+            new_call = f"{obj_expr}__{method_name}({args_str})"
+        else:
+            ss_name = variable.var_type.split()[-1]
+            if ss_name not in self.superstruct_names:
+                return self.visitChildren(ctx)
 
-        new_func = f"{ss_name}__{method_name}"
+            new_func = f"{ss_name}__{method_name}"
 
-        if operator == ".":
-            obj_expr = "&" + obj_expr
+            if operator == ".":
+                obj_expr = "&" + obj_expr
 
-        new_call = f"{new_func}({obj_expr}"
-        if args_str != "":
-            new_call += ", " + args_str
-        new_call += ")"
+            new_call = f"{new_func}({obj_expr}"
+            if args_str != "":
+                new_call += ", " + args_str
+            new_call += ")"
 
         # print(f"Transformed call: {ctx.getText()} → {new_call}")
 
@@ -116,20 +134,24 @@ class SuperCVisitor(CBaseVisitor):
         # Store the replacement with the token range and the new call
         self.replacements.add((start_idx, end_idx, new_call))
 
+        self.visitChildren(ctx)
         return new_call
 
-    def visitSuperStructSpecifier(self, ctx):
+    def visitSuperStructSpecifier(self, ctx) -> None:
+        # don't visit children
         name = ctx.Identifier().getText()
         ss = SuperStruct(name, self.token_stream)
 
-        # print(ctx.getText())
-
         if not ctx.superStructBody():
-            # not an ss definition, but a declaration; TODO
+            self.superstruct_names.add(ctx.Identifier().getText())
+            # not an ss definition, but a declaration
             return
 
+        ss.is_private = ctx.getChild(0).getText() == "private" if ctx.getChildCount() > 0 else False
+
         # Track this superstruct's token interval to exclude from raw C output
-        self.skip_intervals.append(ctx.getSourceInterval())
+        start, stop = ctx.getSourceInterval()
+        self.skip_intervals.append((start, stop + 2))  # + 2 to include "};"
 
         for member_ctx in ctx.superStructBody().superStructMember():
             decl = member_ctx.declaration()

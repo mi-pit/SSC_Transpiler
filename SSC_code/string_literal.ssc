@@ -1,0 +1,8 @@
+#define LITERAL "pop"
+
+int main( void )
+{
+    const char *string = "Hops" LITERAL "!";
+    ( void ) string;
+    return 0;
+}

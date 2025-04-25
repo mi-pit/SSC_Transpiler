@@ -26,9 +26,19 @@ they have fields and methods, but no inheritance.
 Syntax is like regular C structs, except you can define methods (just like functions).
 Method call outside a superstruct-method definition depends on whether variable is a pointer or not
 (just like structs `.` for local, `->` for pointer).
-Self-reference in a method is `this`, followed by `->` to access a field or call a method
+Self-reference in a method is `this`, followed by `->` to access a field or call a method.
 
-Example code (other examples are in the SSC_code directory):
+SuperStructs may be defined `private`.
+In that case, its members may not be directly accessed (requires get/setters).
+
+Methods may be declared `private`, `static` or `pure`:
+
+- `private` methods are not visible outside the SuperStruct
+- `pure` methods don't modify the SS in any way
+- `static` functions behave like normal C functions
+  – they aren't called on an SS, rather as `Classname.methodname(‹args›)`
+
+#### Example code (other examples are in the SSC_code directory):
 
 ```SSC
 superstruct Adder {
@@ -62,9 +72,24 @@ int main(void) {
 
 ### Compilation
 
+`transpiler.sh` generates three files:
+
+`‹ssc file›.ssc` – source code for SuperStructC
+
+`"‹scc file›.c"` – this file contains all regular C code (except directives)
+
+`"‹ssc file›-ss.c"` – this file contains all superstruct methods and C-structs
+
+`"‹ssc file›.h"` – this file contains all directives and non-static/private function prototypes
+
+Both `.c` files contain (as the first line) `#include "‹ssc file›.h"`.
+
+The `.c` files may then be compiled with a C compiler.
+
+#### Example:
+
 ```bash
 # in git repo directory
-cd SSC_code
-../transpiler.sh example.ssc
-./example
+./transpiler.sh SSC_code/example.ssc
+cat SSC_code/example.c SSC_code/example-ss.c SSC_code/example.h
 ```

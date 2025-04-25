@@ -1,24 +1,19 @@
-superstruct Adder {
-    unsigned long int x;
-    int *y;
+superstruct classname {
+    int x;
 
-    int a, b, c;
-
-    int add(signed int x, unsigned long long int *hopspop) {
-        return this->x + x;
-    }
-
-    signed sub()
-    {
-        signed out = x - y;
-        return out--;
+    void method() {
+        (void) this;
     }
 };
 
+void test()
+{
+    // void *a = classname.methodname();
+}
+
 int main( void )
 {
-    // hopspop
-    // superstruct Adder a;
-
+    superstruct classname *obj = 0;
+    obj->method();
     return 0;
 }

@@ -1,11 +1,10 @@
-
 #include "***REMOVED***CLibs/Dev/errors.h" /* RVs, fwarn* */
-#include "***REMOVED***CLibs/Dev/pointer_utils.h"
-#include "***REMOVED***CLibs/extra_types.h" /* byte */
-#include "***REMOVED***CLibs/misc.h"        /* cmpeq() */
+#include "***REMOVED***CLibs/Dev/pointer_utils.h" /* deref_as */
+#include "***REMOVED***CLibs/extra_types.h"       /* byte */
+#include "***REMOVED***CLibs/misc.h"              /* cmpeq() */
 
 #include <assert.h>  /**/
-#include <stdbool.h> /* ... */
+#include <stdbool.h> /**/
 #include <stdio.h>   /* *print* */
 #include <stdlib.h>  /* malloc, free, bsearch, qsort */
 #include <string.h>  /* mem* */
@@ -27,33 +26,21 @@
  * A dynamic array. (List)<br>
  * The List can store any elements of arbitrary size.
  * <p>
- * A new List can (and should) be created with list_init_* functions
+ * A new List can (and should) be created with the `List.new` static method
  * <p>
- * list_init_type* functions take as its `type' argument the C keyword
- * e.g. 'char'
- * <br>
- * list_init_size* functions take as its `el_size' argument
- * the number of bytes (acquired by sizeof)
- * for the desired type to be stored
- * <p>
- * The list_init_*_p functions take a second parameter
- * – a constant for the print functions. This field can be changed
- * later with list_set_print_mode().
- * <p>
- * list_init_* functions allocate and initialize a List
+ * List.new function allocates and initializes a List
  * with these default values:
  * @code
- * List::capacity = LIST_DEF_SIZE
- * List::size     = 0
- * List::items    = pointer to heap allocated memory of width ‹capacity›, set to 0
- * List::el_size  = width of a single element
+ * List::capacity := LIST_DEF_SIZE
+ * List::size     := 0
+ * List::items    := pointer to heap allocated memory of width ‹capacity›
+ * List::el_size  := width of a single element
  * @endcode
  *
  * @attention
  * All elements must be the same number of bytes long
 */
-
-superstruct dynamic_array
+private superstruct List
 {
     size_t capacity; // Amount of allocated memory slots for items
     size_t size;     // Number of items stored in List
@@ -63,14 +50,14 @@ superstruct dynamic_array
 
     /* –––––––––––––––––––––––––––––– METHODS –––––––––––––––––––––––––––––– */
 
-    void *at__non_safe( size_t idx )
+    private pure void *at__non_safe( size_t idx )
     {
         return ( byte * ) this->items + idx * this->el_size;
     }
 
 
     /* Immutable */
-    const void *see( size_t idx )
+    pure const void *see( size_t idx )
     {
         if ( idx >= this->size )
             return ( void * ) fwarnx_ret( NULL,
@@ -79,7 +66,7 @@ superstruct dynamic_array
         return this->at__non_safe( idx );
     }
 
-    const void *peek()
+    pure const void *peek()
     {
         if ( this->size == 0 )
             return ( void * ) fwarnx_ret( NULL, ListEmptyExceptionString );
@@ -115,7 +102,7 @@ superstruct dynamic_array
      * to hold all of its items + min_cap_add
      * @return -1 if realloc fails, else 0
      */
-    int upsize( size_t min_cap_add )
+    private int upsize( size_t min_cap_add )
     {
         const size_t min_new_cap = this->capacity + min_cap_add;
 
@@ -136,7 +123,7 @@ superstruct dynamic_array
      * Changes (realloc) the lists capacity to be half as large\n
      * @return -1 if realloc fails, else 0
      */
-    int downsize()
+    private int downsize()
     {
         const size_t new_cap = this->capacity / LIST_CAP_SIZE_RATIO;
 
@@ -191,7 +178,7 @@ superstruct dynamic_array
         return RV_SUCCESS;
     }
 
-    int extend_list( const superstruct dynamic_array *app )
+    int extend_list( const superstruct List *app )
     {
         if ( this->size + app->size >= this->capacity )
             if ( this->upsize( app->size ) != RV_SUCCESS )
@@ -225,7 +212,7 @@ superstruct dynamic_array
     }
 
 
-    void remove_last_nonsafe()
+    private void remove_last_nonsafe()
     {
         memset( this->at_last(), 0, this->el_size );
         --this->size;
@@ -296,13 +283,14 @@ superstruct dynamic_array
     }
 
 
-    const void *bsearch_p( const void *needle,
-                           int ( *cmp )( const void *, const void * ) )
+    pure const void *bsearch_p( const void *needle,
+                                int ( *cmp )( const void *, const void * ) )
     {
         return bsearch( needle, this->items, this->size, this->el_size, cmp );
     }
 
-    int64_t bsearch_i( const void *needle, int ( *cmp )( const void *, const void * ) )
+    pure int64_t bsearch_i( const void *needle,
+                            int ( *cmp )( const void *, const void * ) )
     {
         const byte *res = this->bsearch_p( needle, cmp );
         if ( res == NULL )
@@ -310,7 +298,7 @@ superstruct dynamic_array
         return res - ( byte * ) this->items;
     }
 
-    const void *lsearch_p( const void *needle )
+    pure const void *lsearch_p( const void *needle )
     {
         for ( size_t i = 0; i < this->size; ++i )
             if ( cmpeq( memcmp( this->see( i ), needle, this->el_size ) ) )
@@ -319,7 +307,7 @@ superstruct dynamic_array
         return NULL;
     }
 
-    int64_t lsearch_i( const void *needle )
+    pure int64_t lsearch_i( const void *needle )
     {
         const byte *res = this->lsearch_p( needle );
         if ( res == NULL )
@@ -365,9 +353,9 @@ superstruct dynamic_array
         return RV_SUCCESS;
     }
 
-    superstruct dynamic_array *reversed()
+    pure superstruct List *reversed()
     {
-        superstruct dynamic_array *rev;
+        superstruct List *rev;
         if ( this->copy( &rev ) != RV_SUCCESS )
             return ( void * ) f_stack_trace( NULL );
 
@@ -381,9 +369,9 @@ superstruct dynamic_array
     }
 
 
-    int copy( superstruct dynamic_array * *new_ls_cont )
+    pure int copy( superstruct List * *new_ls_cont )
     {
-        superstruct dynamic_array *new_ls = list_init_size( this->el_size );
+        superstruct List *new_ls = List.new( this->el_size );
         if ( new_ls == NULL )
             return RV_ERROR;
 
@@ -399,15 +387,15 @@ superstruct dynamic_array
         return RV_SUCCESS;
     }
 
-    superstruct dynamic_array *copy_p()
+    pure superstruct List *copy_p()
     {
-        superstruct dynamic_array *new_ls;
+        superstruct List *new_ls;
         if ( this->copy( &new_ls ) )
             return NULL;
         return new_ls;
     }
 
-    void *items_copy()
+    pure void *items_copy()
     {
         void *copy = calloc( this->size, this->el_size );
         if ( copy == NULL )
@@ -417,62 +405,91 @@ superstruct dynamic_array
         return copy;
     }
 
+
+    /* ====== GETTERS ====== */
+    pure void *get_items()
+    {
+        return this->items;
+    }
+    pure size_t get_size()
+    {
+        return this->size;
+    }
+    pure size_t get_el_size()
+    {
+        return this->el_size;
+    }
+
+
     void destroy()
     {
         free_n( this->items );
     }
 
+    static void free( superstruct List * ls )
+    {
+        ls->destroy();
+        free( ls );
+    }
 
-    void print_meta()
+
+    PrintfLike( 1, 2 ) static void printf( const char *fmt, ... )
+    {
+        va_list vargs;
+        va_start( vargs, fmt );
+        vprintf( fmt, vargs );
+        va_end( vargs );
+    }
+
+    pure void print_meta()
     {
         printf( "list: size=%zu, capacity=%zu\n", this->size, this->capacity );
     }
+
+
+    /* ================ CONSTRUCTOR ================ */
+
+    static superstruct List *new ( size_t el_size )
+    {
+        superstruct List *ls = calloc( 1, sizeof( superstruct List ) );
+        if ( ls == NULL )
+            return ( void * ) fwarn_ret( NULL, "calloc" );
+
+        ls->items = calloc( LIST_DEF_SIZE, el_size );
+        if ( ls->items == NULL )
+        {
+            free( ls );
+            return ( void * ) fwarn_ret( NULL, "calloc" );
+        }
+        ls->capacity = LIST_DEF_SIZE;
+        ls->el_size  = el_size;
+        return ls;
+    }
+
+
+    static int cmp_size( const void *l1, const void *l2 )
+    {
+        const superstruct List *ls_1 = *( const superstruct List ** ) l1;
+        const superstruct List *ls_2 = *( const superstruct List ** ) l2;
+
+        return cmp_size_t( &ls_1->size, &ls_2->size );
+    }
+
+    static int cmp_elsize( const void *l1, const void *l2 )
+    {
+        const superstruct List *ls_1 = *( const superstruct List ** ) l1;
+        const superstruct List *ls_2 = *( const superstruct List ** ) l2;
+
+        return cmp_size_t( &ls_1->el_size, &ls_2->el_size );
+    }
 };
 
-superstruct dynamic_array *list_init_size( size_t el_size )
+
+int main( void )
 {
-    superstruct dynamic_array *ls = new ( superstruct dynamic_array );
-    if ( ls == NULL )
-        return ( void * ) fwarn_ret( NULL, "calloc" );
-
-    ls->items = calloc( LIST_DEF_SIZE, el_size );
-    if ( ls->items == NULL )
-    {
-        free( ls );
-        return ( void * ) fwarn_ret( NULL, "calloc" );
-    }
-    ls->capacity = LIST_DEF_SIZE;
-    ls->el_size  = el_size;
-    return ls;
-}
-
-#define list_init_type( type ) list_init_size( sizeof( type ) )
-
-
-int list_cmp_size( const void *l1, const void *l2 )
-{
-    const superstruct dynamic_array *ls_1 =
-            deref_as( const superstruct dynamic_array *, l1 );
-    const superstruct dynamic_array *ls_2 =
-            deref_as( const superstruct dynamic_array *, l2 );
-
-    return cmp_size_t( &ls_1->size, &ls_2->size );
-}
-
-int list_cmp_elsize( const void *l1, const void *l2 )
-{
-    const superstruct dynamic_array *ls_1 =
-            deref_as( const superstruct dynamic_array *, l1 );
-    const superstruct dynamic_array *ls_2 =
-            deref_as( const superstruct dynamic_array *, l2 );
-
-    return cmp_size_t( &ls_1->el_size, &ls_2->el_size );
-}
-
-
-int main()
-{
-    superstruct dynamic_array *ls = list_init_type( int );
+    superstruct List *ls = List.new( sizeof( int ) );
+    ( void ) List.new( 1 ); // leak
+    free( List.new( 1 ) );
     assert( ls != NULL );
 
     int INT = 0;
@@ -480,6 +497,7 @@ int main()
     ls->append( &INT );
     ls->print_meta();
 
-    ls->destroy();
-    free( ls );
+    List.printf( "hops, pop, %02d\n", 1 );
+
+    List.free( ls );
 }

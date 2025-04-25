@@ -2,24 +2,22 @@
 
 !.gitignore
 !README.md
-
 !*.txt
-
 !third-party
+
+!.clang-format
 
 # test files
 !*.ssc
-
 !SSC_code
 
 # for conversions
 !*.g4
 !*.py
+!*.sh
 
-# can be generated with `antlr4 C.g4 -Dlanguage=Python3 -visitor -listener`
-# CVisitor.py
-# CListener.py
-# CParser.py
-# CLexer.py
-
-!transpiler.sh
+# can be generated with `antlr4 SSC.g4 -Dlanguage=Python3 -visitor -listener`
+SSCVisitor.py
+SSCListener.py
+SSCParser.py
+SSCLexer.py
