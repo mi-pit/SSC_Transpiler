@@ -2,7 +2,8 @@
 
 !.gitignore
 !README.md
-!LICENSE.txt
+!*.txt
+!third-party
 
 !.clang-format
 
@@ -15,7 +16,7 @@
 !*.py
 !*.sh
 
-# can be generated with `antlr4 C.g4 -Dlanguage=Python3 -visitor -listener`
+# can be generated with `antlr4 SSC.g4 -Dlanguage=Python3 -visitor -listener`
 SSCVisitor.py
 SSCListener.py
 SSCParser.py
