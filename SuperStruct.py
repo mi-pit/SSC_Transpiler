@@ -62,7 +62,7 @@ class SuperStruct:
         Supports nested calls.
         Returns: (next_index_to_continue_from, rewritten_string)
         """
-        object_name = get_keyword_replaced(tokens[i].text, keyword_dict)
+        object_name = get_keyword_replaced(tokens[i].text, keyword_dict)  # not necessarily 'this'
         operator = tokens[i + 1].text
         method_name = tokens[i + 2].text
         open_paren = tokens[i + 3].text

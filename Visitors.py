@@ -144,7 +144,7 @@ class SuperCVisitor(SSCBaseVisitor):
 
         if not ctx.superStructBody():
             self.superstruct_names.add(ctx.Identifier().getText())
-            # not an ss definition, but a declaration; TODO?
+            # not an ss definition, but a declaration
             return
 
         ss.is_private = ctx.getChild(0).getText() == "private" if ctx.getChildCount() > 0 else False

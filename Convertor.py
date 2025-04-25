@@ -9,6 +9,10 @@ from SSCParser import SSCParser
 
 from Visitors import SSCBaseVisitor, SuperCVisitor
 from SuperStruct import SuperStruct
+from ArgsProcessing import CommandLineArgs, process_argv
+
+
+# import cProfile
 
 
 def remove_static_functions(functions: list[str]) -> list[str]:
@@ -21,7 +25,7 @@ def remove_static_functions(functions: list[str]) -> list[str]:
 
 
 def get_include_string(file_name: str) -> str:
-    return f'#include "{os.path.basename(file_name)}\n"'
+    return f'#include "{os.path.basename(file_name)}"\n'
 
 
 def create_ss_files(header_file_name: str, methods_file_name: str, visitor: SuperCVisitor) -> None:
@@ -35,7 +39,7 @@ def create_ss_files(header_file_name: str, methods_file_name: str, visitor: Supe
 
         if len(visitor.superstructs) != 0:
             with open(methods_file_name, "w") as c_file:
-                c_file.write(f'#include "{os.path.basename(header_file_name)}"\n\n')
+                c_file.write(get_include_string(header_file_name) + '\n\n')
                 # All transformed super-structs (structs and methods)
                 for ss in visitor.superstructs:
                     code, headers = ss.to_c_code()
@@ -88,6 +92,10 @@ def replace_method_calls(tokens, skip_indices: set[int], replacements):
     return transformed_code
 
 
+def remove_filename_extention(filename: str) -> str:
+    return filename[:filename.rfind(".")]
+
+
 def main(args: 'CommandLineArgs') -> None:
     superstructs = args.structs
     for filename in args.files:
@@ -128,56 +136,21 @@ def main(args: 'CommandLineArgs') -> None:
         visitor.functions = remove_static_functions(visitor.functions)
         transformed_code: list[str] = replace_method_calls(tokens, skip_indices, visitor.replacements)
 
-        if [string for string in transformed_code if string.strip()]:
+        main_c_code = "".join(transformed_code)
+        if main_c_code and not main_c_code.isspace():
             # main C
             with open(c_code_file_name, "w") as f:
                 # header with all directives and structs
-                f.write(f"#include \"{os.path.basename(header_file_name)}\"\n")
+                f.write(get_include_string(header_file_name) + "\n")
 
                 # Original non-superstruct code
-                f.write("".join(transformed_code) + "\n")
+                f.write(main_c_code + "\n")
 
         create_ss_files(header_file_name, methods_file_name, visitor)
-
-
-class CommandLineArgs:
-    def __init__(self, files=None, structs=None):
-        if files is None:
-            files = []
-        if structs is None:
-            structs = set()
-        self.files: list[str] = files
-        self.structs: set[str] = structs
-
-    def __str__(self) -> str:
-        return f"{{ {', '.join(self.files)} | {', '.join(self.structs) if self.structs else '‹›'} }}"
-
-
-def remove_filename_extention(filename: str) -> str:
-    return filename[:filename.rfind(".")]
-
-
-def process_argv() -> CommandLineArgs:
-    opts = CommandLineArgs()
-    # print(sys.argv[1:])
-    for arg in sys.argv[1:]:
-        if arg.startswith("-"):  # option
-            if arg.startswith("--structs="):
-                structs_strings: str = arg.split("=")[1]
-                structs_ls: list[str] = structs_strings.split(",")
-                opts.structs.update(structs_ls)
-            else:
-                print("Invalid option: " + arg, file=sys.stderr)
-        else:
-            opts.files.append(arg)
-
-    if not opts.files:
-        raise FileNotFoundError("No file given")
-
-    return opts
 
 
 if __name__ == '__main__':
     args = process_argv()
     # print(args)
     main(args)
+    # cProfile.run("main(args)")
