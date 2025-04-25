@@ -13,7 +13,7 @@
 # for conversions
 !*.g4
 !*.py
-!transpiler.sh
+!*.sh
 
 # can be generated with `antlr4 C.g4 -Dlanguage=Python3 -visitor -listener`
 CVisitor.py
