@@ -97,10 +97,14 @@ class SuperCVisitor(SSCBaseVisitor):
 
         obj_expr = get_text_separated(ctx.getChild(0))
         method_name = get_text_separated(ctx.getChild(2))
+        if ctx.getChildCount() < 4 or ctx.getChild(3).getText() != "(":
+            return self.visitChildren(ctx)
+
         arguments_ls = [get_text_separated(ctx.getChild(i)) for i in range(3, ctx.getChildCount())]
         args_str = "".join(arguments_ls[1:-1])
 
         # print(f"> Found method call: {obj_expr}{operator}{method_name}({args_str})")
+        # print(f">>>>>>>> Orig. text: {ctx.getText()}")
         # self.show_in_context(ctx.start)
 
         variable: Variable = self.lookup_variable(obj_expr)
