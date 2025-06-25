@@ -1,0 +1,23 @@
+#include <stdio.h>
+
+
+private superstruct Adder {
+    int x;
+
+    void add( int y ) {
+        this->x += y;
+    }
+
+    long plus( int y ) {
+        return ( long ) ( this->x + y );
+    }
+};
+
+int main( void )
+{
+    superstruct Adder adder = { 0 };
+
+    adder.add( adder.plus( 10 ) );
+
+    printf( "%ld", adder.plus( -1 ) );
+}

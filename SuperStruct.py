@@ -1,12 +1,9 @@
 import re
 
 from SSCLexer import SSCLexer
-
-
-def get_text_separated(token):
-    if not hasattr(token, "getChildren") or not token.getChildren():
-        return token.getText()
-    return " ".join([get_text_separated(child) for child in token.getChildren()])
+from Variable import Variable
+from LocalVariableCollector import LocalVariableCollector
+from text_manipulation import get_text_separated
 
 
 def get_keyword_replaced(word: str, keyword_dict: dict[str, str]) -> str:
@@ -28,11 +25,15 @@ class SuperStruct:
     def replace_tokens(self, ctx, keyword_dict: dict[str, str]) -> str:
         """
         Replaces keywords in keyword_dict::keys with their corresponding values.
-        Also replaces method calls
-        example: obj->methodname() => Classname_methodname(obj)
+        Also replaces method calls.\n
+        e.g.: obj->methodname() => Classname_methodname(obj)
         """
         start_idx, stop_idx = ctx.getSourceInterval()
         tokens = self.token_stream.getTokens(start_idx, stop_idx + 1)
+
+        var_collector = LocalVariableCollector()
+        var_collector.visit(ctx)
+        variables: dict[str, Variable] = var_collector.local_variables
 
         result: str = ""
         skips: set[int] = set()
@@ -46,7 +47,7 @@ class SuperStruct:
                                tokens[i + 3].text == "("
 
             if method_call_next:
-                next_tok, res = self.replace_method_calls(tokens, i, keyword_dict)
+                next_tok, res = self.replace_method_calls(tokens, i, keyword_dict, variables)
                 skips.update(range(i, next_tok))
                 result += res
                 continue
@@ -55,20 +56,24 @@ class SuperStruct:
 
         return result
 
-    def replace_method_calls(self, tokens, i: int, keyword_dict: dict[str, str]):
+    def replace_method_calls(self, tokens, i: int, keyword_dict: dict[str, str], variables: dict[str, Variable]):
         """
         Replaces a method call like obj.method(...) or obj->method(...)
         with Class__method(local__obj, ...)
         Supports nested calls.
         Returns: (next_index_to_continue_from, rewritten_string)
         """
-        object_name = get_keyword_replaced(tokens[i].text, keyword_dict)  # not necessarily 'this'
+        object_name = get_keyword_replaced(tokens[i].text, keyword_dict)
         operator = tokens[i + 1].text
         method_name = tokens[i + 2].text
         open_paren = tokens[i + 3].text
         assert open_paren == "("
 
-        class_name = self.name
+        if object_name in variables.keys() and variables[object_name].var_type.startswith("superstruct "):
+            class_name = variables[object_name].var_type.split()[-1]
+        else:
+            class_name = self.name
+
         if tokens[i].text == self.name:
             new_call = f"{class_name}__{method_name}("
         else:
@@ -182,7 +187,7 @@ class SuperStruct:
 
             if decl_list:
                 # don't know what this is
-                print("ATTENTION: found method decl_list", decl_list.getText())
+                print("ATTENTION: found method decl_list:", decl_list.getText())
 
             if not curr_method_is_private:
                 header_code.append(curr_method_str + ";")

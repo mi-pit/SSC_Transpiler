@@ -4,12 +4,10 @@ import sys
 
 from antlr4 import *
 
+from ArgsProcessing import CommandLineArgs, process_argv
 from SSCLexer import SSCLexer
 from SSCParser import SSCParser
-
-from Visitors import SSCBaseVisitor, SuperCVisitor
-from SuperStruct import SuperStruct
-from ArgsProcessing import CommandLineArgs, process_argv
+from Visitors import SuperCVisitor
 
 
 def remove_static_functions(functions: list[str]) -> list[str]:
@@ -27,7 +25,7 @@ def get_include_string(file_name: str) -> str:
 
 def create_ss_files(header_file_name: str, methods_file_name: str, visitor: SuperCVisitor) -> None:
     with open(header_file_name, "w") as header_file:
-        file_guard_token = "SSC__" + re.sub("[^a-zA-Z]", "_", os.path.basename(header_file_name).upper())
+        file_guard_token = "SSC__" + re.sub("[^a-zA-Z0-9]", "_", os.path.basename(header_file_name).upper())
         header_file.write(f"#ifndef {file_guard_token} /* guard */\n"
                           f"#define {file_guard_token}\n")
 
@@ -57,8 +55,8 @@ def show_tokens_in_interval(token_stream, start_idx, stop_idx):
     print()
 
 
-def replace_method_calls(tokens, skip_indices: set[int], replacements):
-    transformed_code = []
+def replace_method_calls(tokens, skip_indices: set[int], replacements: dict[tuple[int, int], str]) -> list[str]:
+    transformed_code: list[str] = []
     n_skips = 0
     for i, token in enumerate(tokens):
         if n_skips > 0:
@@ -73,18 +71,14 @@ def replace_method_calls(tokens, skip_indices: set[int], replacements):
             continue
 
         # Check for replacements (method calls transformed)
-        replaced = False
-        for start_idx, end_idx, new_call in replacements:
+        for (start_idx, end_idx), new_call in replacements.items():
             if start_idx <= i <= end_idx:
                 n_skips = end_idx - start_idx
                 transformed_code.append(new_call)
-                replaced = True
                 break
-        if replaced:
-            continue
-
-        # If no replacement was found, just add the original token text
-        transformed_code.append(token.text)
+        else:
+            # If no replacement was found, just add the original token text
+            transformed_code.append(token.text)
 
     return transformed_code
 
@@ -93,9 +87,9 @@ def remove_filename_extention(filename: str) -> str:
     return filename[:filename.rfind(".")]
 
 
-def main(args: 'CommandLineArgs') -> None:
-    superstructs = args.structs
-    for filename in args.files:
+def main(argv: 'CommandLineArgs') -> None:
+    superstructs = argv.structs
+    for filename in argv.files:
         name_of_files: str = remove_filename_extention(filename)
 
         header_file_name: str = name_of_files + ".h"

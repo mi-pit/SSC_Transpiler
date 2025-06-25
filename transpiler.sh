@@ -62,7 +62,7 @@ parse_args "$@"
 
 echo-if-not-silent "> Converting '$@' ..."
 
-if ! python3.10 "$SCRIPT_DIR/Convertor.py" $structs ${positional_args[@]}; then
+if ! python3 "$SCRIPT_DIR/Convertor.py" $structs ${positional_args[@]}; then
   echo -e "error: Conversion failed" >&2
   exit 1
 else

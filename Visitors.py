@@ -1,15 +1,15 @@
-import re
+from typing import Optional
 
 from SSCBaseVisitor import SSCBaseVisitor
-from SSCLexer import SSCLexer
-from SuperStruct import SuperStruct, get_text_separated
+from SuperStruct import SuperStruct
 from Variable import Variable
+from text_manipulation import get_text_separated
 
 
 class SuperCVisitor(SSCBaseVisitor):
     def __init__(self, tokens, superstruct_names: set[str]):
         self.token_stream = tokens
-        self.replacements: set = set()
+        self.replacements: dict[tuple[int, int], str] = {}
         self.skip_intervals = []
 
         self.var_types: dict[str, Variable] = {}
@@ -19,7 +19,7 @@ class SuperCVisitor(SSCBaseVisitor):
         self.functions: list[str] = []
         self.directives: list[str] = []
 
-    def lookup_variable(self, varname: str) -> Variable | None:
+    def lookup_variable(self, varname: str) -> Optional[Variable]:
         return self.var_types.get(varname, None)
 
     def get_original_text(self, ctx) -> str:
@@ -41,6 +41,10 @@ class SuperCVisitor(SSCBaseVisitor):
         start_line = max(0, line_num - 3)
         end_line = min(len(lines), line_num + 2)
 
+        if line_num == 131:
+            print(line_num)
+            pass
+
         print(f"--- Context around line {line_num} ---")
         for i in range(start_line, end_line):
             prefix = ">> " if (i + 1) == line_num else "   "
@@ -57,67 +61,92 @@ class SuperCVisitor(SSCBaseVisitor):
 
         specs: str = get_text_separated(ctx.declarationSpecifiers())
         func_name: str = get_text_separated(ctx.declarator())
+        if func_name == "main":
+            return self.visitChildren(ctx)
+
         ctx_text: str = f"{specs} {func_name}"
         prototype: str = ctx_text.split(";")[-1].replace("superstruct", "struct").strip() + ";"
         self.functions.append(prototype)
         # should this save the main function?
         return self.visitChildren(ctx)
 
-    def visitDeclaration(self, ctx):
-        decl_specs: str = get_text_separated(ctx.declarationSpecifiers())
-        if "superstruct" not in decl_specs:
+    def visitDeclaration(self, ctx):  # fix: variables probably shouldn't be global
+        type_name: list[str] = []
+        specs_ls = []
+        for spec in ctx.declarationSpecifiers().declarationSpecifier():
+            if spec.typeSpecifier():
+                type_name.append(get_text_separated(spec))
+            else:
+                specs_ls.append(get_text_separated(spec))
+
+        if not type_name or "superstruct" not in type_name[0]:
             return self.visitChildren(ctx)
 
         decl_ls = ctx.initDeclaratorList()
         if not decl_ls:
             return self.visitChildren(ctx)
+
         for init_decl in decl_ls.initDeclarator():
             declarator = init_decl.declarator()  # pointer? directDeclarator
             if not declarator or not declarator.directDeclarator() or not declarator.directDeclarator().Identifier():
-                # print(f"declarator: {get_text_separated(declarator)}")
-                # self.show_in_context(init_decl.start)
                 continue
 
-            variable = Variable(decl_specs,
-                                bool(declarator.pointer()) if declarator.pointer() else None,
+            variable = Variable(" ".join(specs_ls), " ".join(type_name),
+                                declarator.pointer() is not None,
                                 declarator.directDeclarator().Identifier().getText())
             self.var_types[variable.name] = variable
 
         return self.visitChildren(ctx)
 
-    def visitPostfixExpression(self, ctx):
+    def visitPostfixExpression(self, ctx) -> Optional[str]:
         # print(f'Postfix Expression: "{get_text_separated(ctx)}"')
+        self.visitChildren(ctx)
 
         if ctx.getChildCount() < 4:
-            return self.visitChildren(ctx)
+            return None
 
         operator = get_text_separated(ctx.getChild(1))
         if operator not in [".", "->"]:
-            return self.visitChildren(ctx)
+            return None
 
         obj_expr = get_text_separated(ctx.getChild(0))
         method_name = get_text_separated(ctx.getChild(2))
         if ctx.getChildCount() < 4 or ctx.getChild(3).getText() != "(":
-            return self.visitChildren(ctx)
+            return None
 
-        arguments_ls = [get_text_separated(ctx.getChild(i)) for i in range(3, ctx.getChildCount())]
-        args_str = "".join(arguments_ls[1:-1])
+        # Identify the start and end indices of the expression (the range we need to replace)
+        start_idx = ctx.start.tokenIndex
+        end_idx = ctx.stop.tokenIndex
 
-        # print(f"> Found method call: {obj_expr}{operator}{method_name}({args_str})")
+        # Check if any existing interval (r0,r1) is contained in [start_idx, end_idx]
+        contains_child = any(start_idx <= r0 and r1 <= end_idx
+                             for (r0, r1) in self.replacements.keys())
+        if contains_child:
+            # [start_idx,end_idx] contains an already-processed child interval
+            # Handle accordingly (e.g., skip replacing the outer interval).
+            pass
+
+        if self.replacements.get((start_idx, end_idx)):
+            args_str = self.replacements[start_idx, end_idx]
+        else:
+            arguments_ls = [get_text_separated(ctx.getChild(i)) for i in range(3, ctx.getChildCount())]
+            args_str = "".join(arguments_ls[1:-1])
+
+        # print(f"> Found method call: {obj_expr}{operator}{method_name}( {args_str} )")
         # print(f">>>>>>>> Orig. text: {ctx.getText()}")
         # self.show_in_context(ctx.start)
 
         variable: Variable = self.lookup_variable(obj_expr)
         is_static_call = obj_expr in self.superstruct_names
         if not variable and not is_static_call:
-            return self.visitChildren(ctx)
+            return None
 
         if is_static_call:
             new_call = f"{obj_expr}__{method_name}({args_str})"
         else:
             ss_name = variable.var_type.split()[-1]
             if ss_name not in self.superstruct_names:
-                return self.visitChildren(ctx)
+                return None
 
             new_func = f"{ss_name}__{method_name}"
 
@@ -131,14 +160,9 @@ class SuperCVisitor(SSCBaseVisitor):
 
         # print(f"Transformed call: {ctx.getText()} → {new_call}")
 
-        # Identify the start and end indices of the expression (the range we need to replace)
-        start_idx = ctx.start.tokenIndex
-        end_idx = ctx.stop.tokenIndex
-
         # Store the replacement with the token range and the new call
-        self.replacements.add((start_idx, end_idx, new_call))
+        self.replacements[start_idx, end_idx] = new_call
 
-        self.visitChildren(ctx)
         return new_call
 
     def visitSuperStructSpecifier(self, ctx) -> None:
