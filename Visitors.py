@@ -41,10 +41,6 @@ class SuperCVisitor(SSCBaseVisitor):
         start_line = max(0, line_num - 3)
         end_line = min(len(lines), line_num + 2)
 
-        if line_num == 131:
-            print(line_num)
-            pass
-
         print(f"--- Context around line {line_num} ---")
         for i in range(start_line, end_line):
             prefix = ">> " if (i + 1) == line_num else "   "
@@ -99,44 +95,38 @@ class SuperCVisitor(SSCBaseVisitor):
         return self.visitChildren(ctx)
 
     def visitPostfixExpression(self, ctx) -> Optional[str]:
-        # print(f'Postfix Expression: "{get_text_separated(ctx)}"')
-        self.visitChildren(ctx)
+        # First, recurse into children:
+        # this will let inner method calls be replaced first
+        children_rewrites = [self.visit(c) for c in ctx.children]
 
-        if ctx.getChildCount() < 4:
+        # If this node isn’t a method call, bail out
+        if not ctx.getChild(3) or ctx.getChild(3).getText() != "(":
             return None
 
-        operator = get_text_separated(ctx.getChild(1))
-        if operator not in [".", "->"]:
-            return None
-
-        obj_expr = get_text_separated(ctx.getChild(0))
-        method_name = get_text_separated(ctx.getChild(2))
-        if ctx.getChildCount() < 4 or ctx.getChild(3).getText() != "(":
-            return None
-
-        # Identify the start and end indices of the expression (the range we need to replace)
-        start_idx = ctx.start.tokenIndex
-        end_idx = ctx.stop.tokenIndex
-
-        # Check if any existing interval (r0,r1) is contained in [start_idx, end_idx]
-        contains_child = any(start_idx <= r0 and r1 <= end_idx
-                             for (r0, r1) in self.replacements.keys())
-        if contains_child:
-            # [start_idx,end_idx] contains an already-processed child interval
-            # Handle accordingly (e.g., skip replacing the outer interval).
-            pass
-
-        if self.replacements.get((start_idx, end_idx)):
-            args_str = self.replacements[start_idx, end_idx]
-        else:
-            arguments_ls = [get_text_separated(ctx.getChild(i)) for i in range(3, ctx.getChildCount())]
-            args_str = "".join(arguments_ls[1:-1])
-
-        # print(f"> Found method call: {obj_expr}{operator}{method_name}( {args_str} )")
-        # print(f">>>>>>>> Orig. text: {ctx.getText()}")
+        # print(self.get_original_text(ctx))
         # self.show_in_context(ctx.start)
 
-        variable: Variable = self.lookup_variable(obj_expr)
+        # Reconstruct object, operator, method, and args *from the rewritten children*
+        obj_expr = children_rewrites[0] or get_text_separated(ctx.getChild(0))
+        operator = children_rewrites[1] or ctx.getChild(1).getText()
+        method_name = children_rewrites[2] or ctx.getChild(2).getText()
+
+        # Gather argument expressions by visiting the sub-contexts
+        args = []
+        # children start at index 3: "(" , then interleaved expr and punctuation
+        # so skip the "(" at 3 and last ")" at -1
+        for i in range(4, ctx.getChildCount() - 1):
+            child_ctx = ctx.getChild(i)
+            rewritten = self.visit(child_ctx)
+            if rewritten is not None:
+                args.append(rewritten)
+            else:
+                args.append(get_text_separated(child_ctx))
+
+        args_str = ", ".join(args)
+
+        # now do your usual lookup to see if it's a static or instance call
+        variable = self.lookup_variable(obj_expr)
         is_static_call = obj_expr in self.superstruct_names
         if not variable and not is_static_call:
             return None
@@ -148,20 +138,17 @@ class SuperCVisitor(SSCBaseVisitor):
             if ss_name not in self.superstruct_names:
                 return None
 
-            new_func = f"{ss_name}__{method_name}"
-
             if operator == ".":
                 obj_expr = "&" + obj_expr
-
-            new_call = f"{new_func}({obj_expr}"
-            if args_str != "":
+            new_call = f"{ss_name}__{method_name}({obj_expr}"
+            if args_str:
                 new_call += ", " + args_str
             new_call += ")"
 
-        # print(f"Transformed call: {ctx.getText()} → {new_call}")
-
-        # Store the replacement with the token range and the new call
-        self.replacements[start_idx, end_idx] = new_call
+        # store it if you need the token mapping, or just return it
+        start_idx = ctx.start.tokenIndex
+        end_idx = ctx.stop.tokenIndex
+        self.replacements[(start_idx, end_idx)] = new_call
 
         return new_call
 

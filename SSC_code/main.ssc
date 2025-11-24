@@ -1,7 +1,7 @@
-#include "../../CLibs/Dev/errors.h"        /* warn */
-#include "../../CLibs/misc.h"              /* UNUSED */
-#include "../../CLibs/string_utils.h"      /* str_t */
-#include "../../CLibs/Structs/dynstring.h" /* Dynstr */
+#include "../../CLibs/src/headers/core/errors.h"          /* warn */
+#include "../../CLibs/src/headers/util/ctrlflow/unused.h" /* UNUSED */
+#include "../../CLibs/src/structs/dynstr.h"               /* Dynstr */
+#include "../../CLibs/src/util/string_utils.h"            /* str_t */
 
 #include <assert.h>
 #include <ctype.h>
@@ -47,7 +47,7 @@ superstruct Adder
         this->x = this->plus( this->static_add( 0, this->x ) );
     }
 
-    void print( /* void (todo) */ )
+    void print( void )
     {
         printf( "%d", this->x );
     }
