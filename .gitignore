@@ -7,17 +7,15 @@
 
 !.clang-format
 
+!SSC-C
+!SSC-C/**
+*.class
+
 # test files
 !*.ssc
 !SSC_code
 
 # for conversions
 !*.g4
-!*.py
+!*.java
 !*.sh
-
-# can be generated with `antlr4 SSC.g4 -Dlanguage=Python3 -visitor -listener`
-SSCVisitor.py
-SSCListener.py
-SSCParser.py
-SSCLexer.py
