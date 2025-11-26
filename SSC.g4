@@ -63,8 +63,9 @@ postfixExpression
     : (primaryExpression | '__extension__'? '(' typeName ')' '{' initializerList ','? '}') (
         '[' expression ']'
         | '(' argumentExpressionList? ')'
-        | ('.' | '->') Identifier '(' argumentExpressionList? ')'
-        | ('.' | '->') Identifier
+        | ('::')        Identifier '(' argumentExpressionList? ')' // Static superstruct function call
+        | ('.' | '->')  Identifier '(' argumentExpressionList? ')' // Object method call
+        | ('.' | '->')  Identifier // Attribute access (plain C)
         | '++'
         | '--'
     )*
@@ -234,7 +235,7 @@ typeSpecifier
 
 /* my stuff */
 superStructSpecifier
-    : 'private'? 'superstruct' Identifier '{' superStructBody '}'
+    : 'superstruct' Identifier '{' superStructBody '}'
     | 'superstruct' Identifier
     ;
 
@@ -245,10 +246,6 @@ superStructBody
 superStructMember
     : declaration
     | functionDefinition
-    ;
-
-superStructDeclaration
-    : specifierQualifierList structDeclaratorList ';'
     ;
 
 /* --- */
@@ -914,6 +911,10 @@ Arrow
 
 Dot
     : '.'
+    ;
+
+DoubleColon
+    : '::'
     ;
 
 Ellipsis
