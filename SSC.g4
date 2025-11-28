@@ -309,6 +309,7 @@ typeQualifier
     | 'restrict'
     | 'volatile'
     | '_Atomic'
+    | '_Nonnull'
     ;
 
 functionSpecifier
@@ -533,7 +534,9 @@ translationUnit
     ;
 
 directive
-    : SingleLineMacro
+    : IncludeDirectiveSTD
+    | IncludeDirective
+    | SingleLineMacro
     | MultiLineMacro
     ;
 
@@ -1119,12 +1122,20 @@ fragment SChar
     | '\\\r\n' // Added line
     ;
 
+IncludeDirectiveSTD
+    : '#include' Whitespace* '<' (~[>])* '>'
+    ;
+
+IncludeDirective
+    : '#include' Whitespace* '"' (~["])* '"'
+    ;
+
 SingleLineMacro
-    : '#' ~[\n]*? '\r'? '\n'
+    : '#define' Whitespace+ ~[\n]*? '\r'? '\n'
     ;
 
 MultiLineMacro
-    : '#' (~[\n]*? '\\' '\r'? '\n')+ ~ [\n]+
+    : '#define' Whitespace+ (~[\n]*? '\\' '\r'? '\n')+ ~ [\n]+
     ;
 
 // ignore the following asm blocks:

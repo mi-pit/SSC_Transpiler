@@ -1,19 +1,67 @@
-superstruct classname {
+#include <stdio.h>
+#include <stdlib.h>
+
+superstruct SSName
+{
     int x;
 
-    void method() {
-        (void) this;
+    pure void pure_method( void )
+    {
+        ( void ) this;
+        ( void ) ( 1 + 2 );
+    }
+
+    int methodname( int a, int b, int c )
+    {
+        ( void ) this;
+        return a + b + c;
+    }
+
+    static int static_method( int a )
+    {
+        struct SSName s;
+        superstruct superstruct_SSName ss = ( superstruct SSName ) { .x = 1 };
+
+        struct SSName s1, s2;
+        superstruct SSName ss1, ss2;
+
+        superstruct SSName *sp1 = NULL;
     }
 };
 
-void test()
+typedef void ( *Runnable )( void );
+
+struct Normal {
+    int a;
+    Runnable f;
+};
+
+void run_hello_world( void )
 {
-    // void *a = classname.methodname();
+    printf( "Hello, world!" );
 }
+
 
 int main( void )
 {
-    superstruct classname *obj = 0;
-    obj->method();
-    return 0;
+    superstruct SSName *obj  = calloc( 1, sizeof( superstruct SSName ) );
+    superstruct SSName objs  = ( superstruct SSName ) { .x = 1 };
+    superstruct SSName objs2 = *obj;
+
+    obj->methodname( 1, 2, 3 );
+    obj->methodname( 1, objs.methodname( -1, -2, -3 ), 3 );
+    ( void ) obj->x;
+
+    SSName::static_method( -2 );
+    -SSName::static_method( +2 );
+    SSName::static_method( 1, -2, "3" );
+    SSName::static_method( SSName::static_method( -4 ) );
+
+    {
+        struct Normal n = {
+            .a = 1,
+            .f = run_hello_world,
+        };
+        n.f()
+    }
 }

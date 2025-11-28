@@ -51,15 +51,16 @@ superstruct Adder
     {
         printf( "%d", this->x );
     }
+
+    static superstruct Adder *new ( int x )
+    {
+        superstruct Adder *a = calloc( 1, sizeof( superstruct Adder ) );
+        assert( a != NULL );
+        a->x = x;
+        return a;
+    }
 };
 
-superstruct Adder *Adder_init( int x )
-{
-    superstruct Adder *a = calloc( 1, sizeof( superstruct Adder ) );
-    assert( a != NULL );
-    a->x = x;
-    return a;
-}
 
 superstruct AdderArray
 {

@@ -23,11 +23,11 @@ public class SSMember {
     }
 
     public boolean isDeclaration() {
-        return data.getRight().equals(Optional.empty());
+        return data.getRight().isEmpty();
     }
 
     public boolean isFunctionDefinition() {
-        return data.getLeft().equals(Optional.empty());
+        return data.getLeft().isEmpty();
     }
 
     public Either<Declaration, FunctionDefinition> getData() {

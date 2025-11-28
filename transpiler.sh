@@ -62,6 +62,7 @@ parse_args "$@"
 
 echo-if-not-silent "> Converting '$@' ..."
 
+# FIXME
 if ! python3 "$SCRIPT_DIR/Convertor.py" $structs ${positional_args[@]}; then
   echo -e "error: Conversion failed" >&2
   exit 1
@@ -69,6 +70,9 @@ else
   echo-if-not-silent ">> Conversion success"
 fi
 
+# TODO:
+# preprocess
+# remove formatting?
 function format_and_test_file_if_exists() {
   local file="$1"
 

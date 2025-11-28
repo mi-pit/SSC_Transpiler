@@ -19,7 +19,7 @@ public record FunctionDefinition(List<String> specs,
     public FunctionDefinition(String ssName, SSCParser.FunctionDefinitionContext ctx, CommonTokenStream tokens) {
         this(
                 parseFunctionSpecs(ctx.declarationSpecifiers()),
-                parseType(ctx, tokens),
+                parseType(ctx.declarationSpecifiers(), ctx.declarator(), tokens),
                 parseName(ctx.declarator(), tokens),
                 parseFunctionArgs(ctx.declarator(), tokens),
                 parseFunctionBody(ctx.compoundStatement(), tokens),
@@ -27,34 +27,36 @@ public record FunctionDefinition(List<String> specs,
         );
     }
 
-    private static List<String> parseFunctionSpecs(SSCParser.DeclarationSpecifiersContext ctx) {
+    public static List<String> parseFunctionSpecs(SSCParser.DeclarationSpecifiersContext ctx) {
         return ctx.declarationSpecifier().stream()
                 .filter(declSpec -> declSpec.typeSpecifier() == null) /* filter out type names */
                 .map(RuleContext::getText).collect(Collectors.toList());
     }
 
-    private static String parseType(SSCParser.FunctionDefinitionContext ctx, CommonTokenStream tokens) {
+    public static String parseType(SSCParser.DeclarationSpecifiersContext declSpecs,
+                                   SSCParser.DeclaratorContext decl,
+                                   CommonTokenStream tokens) {
         List<String> builder = new ArrayList<>();
 
-        for (var spec : ctx.declarationSpecifiers().declarationSpecifier()) {
+        for (var spec : declSpecs.declarationSpecifier()) {
             if (spec.typeSpecifier() != null) {
                 builder.add(Util.getContextText(spec.typeSpecifier(), tokens));
             }
         }
 
-        if (ctx.declarator().pointer() != null) {
-            builder.add(Util.getContextText(ctx.declarator().pointer(), tokens));
+        if (decl.pointer() != null) {
+            builder.add(Util.getContextText(decl.pointer(), tokens));
         }
 
         return String.join(" ", builder);
     }
 
-    private static String parseName(SSCParser.DeclaratorContext ctx, CommonTokenStream tokens) {
+    public static String parseName(SSCParser.DeclaratorContext ctx, CommonTokenStream tokens) {
         var directDecl = ctx.directDeclarator();
         assert directDecl != null;
 
         if (directDecl.Identifier() == null && directDecl.LeftParen() == null || directDecl.RightParen() == null) {
-            throw new SSCSyntaxException("Missing function arguments", ctx, tokens);
+            return Util.getContextText(ctx, tokens);
         }
 
         if (directDecl.Identifier() != null) {
@@ -67,7 +69,7 @@ public record FunctionDefinition(List<String> specs,
         throw new SSCSyntaxException("Unknown problem", ctx, tokens);
     }
 
-    private static List<String> parseFunctionArgs(SSCParser.DeclaratorContext ctx, CommonTokenStream tokens) {
+    public static List<String> parseFunctionArgs(SSCParser.DeclaratorContext ctx, CommonTokenStream tokens) {
         List<String> args = new ArrayList<>();
         if (ctx.directDeclarator().parameterTypeList() == null) {
             /* function declaration without a prototype -- let cc deal with it */
@@ -79,7 +81,7 @@ public record FunctionDefinition(List<String> specs,
         return args;
     }
 
-    private static List<String> parseFunctionBody(SSCParser.CompoundStatementContext ctx, CommonTokenStream tokens) {
+    public static List<String> parseFunctionBody(SSCParser.CompoundStatementContext ctx, CommonTokenStream tokens) {
         List<String> statements = new ArrayList<>();
         for (var statement : ctx.blockItemList().blockItem()) {
             statements.add(Util.getContextText(statement, tokens));
