@@ -110,6 +110,13 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
     @Override
     public String visitPostfixExpression(SSCParser.PostfixExpressionContext ctx) {
         assert ctx != null;
+
+        /* Compound literals for some reason have to be converted here */
+        Optional<String> res = getCompoundLiteralReplaced(ctx);
+        if (res.isPresent()) {
+            return res.get();
+        }
+
         ParserRuleContext parent = ctx;
         while (parent != null && !(parent instanceof SSCParser.FunctionDefinitionContext)) {
             parent = parent.getParent();
@@ -128,6 +135,22 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
             return convertStaticFunction(ctx);
         }
         return getContextText(ctx, tokens);
+    }
+
+    private Optional<String> getCompoundLiteralReplaced(SSCParser.PostfixExpressionContext ctx) {
+        try {
+            var ss = ctx.typeName().specifierQualifierList().typeSpecifier().superStructSpecifier();
+            if (ss != null) {
+                final String res = getContextText(ctx, tokens)
+                        .replaceFirst("\\(\\s*superstruct\\s+", "( struct ");
+                printDebug("superStructSpecifier in: " + getContextText(ctx, tokens).replace("\n", " ")
+                        + "\n\t\tReturning: " + res.replace("\n", " "));
+                return Optional.of(res);
+            }
+        } catch (NullPointerException ignored) {
+            //System.out.println("[DEBUG] Null pointer exception in: " + getContextText(ctx, tokens).replace("\n", ""));
+        }
+        return Optional.empty();
     }
 
     public String convertStaticFunction(SSCParser.PostfixExpressionContext ctx) {
@@ -198,8 +221,6 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
             return getContextText(ctx, tokens);
         }
 
-        final StringBuilder finalExpression = new StringBuilder();
-
         final String objectName = getContextText(ctx.primaryExpression(), tokens);
         if (ctx.Identifier().isEmpty())
             throw new SSCSyntaxException("Arrow or dot expression has no right side expression", ctx, tokens);
@@ -218,11 +239,11 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
 
         final String ssName = foundVar.get().type();
 
-        finalExpression
-                .append(ssName)
-                .append("__")
-                .append(methodName)
-                .append("( ");
+        final StringBuilder finalExpression =
+                new StringBuilder(ssName)
+                        .append("__")
+                        .append(methodName)
+                        .append("( ");
 
         if (arrowOrDot == ArrowOrDot.Dot) {
             finalExpression.append("&");

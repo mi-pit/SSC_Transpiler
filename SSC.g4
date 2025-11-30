@@ -1123,11 +1123,11 @@ fragment SChar
     ;
 
 IncludeDirectiveSTD
-    : '#include' Whitespace* '<' (~[>])* '>'
+    : '#' Whitespace* 'include' Whitespace* '<' (~[>])* '>'
     ;
 
 IncludeDirective
-    : '#include' Whitespace* '"' (~["])* '"'
+    : '#' Whitespace* 'include' Whitespace* '"' (~["])* '"'
     ;
 
 SingleLineMacro
