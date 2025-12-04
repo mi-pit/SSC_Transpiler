@@ -1,8 +1,10 @@
 package cz.muni.fi.sscc.mine;
 
+import cz.muni.fi.sscc.AntlrException;
 import cz.muni.fi.sscc.antlr.SSCBaseVisitor;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.RuleNode;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
@@ -29,11 +31,18 @@ public abstract class ConvertorVisitor extends SSCBaseVisitor<String> {
             return "";  // ignore <EOF>
         }
 
-        return node.getText() + "\n";
+        return node.getText() + " ";
     }
 
     @Override
     protected String defaultResult() {
         return "";
+    }
+
+    @Override
+    public String visitErrorNode(ErrorNode node) {
+        final Token offending = node.getSymbol();
+
+        throw new AntlrException(offending, tokens);
     }
 }

@@ -1085,18 +1085,6 @@ public class SSCBaseListener implements SSCListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterDirective(SSCParser.DirectiveContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitDirective(SSCParser.DirectiveContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
 	@Override public void enterExternalDeclaration(SSCParser.ExternalDeclarationContext ctx) { }
 	/**
 	 * {@inheritDoc}

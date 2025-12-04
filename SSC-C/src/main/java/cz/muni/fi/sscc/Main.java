@@ -2,44 +2,51 @@ package cz.muni.fi.sscc;
 
 import cz.muni.fi.sscc.antlr.SSCLexer;
 import cz.muni.fi.sscc.antlr.SSCParser;
-import cz.muni.fi.sscc.mine.*;
+import cz.muni.fi.sscc.mine.ConvertorVisitor;
+import cz.muni.fi.sscc.mine.PostfixExpressionConvertorVisitor;
+import cz.muni.fi.sscc.mine.SSVisitor;
 import cz.muni.fi.sscc.mine.data.SuperStructRepre;
-import org.antlr.v4.runtime.*;
-import org.antlr.v4.runtime.tree.*;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import static cz.muni.fi.sscc.util.Util.*;
-
 public class Main {
     private static Collection<SuperStructRepre> sss;
-    public static boolean doPrintDebug = false;
-    public static boolean verbose = true;
-    public static boolean doCompile = false;
+    private static CommandLineArguments parsedArgs;
+    public static Logger logger;
 
     public static void main(String[] args) {
+        parsedArgs = new CommandLineArguments(args);
+        logger = new Logger(parsedArgs);
+
         try {
-            processFiles(args);
+            processFiles(parsedArgs.getFilesToProcess());
         } catch (IOException | InterruptedException e) {
+            //noinspection CallToPrintStackTrace
             e.printStackTrace();
             System.exit(1);
         }
     }
 
-    private static void processFiles(String[] args) throws IOException, InterruptedException {
-        if (args.length == 0) {
-            System.err.println("Usage: ‹progname› <file> [<file>...]");
+    private static void processFiles(List<Path> files) throws IOException, InterruptedException {
+        if (files.isEmpty()) {
+            System.err.println("No files given to process");
             System.exit(1);
         }
 
-        for (String fileArg : args) {
+        for (Path fileArg : files) {
             try {
                 processFile(fileArg);
-            } catch (SSCSyntaxException e) {
+            } catch (SSCSyntaxException | AntlrException e) {
                 System.err.println(e.getMessage());
             }
         }
@@ -47,64 +54,51 @@ public class Main {
 
     /**
      * TODO:
-     *  clean up file manipulation
-     *  add compilation
      *  add options
      *      transpile to C only
      *      transpile AND compile (remove `.c` file)
      */
-    private static void processFile(String fileArg) throws IOException, InterruptedException {
-        printVerbose("Parsing file: `" + fileArg + "`");
-        final Path fileAbsolutePath = Path.of(fileArg);
+    private static void processFile(final Path fileAbsolutePath) throws IOException, InterruptedException {
+        logger.printVerbose("Parsing file: `" + fileAbsolutePath + "`");
         final Path inputFileDir = fileAbsolutePath.getParent();
 
-        Path workingFile = Path.of(fileAbsolutePath.toString().replaceFirst("\\.ssc$", ".c"));
-        Files.writeString(workingFile, "", StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        final Path workingFile = Path.of(fileAbsolutePath.toString().replaceFirst("\\.ssc$", ".c"));
 
-        final VisitorData origSSCVisitorData = getVisitorData(fileAbsolutePath);
-
-        printVerbose("Extracting include directives...");
-        final List<String> includes = extractDirectives(
-                workingFile, origSSCVisitorData.tokens(), origSSCVisitorData.tree());
-
-        printVerbose("Preprocessing file " + workingFile + " ...");
-        preprocessSSCCode(inputFileDir, workingFile);
+        logger.printVerbose("Preprocessing file " + workingFile + " ...");
+        preprocessSSCCode(inputFileDir, fileAbsolutePath, workingFile);
 
         {
-            VisitorData data = getVisitorData(workingFile);
+            final VisitorData data = getVisitorData(workingFile);
 
-            printVerbose("Extracting superstructs...");
+            logger.printVerbose("Extracting superstructs...");
             extractSuperstructMembers(data.tokens(), data.tree(), workingFile);
         }
         {
-            VisitorData data = getVisitorData(workingFile);
+            final VisitorData data = getVisitorData(workingFile);
 
-            printVerbose("Replacing superstruct references...");
-            replaceSuperstructCalls(data.tokens(), data.tree(), workingFile, includes);
+            logger.printVerbose("Replacing superstruct references...");
+            replaceSuperstructCalls(data.tokens(), data.tree(), workingFile);
         }
 
-        printVerbose("Formatting...");
+        logger.printVerbose("Formatting...");
         formatCCode(workingFile);
 
-        printVerbose("Verifying...");
-        if (!verifyCCode(workingFile) || !doCompile) {
+        logger.printVerbose("Verifying...");
+        if (!verifyCCode(workingFile) || parsedArgs.getCompileTarget().isEmpty()) {
             return;
         }
 
-        printVerbose("Compiling...");
-        // fixme
-        compileCCode("/Users/mipit/Programming/CProjects/MyC/SSC_code/normal_c_runnable", workingFile);
+        logger.printVerbose("Compiling...");
+        compileCCode(parsedArgs.getCompileTarget().get(), workingFile);
     }
 
     private static VisitorData getVisitorData(Path file) throws IOException {
-        final SSCLexer tmpLexer = new SSCLexer(CharStreams.fromString(Files.readString(file)));
-        final CommonTokenStream tmpTokens = new CommonTokenStream(tmpLexer);
-        final SSCParser tmpParser = new SSCParser(tmpTokens);
-        final ParseTree tmpTree = tmpParser.compilationUnit();
-        return new VisitorData(tmpTokens, tmpTree);
-    }
-
-    private record VisitorData(CommonTokenStream tokens, ParseTree tree) {
+        final SSCLexer lexer = new SSCLexer(CharStreams.fromString(Files.readString(file)));
+        final CommonTokenStream tokens = new CommonTokenStream(lexer);
+        final SSCParser parser = new SSCParser(tokens);
+        parser.removeErrorListeners();
+        final ParseTree tree = parser.compilationUnit();
+        return new VisitorData(tokens, tree);
     }
 
     private static void extractSuperstructMembers(CommonTokenStream tokens, ParseTree tree, Path outputFile)
@@ -117,12 +111,10 @@ public class Main {
     }
 
     private static void replaceSuperstructCalls(CommonTokenStream tokens, ParseTree tree,
-                                                Path outputFile, List<String> includes)
+                                                Path outputFile)
             throws IOException {
         ConvertorVisitor visitor = new PostfixExpressionConvertorVisitor(tokens, sss);
-        final String visited = visitor.visit(tree);
-        final String includesString = String.join("\n", includes);
-        final String result = includesString + "\n" + visited;
+        final String result = visitor.visit(tree);
 
         Files.writeString(outputFile, result,
                 StandardOpenOption.WRITE,
@@ -130,35 +122,18 @@ public class Main {
         );
     }
 
-    /**
-     * Rewrites {@code outFile} with the code without `#include`s and returns a list of include strings.
-     */
-    public static List<String> extractDirectives(Path outFile, CommonTokenStream sscTokens, ParseTree sscTree)
-            throws IOException {
-        final IncludeDirectiveRemoverVisitor visitor = new IncludeDirectiveRemoverVisitor(sscTokens);
-        final IncludeDirectiveCollector collector = new IncludeDirectiveCollector();
-
-        collector.visit(sscTree);
-        final String withoutStdIncludes = visitor.visit(sscTree);
-        final List<String> includesOnly = collector.getIncludes();
-
-        Files.writeString(outFile, withoutStdIncludes, StandardOpenOption.TRUNCATE_EXISTING);
-
-        return includesOnly;
-    }
-
-    public static void preprocessSSCCode(Path dir, Path workingFile)
+    private static void preprocessSSCCode(Path dir, Path inFile, Path outFile)
             throws IOException, InterruptedException {
-        final Path tempOut = Files.createTempFile(dir, workingFile.getFileName().toString(), ".i");
+        final Path tempOut = Files.createTempFile(dir, inFile.getFileName().toString(), ".i");
 
-        /* cc -E -dI -x c test_file.ssc -P */
+        /* cc -E -x c test_file.ssc -P */
         final ProcessBuilder pb = new ProcessBuilder(
                 "cc",
-                "-E",           // Preprocess
-                "-dI",          // no includes
-                "-P",           // Do not output # line directives
-                "-x", "c",      // treat the .ssc file as C
-                workingFile.toString(),
+                "-E",       // Preprocess
+                "-P",       // Do not output # line directives
+                "-D__MP_SSC__", // todo: define SSC
+                "-x", "c",  // treat the .ssc file as C
+                inFile.toString(),
                 "-o", tempOut.toString() // output file
         );
 
@@ -171,10 +146,10 @@ public class Main {
             throw new RuntimeException("Preprocessing failed with exit code: " + exitCode);
         }
 
-        Files.move(tempOut, workingFile, StandardCopyOption.REPLACE_EXISTING);
+        Files.move(tempOut, outFile, StandardCopyOption.REPLACE_EXISTING);
     }
 
-    public static void formatCCode(Path file) throws IOException, InterruptedException {
+    private static void formatCCode(Path file) throws IOException, InterruptedException {
         final ProcessBuilder pb = new ProcessBuilder(
                 "/opt/homebrew/bin/clang-format", // fixme
                 "-i" /* in place */,
@@ -188,10 +163,13 @@ public class Main {
         }
     }
 
-    public static boolean verifyCCode(Path file) throws IOException, InterruptedException {
+    private static boolean verifyCCode(Path file) throws IOException, InterruptedException {
         final ProcessBuilder pb = new ProcessBuilder(
                 /* cc -Werror -Wall -Wextra -pedantic -fsyntax-only "$file" */
-                "cc", "-Werror", "-fsyntax-only", file.toString()
+                "cc",
+                "-Werror", "-Wall", "-Wextra",
+                "-Wno-extra-semi", /* I wasn't able to get rid of the trailing semicolons */
+                "-fsyntax-only", file.toString()
         );
         pb.inheritIO();
         final Process process = pb.start();
@@ -203,14 +181,15 @@ public class Main {
         return true;
     }
 
-    public static void compileCCode(String binaryName, Path... files) throws IOException, InterruptedException {
+    private static void compileCCode(String binaryName, Path... files) throws IOException, InterruptedException {
         /* cc -Werror -Wall -Wextra -pedantic -fsyntax-only "$file" */
-        List<String> cmd = new ArrayList<>();
+        final List<String> cmd = new ArrayList<>();
         cmd.add("cc");
         cmd.add("-Werror");
         cmd.add("-Wall");
         cmd.add("-Wextra");
         cmd.add("-pedantic");
+        cmd.add("-Wno-extra-semi");
         cmd.add("-o");
         cmd.add(binaryName);
 
@@ -226,5 +205,9 @@ public class Main {
         if (exitCode != 0) {
             System.err.println("Compilation failed with exit code: " + exitCode);
         }
+    }
+
+
+    private record VisitorData(CommonTokenStream tokens, ParseTree tree) {
     }
 }

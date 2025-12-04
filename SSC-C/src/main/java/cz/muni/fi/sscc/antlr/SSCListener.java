@@ -898,16 +898,6 @@ public interface SSCListener extends ParseTreeListener {
 	 */
 	void exitTranslationUnit(SSCParser.TranslationUnitContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link SSCParser#directive}.
-	 * @param ctx the parse tree
-	 */
-	void enterDirective(SSCParser.DirectiveContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link SSCParser#directive}.
-	 * @param ctx the parse tree
-	 */
-	void exitDirective(SSCParser.DirectiveContext ctx);
-	/**
 	 * Enter a parse tree produced by {@link SSCParser#externalDeclaration}.
 	 * @param ctx the parse tree
 	 */

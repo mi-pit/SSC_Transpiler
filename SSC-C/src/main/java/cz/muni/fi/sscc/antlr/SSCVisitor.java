@@ -545,12 +545,6 @@ public interface SSCVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitTranslationUnit(SSCParser.TranslationUnitContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link SSCParser#directive}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitDirective(SSCParser.DirectiveContext ctx);
-	/**
 	 * Visit a parse tree produced by {@link SSCParser#externalDeclaration}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

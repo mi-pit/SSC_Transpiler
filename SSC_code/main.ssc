@@ -1,7 +1,7 @@
-#include "../../CLibs/src/headers/core/errors.h"          /* warn */
-#include "../../CLibs/src/headers/util/ctrlflow/unused.h" /* UNUSED */
-#include "../../CLibs/src/structs/dynstr.h"               /* Dynstr */
-#include "../../CLibs/src/util/string_utils.h"            /* str_t */
+#/* warn */ include "../../CLibs/src/headers/core/errors.h" /* warn */
+#include "../../CLibs/src/headers/util/ctrlflow/unused.h"   /* UNUSED */
+#include "../../CLibs/src/structs/dynstr.h"                 /* Dynstr */
+#include "../../CLibs/src/util/string_utils.h"              /* str_t */
 
 #include <assert.h>
 #include <ctype.h>
@@ -21,14 +21,14 @@ superstruct Adder
 {
     int x;
 
-    void add( int add )
-    {
-        this->x = this->plus( add );
-    }
-
     int plus( int add )
     {
         return this->x + add;
+    }
+
+    void add( int add )
+    {
+        this->x = this->plus( add );
     }
 
     int static_add( int a, int b )
@@ -37,12 +37,12 @@ superstruct Adder
         return a + b;
     }
 
-    void double1()
+    void double1( void )
     {
         this->add( this->x );
     }
 
-    void double2()
+    void double2( void )
     {
         this->x = this->plus( this->static_add( 0, this->x ) );
     }
@@ -73,26 +73,26 @@ superstruct List
     void *items;
     size_t cap, len, el_size;
 
-    static superstruct List *init()
+    static superstruct List *new ( size_t elsize )
     {
         superstruct List *new_ls = calloc( 1, sizeof( superstruct List ) );
         if ( new_ls == NULL )
-            return ( void * ) fwarn_ret( RV_ERROR, "calloc" );
+            return fwarn_ret( NULL, "calloc" );
 
-        new_ls->items = calloc;
+        new_ls->items = calloc( LIST_DEFAULT_CAPACITY, elsize );
         return new_ls;
     }
 
-    superstruct Adder *get_adder_initialized_to_list_len()
+    superstruct Adder *get_adder_initialized_to_list_len( void )
     {
-        return Adder_init( this->len );
+        return Adder::new ( this->len );
     }
 
-    void *at_last()
+    void *at_last( void )
     {
         if ( this->len == 0 )
             return NULL;
-        return ( byte * ) this->items + ( this->len - 1 ) * this->el_size;
+        return ( char * ) ( this->items ) + ( this->len - 1 ) * ( this->el_size );
     }
 
     int append( void *data )
@@ -131,16 +131,24 @@ int main( void )
     } in_1            = { .x = 1 };
     struct Inner in_2 = { .x = 1 };
 
+    ( void ) in_1;
+    ( void ) in_2;
+
     const char *string = "this is a superstruct test file";
+    ( void ) string;
 
     static superstruct List *null_ls = NULL;
+    ( void ) null_ls;
 
-    superstruct List *ls = List.init(); // superstruct
-    assert( ls != NULL );               // after List.init()
-    assert( ls->at_last() == NULL );    // => List__at_last( ls )
+    superstruct List *ls = List::new ( sizeof( int ) ); // superstruct
+    assert( ls != NULL );                               // after List::new()
+    assert( ls->at_last() == NULL );                    // => List__at_last( ls )
 
     const int x = 12, y = 21;
     superstruct Adder add = { .x = x };
+
+    do_nothing( &add, &add );
+
     assert( add.plus( y ) == x + y );
 
     assert( static_adder( 1, 2 ) == 3 );

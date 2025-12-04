@@ -3,7 +3,6 @@ package cz.muni.fi.sscc.mine.data;
 import cz.muni.fi.sscc.util.Either;
 
 import java.util.Objects;
-import java.util.Optional;
 
 public class SSMember {
     private final Either<Declaration, FunctionDefinition> data;

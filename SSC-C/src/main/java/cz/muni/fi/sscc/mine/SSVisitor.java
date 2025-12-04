@@ -1,14 +1,17 @@
 package cz.muni.fi.sscc.mine;
 
+import cz.muni.fi.sscc.antlr.SSCParser;
 import cz.muni.fi.sscc.mine.data.Declaration;
 import cz.muni.fi.sscc.mine.data.FunctionDefinition;
 import cz.muni.fi.sscc.mine.data.SSMember;
-import cz.muni.fi.sscc.util.Util;
-import cz.muni.fi.sscc.antlr.SSCParser;
 import cz.muni.fi.sscc.mine.data.SuperStructRepre;
+import cz.muni.fi.sscc.util.Util;
 import org.antlr.v4.runtime.CommonTokenStream;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 
 public class SSVisitor extends ConvertorVisitor {
@@ -21,7 +24,7 @@ public class SSVisitor extends ConvertorVisitor {
     private static String convertSuperstructToStruct(SuperStructRepre ss) {
         final StringBuilder result = new StringBuilder();
 
-        result.append(String.format("struct %s {\n", ss.name()));
+        result.append(String.format("superstruct %s {\n", ss.name()));
         for (SSMember s : ss.member()) {
             if (s.isDeclaration()) {
                 assert s.getData().getLeft().isPresent();
@@ -54,7 +57,7 @@ public class SSVisitor extends ConvertorVisitor {
 
         if (ctx.superStructBody() == null) {
             // Usage in expression (e.g. `sizeof( superstruct )`)
-            return "struct " + name + " ";
+            return "superstruct " + name + " ";
         }
 
         for (SSCParser.SuperStructMemberContext memberCtx : ctx.superStructBody().superStructMember()) {
@@ -62,7 +65,7 @@ public class SSVisitor extends ConvertorVisitor {
                 final String text = Util.getContextText(memberCtx, tokens);
                 memberList.add(SSMember.declaration(new Declaration(text)));
             } else if (memberCtx.functionDefinition() != null) {
-                FunctionDefinition functionDefinition =
+                final FunctionDefinition functionDefinition =
                         new FunctionDefinition(name, memberCtx.functionDefinition(), tokens);
 
                 memberList.add(SSMember.function(functionDefinition));
@@ -70,28 +73,9 @@ public class SSVisitor extends ConvertorVisitor {
         }
 
         // Save to record
-        SuperStructRepre repr = new SuperStructRepre(name, memberList);
+        final SuperStructRepre repr = new SuperStructRepre(name, memberList);
         superStructs.add(repr);
 
         return convertSuperstructToStruct(repr);
-    }
-
-
-    @Override
-    public String visitDeclaration(SSCParser.DeclarationContext ctx) {
-        var sss = ctx
-                .declarationSpecifiers()
-                .declarationSpecifier()
-                .stream()
-                .map(SSCParser.DeclarationSpecifierContext::typeSpecifier)
-                .map(SSCParser.TypeSpecifierContext::superStructSpecifier)
-                .filter(Objects::nonNull)
-                .map(ss -> {
-                    String str = visit(ss);
-                    str = str.substring(0, str.length() - 1);
-                    return str;
-                });
-
-        return super.visitDeclaration(ctx);
     }
 }

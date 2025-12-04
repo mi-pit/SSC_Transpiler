@@ -284,7 +284,7 @@ structDeclarator
     ;
 
 enumSpecifier
-    : 'enum' Identifier? '{' enumeratorList ','? '}'
+    : 'enum' Identifier? (':' typedefName)? '{' enumeratorList ','? '}'
     | 'enum' Identifier
     ;
 
@@ -310,6 +310,7 @@ typeQualifier
     | 'volatile'
     | '_Atomic'
     | '_Nonnull'
+    | '_Nullable'
     ;
 
 functionSpecifier
@@ -533,17 +534,9 @@ translationUnit
     : externalDeclaration+
     ;
 
-directive
-    : IncludeDirectiveSTD
-    | IncludeDirective
-    | SingleLineMacro
-    | MultiLineMacro
-    ;
-
 externalDeclaration
     : functionDefinition
     | declaration
-    | directive
     | ';' // stray ;
     ;
 
@@ -958,6 +951,10 @@ Constant
     | CharacterConstant
     ;
 
+VersionNumber
+    : IntegerConstant ('.' IntegerConstant)*
+    ;
+
 fragment IntegerConstant
     : DecimalConstant IntegerSuffix?
     | OctalConstant IntegerSuffix?
@@ -1122,22 +1119,6 @@ fragment SChar
     | '\\\r\n' // Added line
     ;
 
-IncludeDirectiveSTD
-    : '#' Whitespace* 'include' Whitespace* '<' (~[>])* '>'
-    ;
-
-IncludeDirective
-    : '#' Whitespace* 'include' Whitespace* '"' (~["])* '"'
-    ;
-
-SingleLineMacro
-    : '#define' Whitespace+ ~[\n]*? '\r'? '\n'
-    ;
-
-MultiLineMacro
-    : '#define' Whitespace+ (~[\n]*? '\\' '\r'? '\n')+ ~ [\n]+
-    ;
-
 // ignore the following asm blocks:
 /*
     asm
@@ -1145,6 +1126,11 @@ MultiLineMacro
         mfspr x, 286;
     }
  */
+
+Directive
+    : '#' (~[\r\n\\] | '\\' [\r\n])* -> channel(HIDDEN)
+    ;
+
 AsmBlock
     : 'asm' ~'{'* '{' ~'}'* '}' -> channel(HIDDEN)
     ;

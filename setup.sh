@@ -24,4 +24,5 @@ FILES=(
 for f in "${FILES[@]}"; do
     prepend "$f" "package cz.muni.fi.sscc.antlr;"
     mv "$f" "SSC-C/src/main/java/cz/muni/fi/sscc/antlr/$f"
+    echo "Moved $f -> SSC-C/src/main/java/cz/muni/fi/sscc/antlr/$f"
 done

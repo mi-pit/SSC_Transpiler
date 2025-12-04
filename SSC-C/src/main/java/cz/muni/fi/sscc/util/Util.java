@@ -1,14 +1,11 @@
 package cz.muni.fi.sscc.util;
 
-import cz.muni.fi.sscc.Main;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.misc.Interval;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
+import java.util.List;
 
 public class Util {
 
@@ -21,39 +18,33 @@ public class Util {
             return "";
         int start = ctx.getStart().getTokenIndex();
         int stop = ctx.getStop().getTokenIndex();
-        return tokens.getText(new Interval(start, stop));
+        return tokens.getText(new Interval(start, stop)).replace("\n", " ");
     }
 
-    public static void printDebug(String string) {
-        printDebug("%s\n", string);
-    }
+    public static String getContextAroundToken(Token token, CommonTokenStream tokens, int radius) {
+        if (token == null || tokens == null) return "";
 
-    public static void printDebug(String fmt, Object... objects) {
-        if (Main.doPrintDebug) {
-            System.out.print("[DEBUG] ");
-            System.out.printf(fmt, objects);
+        final int idx = token.getTokenIndex();
+        final List<Token> list = tokens.getTokens();
+
+        int from = Math.max(0, idx - radius);
+        int to = Math.min(list.size() - 1, idx + radius);
+
+        StringBuilder sb = new StringBuilder();
+        for (int i = from; i <= to; i++) {
+            sb.append(list.get(i).getText());
         }
+        return sb.toString();
     }
 
-    public static void printVerbose(String string, Object... objects) {
-        if (Main.verbose) {
-            System.out.printf(string, objects);
-            System.out.println();
+    public static String getLineFromTokens(CommonTokenStream tokens, int lineNumber) {
+        StringBuilder sb = new StringBuilder();
+
+        for (Token t : tokens.getTokens()) {
+            if (t.getLine() == lineNumber && t.getType() != Token.EOF) {
+                sb.append(t.getText());
+            }
         }
-    }
-
-    public static void printVerbose(String string) {
-        printVerbose("%s", string);
-    }
-
-    public static void writeToFile(Path outputFile, String string)
-            throws IOException {
-        writeToFile(outputFile, "%s", string);
-    }
-
-    public static void writeToFile(Path outputFile, String fmt, Object... objects)
-            throws IOException {
-        printDebug(fmt, objects);
-        Files.writeString(outputFile, String.format(fmt, objects), StandardOpenOption.APPEND);
+        return sb.toString().trim();
     }
 }

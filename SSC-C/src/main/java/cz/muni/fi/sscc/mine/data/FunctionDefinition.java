@@ -90,12 +90,13 @@ public record FunctionDefinition(List<String> specs,
     }
 
     public String getText() {
-        if (args.size() == 1 && args.get(0).equals("void")) {
+        final boolean isStatic = specs.stream().anyMatch("static"::equals);
+        final boolean isPure = specs.stream().anyMatch("pure"::equals);
+
+        if (!isStatic && args.size() == 1 && args.get(0).equals("void")) {
             args.remove(0);
         }
 
-        final boolean isStatic = specs.stream().anyMatch("static"::equals);
-        final boolean isPure = specs.stream().anyMatch("pure"::equals);
         if (isStatic && isPure) {
             throw new SSCSyntaxException("Method may not be both `static` and `pure`", null, null);
         }
@@ -105,7 +106,7 @@ public record FunctionDefinition(List<String> specs,
             if (isPure) {
                 selfRef.append("const ");
             }
-            selfRef.append("struct ");
+            selfRef.append("superstruct ");
             selfRef.append(superstructMemberOf);
             selfRef.append(" *this");
 

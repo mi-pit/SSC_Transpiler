@@ -53,9 +53,12 @@ struct Normal {
     Runnable f;
 };
 
+
+#define println( ... ) ( printf( __VA_ARGS__ ) + printf( "\n" ) )
+
 void run_hello_world( void )
 {
-    printf( "Hello, world!" );
+    ( void ) println( "Hello, world!" );
 }
 
 
@@ -64,6 +67,7 @@ int main( void )
     superstruct SSName *obj  = calloc( 1, sizeof( superstruct SSName ) );
     superstruct SSName objs  = ( superstruct SSName ) { .x = 1 };
     superstruct SSName objs2 = *obj;
+    ( void ) objs2;
 
     obj->methodname( 1, 2, 3 );
     obj->methodname( 1, objs.methodname( -1, -2, -3 ), 3 );
