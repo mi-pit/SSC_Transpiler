@@ -45,6 +45,7 @@ primaryExpression
     | '__extension__'? '(' compoundStatement ')' // Blocks (GCC extension)
     | '__builtin_va_arg' '(' unaryExpression ',' typeName ')'
     | '__builtin_offsetof' '(' typeName ',' unaryExpression ')'
+    | VersionNumber // For attributes only (dirty hack)
     ;
 
 genericSelection
