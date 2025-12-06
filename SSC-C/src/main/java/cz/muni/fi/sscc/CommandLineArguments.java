@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import static cz.muni.fi.sscc.ExitValue.err;
+
 public class CommandLineArguments {
     private String compileTarget;
     private boolean verbose;
@@ -41,12 +43,12 @@ public class CommandLineArguments {
 
                             case "--compile":
                                 if (compileTarget != null) {
-                                    err(1, "Compile target already specified");
+                                    err(ExitValue.INVALID_ARGUMENTS, "Compile target already specified");
                                 }
                                 yield NextOperation.CompileTarget;
 
                             default:
-                                err(1, "Unknown option: " + arg);
+                                err(ExitValue.INVALID_ARGUMENTS, "Unknown option: " + arg);
                         }
                     } else {
                         filesToProcess.add(Paths.get(arg));
@@ -58,15 +60,9 @@ public class CommandLineArguments {
         }
 
         if (nextOperation == NextOperation.CompileTarget) {
-            err(1, "Missing compile target");
+            err(ExitValue.INVALID_ARGUMENTS, "Missing compile target");
         }
     }
-
-    private static void err(int exitCode, String message) {
-        System.err.println("SSC Transpiler: " + message);
-        System.exit(exitCode);
-    }
-
 
     public Optional<String> getCompileTarget() {
         return compileTarget == null ? Optional.empty() : Optional.of(compileTarget);

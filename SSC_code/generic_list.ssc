@@ -183,7 +183,7 @@ superstruct Stack
     }
 
 
-    static void printf( const char *fmt, ... )
+    static void printf( const char *fmt, ... ) PrintfLike( 1, 2 )
     {
         va_list vargs;
         va_start( vargs, fmt );

@@ -19,10 +19,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import static cz.muni.fi.sscc.ExitValue.err;
+
 public class Main {
     private static Collection<SuperStructRepre> sss;
     private static CommandLineArguments parsedArgs;
     public static Logger logger;
+
+    private static final List<String> CC_OPTIONS = List.of("-Werror", "-Wno-extra-semi");
 
     public static void main(String[] args) {
         parsedArgs = new CommandLineArguments(args);
@@ -31,16 +35,13 @@ public class Main {
         try {
             processFiles(parsedArgs.getFilesToProcess());
         } catch (IOException | InterruptedException e) {
-            //noinspection CallToPrintStackTrace
-            e.printStackTrace();
-            System.exit(1);
+            err(ExitValue.IO_EXCEPTION, e.getMessage());
         }
     }
 
     private static void processFiles(List<Path> files) throws IOException, InterruptedException {
         if (files.isEmpty()) {
-            System.err.println("No files given to process");
-            System.exit(1);
+            err(ExitValue.INVALID_ARGUMENTS, "No files given to process");
         }
 
         for (Path fileArg : files) {
@@ -84,7 +85,9 @@ public class Main {
         formatCCode(workingFile);
 
         logger.printVerbose("Verifying...");
-        if (!verifyCCode(workingFile) || parsedArgs.getCompileTarget().isEmpty()) {
+        verifyCCode(workingFile);
+
+        if (parsedArgs.getCompileTarget().isEmpty()) {
             return;
         }
 
@@ -113,7 +116,7 @@ public class Main {
     private static void replaceSuperstructCalls(CommonTokenStream tokens, ParseTree tree,
                                                 Path outputFile)
             throws IOException {
-        ConvertorVisitor visitor = new PostfixExpressionConvertorVisitor(tokens, sss);
+        final ConvertorVisitor visitor = new PostfixExpressionConvertorVisitor(tokens, sss);
         final String result = visitor.visit(tree);
 
         Files.writeString(outputFile, result,
@@ -143,7 +146,7 @@ public class Main {
 
         final int exitCode = process.waitFor();
         if (exitCode != 0) {
-            throw new RuntimeException("Preprocessing failed with exit code: " + exitCode);
+            err(ExitValue.C_PREPROCESSING_FAIL, "C preprocessor failed with exit code: " + exitCode);
         }
 
         Files.move(tempOut, outFile, StandardCopyOption.REPLACE_EXISTING);
@@ -159,37 +162,31 @@ public class Main {
         final Process process = pb.start();
         final int exitCode = process.waitFor();
         if (exitCode != 0) {
-            System.err.println("Formatting failed with exit code: " + exitCode);
+            err(ExitValue.IO_EXCEPTION, "Formatting failed with exit code: " + exitCode);
         }
     }
 
-    private static boolean verifyCCode(Path file) throws IOException, InterruptedException {
-        final ProcessBuilder pb = new ProcessBuilder(
-                /* cc -Werror -Wall -Wextra -pedantic -fsyntax-only "$file" */
-                "cc",
-                "-Werror", "-Wall", "-Wextra",
-                "-Wno-extra-semi", /* I wasn't able to get rid of the trailing semicolons */
-                "-fsyntax-only", file.toString()
-        );
+    private static void verifyCCode(Path file) throws IOException, InterruptedException {
+        final List<String> cmd = new ArrayList<>();
+        cmd.add("cc");
+        cmd.addAll(CC_OPTIONS);
+        cmd.add("-fsyntax-only");
+        cmd.add(file.toString());
+
+        final ProcessBuilder pb = new ProcessBuilder(cmd);
         pb.inheritIO();
         final Process process = pb.start();
         final int exitCode = process.waitFor();
         if (exitCode != 0) {
-            System.err.println("Verification failed with exit code: " + exitCode);
-            return false;
+            err(ExitValue.C_VERIFICATION_FAIL, "Verification failed with exit code: " + exitCode);
         }
-        return true;
     }
 
     private static void compileCCode(String binaryName, Path... files) throws IOException, InterruptedException {
         /* cc -Werror -Wall -Wextra -pedantic -fsyntax-only "$file" */
         final List<String> cmd = new ArrayList<>();
         cmd.add("cc");
-        cmd.add("-Werror");
-        cmd.add("-Wall");
-        cmd.add("-Wextra");
-        cmd.add("-pedantic");
-        cmd.add("-Wno-extra-semi");
+        cmd.addAll(CC_OPTIONS);
         cmd.add("-o");
         cmd.add(binaryName);
 
@@ -203,10 +200,9 @@ public class Main {
         final Process process = pb.start();
         final int exitCode = process.waitFor();
         if (exitCode != 0) {
-            System.err.println("Compilation failed with exit code: " + exitCode);
+            err(ExitValue.C_COMPILATION_FAIL, "Compilation failed with exit code: " + exitCode);
         }
     }
-
 
     private record VisitorData(CommonTokenStream tokens, ParseTree tree) {
     }

@@ -59,6 +59,7 @@ struct Normal {
 void run_hello_world( void )
 {
     ( void ) println( "Hello, world!" );
+    ( void ) printf( "%s", "NULL" );
 }
 
 
