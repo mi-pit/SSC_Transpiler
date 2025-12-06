@@ -69,8 +69,9 @@ public record FunctionDefinition(List<String> specs,
         throw new SSCSyntaxException("Unknown problem", ctx, tokens);
     }
 
-    public static List<String> parseFunctionArgs(SSCParser.DeclaratorContext ctx, CommonTokenStream tokens) {
-        List<String> args = new ArrayList<>();
+    public static List<String> parseFunctionArgs(final SSCParser.DeclaratorContext ctx,
+                                                 final CommonTokenStream tokens) {
+        final List<String> args = new ArrayList<>();
         if (ctx.directDeclarator().parameterTypeList() == null) {
             /* function declaration without a prototype -- let cc deal with it */
             return args;
@@ -78,6 +79,11 @@ public record FunctionDefinition(List<String> specs,
         for (var param : ctx.directDeclarator().parameterTypeList().parameterList().parameterDeclaration()) {
             args.add(Util.getContextText(param, tokens));
         }
+
+        if (ctx.directDeclarator().parameterTypeList().Ellipsis() != null) {
+            args.add("...");
+        }
+
         return args;
     }
 

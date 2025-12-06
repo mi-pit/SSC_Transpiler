@@ -77,7 +77,7 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
                 if (struct.isEmpty()) {
                     continue; // no ss
                 }
-                SuperstructVariable var = new SuperstructVariable(
+                final SuperstructVariable var = new SuperstructVariable(
                         struct.get(),
                         param.declarator().pointer() != null,
                         param.declarator().directDeclarator().Identifier().getText()
