@@ -15,6 +15,7 @@ SSC-C/target
 *.class
 *.jar
 !SSC-C/antlr-4.13.2-complete.jar
+!sscc.jar
 
 # test files
 !*.ssc
