@@ -11,7 +11,9 @@
 !SSC-C/**
 
 SSC-C/target
+
 *.class
+*.jar
 
 # test files
 !*.ssc
