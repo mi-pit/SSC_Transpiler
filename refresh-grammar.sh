@@ -22,7 +22,7 @@ FILES=(
 )
 
 for f in "${FILES[@]}"; do
-    prepend "$f" "package cz.muni.fi.sscc.antlr; /* added to project in \`$0\` */"
-    mv "$f" "SSC-C/src/main/java/cz/muni/fi/sscc/antlr/$f"
+    prepend "$f" "package antlr; /* added to project in \`$0\` */"
+    mv "$f" "SSC-C/src/main/java/antlr/$f"
     # echo "Moved $f -> SSC-C/src/main/java/cz/muni/fi/sscc/antlr/$f"
 done

@@ -1,4 +1,4 @@
-package cz.muni.fi.sscc.antlr; /* added to project in `./setup.sh` */
+package antlr; /* added to project in `./refresh-grammar.sh` */
 
 // Generated from SSC.g4 by ANTLR 4.13.2
 

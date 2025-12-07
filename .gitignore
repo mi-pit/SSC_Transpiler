@@ -13,7 +13,7 @@
 
 # test files
 !*.ssc
-!SSC_code
+!ssc-examples
 
 # for conversions
 !*.g4

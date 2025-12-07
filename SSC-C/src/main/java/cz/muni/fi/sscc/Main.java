@@ -1,7 +1,7 @@
 package cz.muni.fi.sscc;
 
-import cz.muni.fi.sscc.antlr.SSCLexer;
-import cz.muni.fi.sscc.antlr.SSCParser;
+import antlr.SSCLexer;
+import antlr.SSCParser;
 import cz.muni.fi.sscc.exceptions.AntlrException;
 import cz.muni.fi.sscc.exceptions.SSCSyntaxException;
 import cz.muni.fi.sscc.mine.ConvertorVisitor;

@@ -1,7 +1,7 @@
 package cz.muni.fi.sscc.mine;
 
 import cz.muni.fi.sscc.exceptions.AntlrException;
-import cz.muni.fi.sscc.antlr.SSCBaseVisitor;
+import antlr.SSCBaseVisitor;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ErrorNode;
