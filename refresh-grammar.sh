@@ -1,8 +1,15 @@
 #!/bin/bash
 
-antlr SSC.g4 -Dlanguage=Java -visitor || exit 1
+set -e
 
-rm ./SSC.interp ./SSC.tokens ./SSCLexer.interp ./SSCLexer.tokens
+BASE_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+antlr "$BASE_DIR/SSC.g4" -Dlanguage=Java -visitor
+
+rm "$BASE_DIR/SSC.interp"
+rm "$BASE_DIR/SSC.tokens"
+rm "$BASE_DIR/SSCLexer.interp"
+rm "$BASE_DIR/SSCLexer.tokens"
 
 
 prepend() {
@@ -12,7 +19,6 @@ prepend() {
     { printf "%s\n\n" "$text"; cat "$file"; } > "$file.tmp" \
         && mv "$file.tmp" "$file"
 }
-
 
 FILES=(
     "SSCBaseListener.java"
@@ -24,7 +30,7 @@ FILES=(
 )
 
 for f in "${FILES[@]}"; do
-    prepend "$f" "package antlr; /* added to project in \`$0\` */"
-    mv "$f" "SSC-C/src/main/java/antlr/$f"
-    # echo "Moved $f -> SSC-C/src/main/java/cz/muni/fi/sscc/antlr/$f"
+    prepend "$BASE_DIR/$f" "package antlr; /* added to project in \`refresh-grammar.sh\` */"
+    mv "$BASE_DIR/$f" "$BASE_DIR/SSC-C/src/main/java/antlr/$f"
+    # echo "Moved $f -> $TARGET_DIR/$f"
 done
