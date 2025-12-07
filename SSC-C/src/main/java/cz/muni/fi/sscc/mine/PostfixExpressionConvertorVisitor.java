@@ -1,7 +1,7 @@
 package cz.muni.fi.sscc.mine;
 
 import cz.muni.fi.sscc.Main;
-import cz.muni.fi.sscc.SSCSyntaxException;
+import cz.muni.fi.sscc.exceptions.SSCSyntaxException;
 import cz.muni.fi.sscc.antlr.SSCParser;
 import cz.muni.fi.sscc.mine.data.FunctionDefinition;
 import cz.muni.fi.sscc.mine.data.SSMember;

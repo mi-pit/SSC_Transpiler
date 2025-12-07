@@ -1,6 +1,6 @@
 package cz.muni.fi.sscc.mine;
 
-import cz.muni.fi.sscc.AntlrException;
+import cz.muni.fi.sscc.exceptions.AntlrException;
 import cz.muni.fi.sscc.antlr.SSCBaseVisitor;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.Token;
@@ -10,6 +10,7 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 
 public abstract class ConvertorVisitor extends SSCBaseVisitor<String> {
     protected final CommonTokenStream tokens;
+    private boolean hasErrors = false;
 
     protected ConvertorVisitor(CommonTokenStream tokens) {
         this.tokens = tokens;
@@ -41,8 +42,14 @@ public abstract class ConvertorVisitor extends SSCBaseVisitor<String> {
 
     @Override
     public String visitErrorNode(ErrorNode node) {
-        final Token offending = node.getSymbol();
+        hasErrors = true;
 
-        throw new AntlrException(offending, tokens);
+        final Token token = node.getSymbol();
+        System.err.println(new AntlrException(token, tokens).getMessage());
+        return super.visitErrorNode(node);
+    }
+
+    public boolean hasNoErrors() {
+        return !hasErrors;
     }
 }

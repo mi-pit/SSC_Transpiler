@@ -1,5 +1,6 @@
 package cz.muni.fi.sscc.mine;
 
+import cz.muni.fi.sscc.exceptions.SSCSyntaxException;
 import cz.muni.fi.sscc.antlr.SSCParser;
 import cz.muni.fi.sscc.mine.data.Declaration;
 import cz.muni.fi.sscc.mine.data.FunctionDefinition;
@@ -74,7 +75,9 @@ public class SSVisitor extends ConvertorVisitor {
 
         // Save to record
         final SuperStructRepre repr = new SuperStructRepre(name, memberList);
-        superStructs.add(repr);
+        if (!superStructs.add(repr)) {
+            throw new SSCSyntaxException("Superstruct with name " + repr.name() + " already exists", ctx, tokens);
+        }
 
         return convertSuperstructToStruct(repr);
     }
