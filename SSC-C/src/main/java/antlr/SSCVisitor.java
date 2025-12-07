@@ -1,4 +1,4 @@
-package antlr; /* added to project in `./refresh-grammar.sh` */
+package antlr; /* added to project in `/Users/mipit/Programming/CProjects/MyC/refresh-grammar.sh` */
 
 // Generated from SSC.g4 by ANTLR 4.13.2
 import org.antlr.v4.runtime.tree.ParseTreeVisitor;
