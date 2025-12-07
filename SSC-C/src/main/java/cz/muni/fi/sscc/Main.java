@@ -24,6 +24,8 @@ import java.util.List;
 import static cz.muni.fi.sscc.ExitValue.err;
 
 public class Main {
+    private static final String SSC_DEF_MACRO_STRING = "__SSC_LANG__";
+
     private static Collection<SuperStructRepre> sss;
     private static CommandLineArguments parsedArgs;
     public static Logger logger;
@@ -55,12 +57,17 @@ public class Main {
             err(ExitValue.INVALID_ARGUMENTS, "No files given to process");
         }
 
+        int aggregate = 0;
         for (Path fileArg : files) {
             try {
-                processFile(fileArg);
+                aggregate += processFile(fileArg) ? 0 : 1;
             } catch (SSCSyntaxException | AntlrException e) {
                 System.err.println(e.getMessage());
             }
+        }
+
+        if (aggregate != 0) {
+            err(ExitValue.TRANSPILATION_FAIL, "Could not process " + aggregate + " file(s)");
         }
     }
 
@@ -70,7 +77,7 @@ public class Main {
      *      transpile to C only
      *      transpile AND compile (remove `.c` file)
      */
-    private static void processFile(final Path fileAbsolutePath) throws IOException, InterruptedException {
+    private static boolean processFile(final Path fileAbsolutePath) throws IOException, InterruptedException {
         logger.printVerbose("Parsing file: `" + fileAbsolutePath + "`");
         final Path inputFileDir = fileAbsolutePath.getParent();
 
@@ -83,13 +90,19 @@ public class Main {
             final VisitorData data = getVisitorData(workingFile);
 
             logger.printVerbose("Extracting superstructs...");
-            extractSuperstructMembers(data.tokens(), data.tree(), workingFile);
+            if (!extractSuperstructMembers(data.tokens(), data.tree(), workingFile)) {
+                logger.printVerbose("Failed to extract superstructs.");
+                return false; // Error nodes encountered
+            }
         }
         {
             final VisitorData data = getVisitorData(workingFile);
 
             logger.printVerbose("Replacing superstruct references...");
-            replaceSuperstructCalls(data.tokens(), data.tree(), workingFile);
+            if (!replaceSuperstructCalls(data.tokens(), data.tree(), workingFile)) {
+                logger.printVerbose("Failed to replace superstruct references.");
+                return false;
+            }
         }
 
         logger.printVerbose("Formatting...");
@@ -99,41 +112,50 @@ public class Main {
         verifyCCode(workingFile);
 
         if (parsedArgs.getCompileTarget().isEmpty()) {
-            return;
+            return true;
         }
 
         logger.printVerbose("Compiling...");
+        // TODO: compile all files at once
         compileCCode(parsedArgs.getCompileTarget().get(), workingFile);
+        return true;
     }
 
     private static VisitorData getVisitorData(Path file) throws IOException {
         final SSCLexer lexer = new SSCLexer(CharStreams.fromString(Files.readString(file)));
         final CommonTokenStream tokens = new CommonTokenStream(lexer);
         final SSCParser parser = new SSCParser(tokens);
+
         parser.removeErrorListeners();
+        parser.addErrorListener(errorListener);
+
         final ParseTree tree = parser.compilationUnit();
         return new VisitorData(tokens, tree);
     }
 
-    private static void extractSuperstructMembers(CommonTokenStream tokens, ParseTree tree, Path outputFile)
+    private static boolean extractSuperstructMembers(CommonTokenStream tokens, ParseTree tree, Path outputFile)
             throws IOException {
         SSVisitor visitor = new SSVisitor(tokens);
         String result = visitor.visit(tree);
         sss = visitor.getSuperStructs();
 
         Files.writeString(outputFile, result, StandardOpenOption.TRUNCATE_EXISTING);
+
+        return visitor.hasNoErrors();
     }
 
-    private static void replaceSuperstructCalls(CommonTokenStream tokens, ParseTree tree,
-                                                Path outputFile)
+    private static boolean replaceSuperstructCalls(CommonTokenStream tokens, ParseTree tree,
+                                                   Path outputFile)
             throws IOException {
         final ConvertorVisitor visitor = new PostfixExpressionConvertorVisitor(tokens, sss);
-        final String result = visitor.visit(tree);
+        final String result = visitor.visit(tree) + "\n";
 
         Files.writeString(outputFile, result,
                 StandardOpenOption.WRITE,
                 StandardOpenOption.TRUNCATE_EXISTING
         );
+
+        return visitor.hasNoErrors();
     }
 
     private static void preprocessSSCCode(Path dir, Path inFile, Path outFile)
@@ -145,7 +167,7 @@ public class Main {
                 "cc",
                 "-E",       // Preprocess
                 "-P",       // Do not output # line directives
-                "-D__MP_SSC__", // todo: define SSC
+                "-D" + SSC_DEF_MACRO_STRING,
                 "-x", "c",  // treat the .ssc file as C
                 inFile.toString(),
                 "-o", tempOut.toString() // output file
