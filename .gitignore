@@ -1,27 +1,31 @@
 *
 
+# Git stuff
 !.gitignore
+
 !README.md
-!*.txt
+!LICENSE
+
+# Antlr stuff
 !third-party
+!third-party/**
 
-!.clang-format
+# The OFFICIAL SSC format
+!_clang-format
 
-!SSC-C
-!SSC-C/**
+# For execution
+!refresh-grammar.sh
+!build.sh
+!run.sh
 
-SSC-C/target
+# SSC Grammar
+!SSC.g4
 
-*.class
-*.jar
-!SSC-C/antlr-4.13.2-complete.jar
-!sscc.jar
+# Java
+!SSC-C/src/main/**
+## Generatable -- don't include
+SSC-C/src/main/java/antlr
 
-# test files
-!*.ssc
+# SSC example code
 !ssc-examples
-
-# for conversions
-!*.g4
-!*.java
-!*.sh
+!*.ssc
