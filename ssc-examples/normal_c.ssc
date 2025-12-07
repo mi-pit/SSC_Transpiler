@@ -1,0 +1,26 @@
+#include <stdio.h>
+
+typedef void ( *Runnable )( void );
+
+struct Kunk {
+    int a;
+    Runnable f;
+};
+
+void run_hello_world( void )
+{
+    printf( "Hello, world!" );
+}
+
+
+int main( void )
+{
+    struct Kunk kunk = {
+        .a = 12,
+        .f = run_hello_world,
+    };
+
+    kunk.f();
+
+    return 0;
+}

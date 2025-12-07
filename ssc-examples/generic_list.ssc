@@ -1,0 +1,251 @@
+#include "../../CLibs/src/headers.h"
+
+#include <assert.h>  /**/
+#include <stdbool.h> /**/
+#include <stdio.h>   /* *print* */
+#include <stdlib.h>  /* malloc, free, bsearch, qsort */
+#include <string.h>  /* mem* */
+
+#define LIST_DEF_SIZE 64
+
+#define LIST_CAP_SIZE_RATIO 2
+
+
+#define ListIndexOOBExceptionString( LIST, INDEX ) \
+    "index %zu out of bounds for list of size %zu", INDEX, ( LIST )->size - 1
+
+#define ListEmptyExceptionString "list is empty"
+
+#define ListNullPointerExceptionString( ARG ) #ARG " may not be null"
+
+
+/**
+ * A dynamic array. (List)<br>
+ * The List can store any elements of arbitrary size.
+ * <p>
+ * A new List can (and should) be created with the `List::new` static method
+ * <p>
+ * List::new function allocates and initializes a List
+ * with these default values:
+ * @code
+ * List::capacity := LIST_DEF_SIZE
+ * List::size     := 0
+ * List::items    := pointer to heap allocated memory of width ‹capacity›
+ * List::el_size  := width of a single element
+ * @endcode
+ *
+ * @attention
+ * All elements must be the same number of bytes long
+*/
+superstruct Stack
+{
+    size_t capacity; // Amount of allocated memory slots for items
+    size_t size;     // Number of items stored in List
+    void *items;     // Array of any type
+    size_t el_size;  // sizeof a single item
+
+
+    /* –––––––––––––––––––––––––––––– METHODS –––––––––––––––––––––––––––––– */
+
+    /*private*/ pure void *at__non_safe( size_t idx )
+    {
+        return ( char * ) ( this->items ) + idx * this->el_size;
+    }
+
+
+    /* Immutable */
+    pure const void *see( size_t idx )
+    {
+        if ( idx >= this->size )
+            return ( void * ) fwarnx_ret( NULL,
+                                          ListIndexOOBExceptionString( this, idx ) );
+
+        return this->at__non_safe( idx );
+    }
+
+    pure const void *peek( void )
+    {
+        if ( this->size == 0 )
+            return ( void * ) fwarnx_ret( NULL, ListEmptyExceptionString );
+
+        return this->at__non_safe( this->size - 1 );
+    }
+
+
+    /* Mutable */
+    void *at( size_t idx )
+    {
+        if ( idx >= this->size )
+            return ( void * ) fwarnx_ret( NULL,
+                                          ListIndexOOBExceptionString( this, idx ) );
+
+        return this->at__non_safe( idx );
+    }
+
+    void *at_last( void )
+    {
+        if ( this->size == 0 )
+            return ( void * ) fwarnx_ret( NULL, ListEmptyExceptionString );
+
+        return this->at__non_safe( this->size - 1 );
+    }
+
+
+    /**
+     * Changes (realloc) the lists capacity to be the smallest possible power of two
+     * capable of holding its items + `min_cap_add`
+     * \n
+     * Therefore, the List always has enough space
+     * to hold all of its items + min_cap_add
+     * @return -1 if realloc fails, else 0
+     */
+    /*private*/ int upsize( size_t min_cap_add )
+    {
+        const size_t min_new_cap = this->capacity + min_cap_add;
+
+        size_t new_capacity = this->capacity;
+        while ( new_capacity < min_new_cap )
+            new_capacity *= LIST_CAP_SIZE_RATIO;
+
+        void *tmp = realloc( this->items, new_capacity * this->el_size );
+        if ( tmp == NULL )
+            return fwarn_ret( RV_ERROR, "realloc" );
+
+        this->items    = tmp;
+        this->capacity = new_capacity;
+        return RV_SUCCESS;
+    }
+
+    /**
+     * Changes (realloc) the lists capacity to be half as large\n
+     * @return -1 if realloc fails, else 0
+     */
+    /*private*/ int downsize( void )
+    {
+        const size_t new_cap = this->capacity / LIST_CAP_SIZE_RATIO;
+
+        void *tmp = realloc( this->items, new_cap * this->el_size );
+        if ( tmp == NULL )
+            return fwarn_ret( RV_ERROR, "realloc" );
+
+        this->items    = tmp;
+        this->capacity = new_cap;
+        return RV_SUCCESS;
+    }
+
+
+    int append( const void *data )
+    {
+        if ( this->size + 1 >= this->capacity )
+            if ( this->upsize( 1 ) != RV_SUCCESS )
+                return f_stack_trace( RV_ERROR );
+
+        ++this->size;
+        memcpy( this->at__non_safe( this->size ), data, this->el_size );
+
+        return RV_SUCCESS;
+    }
+
+    /*private*/ void remove_last_nonsafe( void )
+    {
+        memset( this->at_last(), 0, this->el_size );
+        --this->size;
+    }
+
+    int pop( void *container )
+    {
+        if ( this->size == 0 )
+            return fwarnx_ret( RV_EXCEPTION, ListEmptyExceptionString );
+
+        if ( this->capacity / LIST_CAP_SIZE_RATIO > this->size )
+            if ( this->downsize() != RV_SUCCESS )
+                return f_stack_trace( RV_ERROR );
+
+        if ( container != NULL )
+            // copy popped element to container
+            memcpy( container, this->at_last(), this->el_size );
+
+        this->remove_last_nonsafe();
+
+        return RV_SUCCESS;
+    }
+
+
+    void destroy( void )
+    {
+        free( this->items );
+    }
+
+    static void free( superstruct Stack * ls )
+    {
+        ls->destroy();
+        free( ls );
+    }
+
+
+    static void printf( const char *fmt, ... ) PrintfLike( 1, 2 )
+    {
+        va_list vargs;
+        va_start( vargs, fmt );
+        vprintf( fmt, vargs );
+        va_end( vargs );
+    }
+
+    pure void print_meta( void )
+    {
+        printf( "list: size=%zu, capacity=%zu\n", this->size, this->capacity );
+    }
+
+
+    /* ================ CONSTRUCTOR ================ */
+
+    static superstruct Stack *new ( size_t el_size )
+    {
+        superstruct Stack *ls = calloc( 1, sizeof( superstruct Stack ) );
+        if ( ls == NULL )
+            return ( void * ) fwarn_ret( NULL, "calloc" );
+
+        ls->items = calloc( LIST_DEF_SIZE, el_size );
+        if ( ls->items == NULL )
+        {
+            free( ls );
+            return ( void * ) fwarn_ret( NULL, "calloc" );
+        }
+        ls->capacity = LIST_DEF_SIZE;
+        ls->el_size  = el_size;
+        return ls;
+    }
+
+
+    static int cmp_size( const void *l1, const void *l2 )
+    {
+        const superstruct Stack *ls_1 = *( const superstruct Stack ** ) l1;
+        const superstruct Stack *ls_2 = *( const superstruct Stack ** ) l2;
+
+        return cmp_size_t( &ls_1->size, &ls_2->size );
+    }
+
+    static int cmp_elsize( const void *l1, const void *l2 )
+    {
+        const superstruct Stack *ls_1 = *( const superstruct Stack ** ) l1;
+        const superstruct Stack *ls_2 = *( const superstruct Stack ** ) l2;
+
+        return cmp_size_t( &ls_1->el_size, &ls_2->el_size );
+    }
+};
+
+
+int main( void )
+{
+    superstruct Stack *ls = Stack::new ( sizeof( int ) );
+    ( void ) Stack::new ( 1 ); // leak
+    free( Stack::new ( 1 ) );
+    assert( ls != NULL );
+
+    int INT = 0;
+    ls->print_meta();
+    ls->append( &INT );
+    ls->print_meta();
+
+    Stack::free( ls );
+}

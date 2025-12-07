@@ -1,0 +1,96 @@
+#include "some_defs.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+
+typedef superstruct SecondSS
+{
+    char *str;
+    int len;
+}
+String;
+
+superstruct SSName
+{
+    int x;
+
+    pure void pure_method( void )
+    {
+        ( void ) this;
+        ( void ) ( 1 + 2 );
+    }
+
+    int methodname( int a, int b, int c )
+    {
+        this->x += a;
+        return a + b + c;
+    }
+
+    static int static_method( int a )
+    {
+        struct SSName s;
+        superstruct SecondSS ss = ( superstruct SecondSS ) { .len = -1 };
+        String second_ss        = ( String ) { .str = "A", .len = 1 };
+
+        struct SSName s1, s2;
+        superstruct SSName ss1, ss2;
+
+        superstruct SSName *sp1 = NULL;
+
+        ( void ) s;
+        ( void ) ss;
+        ( void ) second_ss;
+        ( void ) s1;
+        ( void ) s2;
+        ( void ) ss1;
+        ( void ) ss2;
+        ( void ) sp1;
+
+        return -a;
+    }
+};
+
+typedef void ( *Runnable )( void );
+
+struct Normal {
+    int a;
+    Runnable f;
+};
+
+
+#define println( ... ) ( printf( __VA_ARGS__ ) + printf( "\n" ) )
+
+void run_hello_world( void )
+{
+    ( void ) println( "Hello, world!" );
+    ( void ) printf( "%s", "NULL" );
+}
+
+
+int main( void )
+{
+    superstruct SSName *obj  = calloc( 1, sizeof( superstruct SSName ) );
+    superstruct SSName objs  = ( superstruct SSName ) { .x = 1 };
+    superstruct SSName objs2 = *obj;
+    ( void ) objs2;
+
+    obj->methodname( 1, 2, 3 );
+    obj->methodname( 1, objs.methodname( -1, -2, -3 ), 3 );
+    ( void ) obj->x;
+
+    SSName::static_method( -2 );
+    ( void ) -SSName::static_method( +2 );
+    SSName::static_method( 1 );
+    SSName::static_method( SSName::static_method( -4 ) );
+
+    {
+        struct Normal n = {
+            .a = 1,
+            .f = run_hello_world,
+        };
+        n.f();
+    }
+
+    free( obj );
+    return 0;
+}

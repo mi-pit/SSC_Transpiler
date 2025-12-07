@@ -1,23 +1,31 @@
 *
 
+# Git stuff
 !.gitignore
+
 !README.md
-!*.txt
+!LICENSE
+
+# Antlr stuff
 !third-party
+!third-party/**
 
-!.clang-format
+# The OFFICIAL SSC format
+!_clang-format
 
-# test files
+# For execution
+!refresh-grammar.sh
+!build.sh
+!run.sh
+
+# SSC Grammar
+!SSC.g4
+
+# Java
+!SSC-C/src/main/**
+## Generatable -- don't include
+SSC-C/src/main/java/antlr
+
+# SSC example code
+!ssc-examples
 !*.ssc
-!SSC_code
-
-# for conversions
-!*.g4
-!*.py
-!*.sh
-
-# can be generated with `antlr4 SSC.g4 -Dlanguage=Python3 -visitor -listener`
-SSCVisitor.py
-SSCListener.py
-SSCParser.py
-SSCLexer.py

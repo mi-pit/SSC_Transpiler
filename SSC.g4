@@ -29,8 +29,6 @@
 /** SSC grammar based on the antlr
   * C 2011 grammar built from the C11 Spec */
 
-// $antlr-format alignTrailingComments true, columnLimit 150, minEmptyLines 1, maxEmptyLinesToKeep 1, reflowComments false, useTab false
-// $antlr-format allowShortRulesOnASingleLine false, allowShortBlocksOnASingleLine true, alignSemicolons hanging, alignColons hanging
 
 grammar SSC;
 
@@ -47,6 +45,7 @@ primaryExpression
     | '__extension__'? '(' compoundStatement ')' // Blocks (GCC extension)
     | '__builtin_va_arg' '(' unaryExpression ',' typeName ')'
     | '__builtin_offsetof' '(' typeName ',' unaryExpression ')'
+    | VersionNumber // For attributes only (dirty hack)
     ;
 
 genericSelection
@@ -65,8 +64,9 @@ postfixExpression
     : (primaryExpression | '__extension__'? '(' typeName ')' '{' initializerList ','? '}') (
         '[' expression ']'
         | '(' argumentExpressionList? ')'
-        | ('.' | '->') Identifier '(' argumentExpressionList? ')'
-        | ('.' | '->') Identifier
+        | ('::')        Identifier '(' argumentExpressionList? ')' // Static superstruct function call
+        | ('.' | '->')  Identifier '(' argumentExpressionList? ')' // Object method call
+        | ('.' | '->')  Identifier // Attribute access (plain C)
         | '++'
         | '--'
     )*
@@ -236,7 +236,7 @@ typeSpecifier
 
 /* my stuff */
 superStructSpecifier
-    : 'private'? 'superstruct' Identifier '{' superStructBody '}'
+    : 'superstruct' Identifier '{' superStructBody '}'
     | 'superstruct' Identifier
     ;
 
@@ -247,10 +247,6 @@ superStructBody
 superStructMember
     : declaration
     | functionDefinition
-    ;
-
-superStructDeclaration
-    : specifierQualifierList structDeclaratorList ';'
     ;
 
 /* --- */
@@ -289,7 +285,7 @@ structDeclarator
     ;
 
 enumSpecifier
-    : 'enum' Identifier? '{' enumeratorList ','? '}'
+    : 'enum' Identifier? (':' typedefName)? '{' enumeratorList ','? '}'
     | 'enum' Identifier
     ;
 
@@ -314,6 +310,8 @@ typeQualifier
     | 'restrict'
     | 'volatile'
     | '_Atomic'
+    | '_Nonnull'
+    | '_Nullable'
     ;
 
 functionSpecifier
@@ -537,15 +535,9 @@ translationUnit
     : externalDeclaration+
     ;
 
-directive
-    : SingleLineMacro
-    | MultiLineMacro
-    ;
-
 externalDeclaration
     : functionDefinition
     | declaration
-    | directive
     | ';' // stray ;
     ;
 
@@ -918,6 +910,10 @@ Dot
     : '.'
     ;
 
+DoubleColon
+    : '::'
+    ;
+
 Ellipsis
     : '...'
     ;
@@ -954,6 +950,10 @@ Constant
     | FloatingConstant
     //|   EnumerationConstant
     | CharacterConstant
+    ;
+
+VersionNumber
+    : IntegerConstant ('.' IntegerConstant)*
     ;
 
 fragment IntegerConstant
@@ -1120,14 +1120,6 @@ fragment SChar
     | '\\\r\n' // Added line
     ;
 
-SingleLineMacro
-    : '#' ~[\n]*? '\r'? '\n'
-    ;
-
-MultiLineMacro
-    : '#' (~[\n]*? '\\' '\r'? '\n')+ ~ [\n]+
-    ;
-
 // ignore the following asm blocks:
 /*
     asm
@@ -1135,6 +1127,11 @@ MultiLineMacro
         mfspr x, 286;
     }
  */
+
+Directive
+    : '#' (~[\r\n\\] | '\\' [\r\n])* -> channel(HIDDEN)
+    ;
+
 AsmBlock
     : 'asm' ~'{'* '{' ~'}'* '}' -> channel(HIDDEN)
     ;
