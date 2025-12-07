@@ -25,9 +25,9 @@ public class AntlrException extends RuntimeException {
                 message.b));
     }
 
-    public static final String RESET = "\u001B[0m";
-    public static final String CYAN = "\u001B[36m";
-    public static final String WHITE = "\u001B[37m";
+    private static final String RESET = "\u001B[0m";
+    private static final String CYAN = "\u001B[36m";
+    private static final String WHITE = "\u001B[37m";
 
     public static String getFormattedMessage(Token token, CommonTokenStream tokens) {
         return String.format("""
