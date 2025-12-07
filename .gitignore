@@ -9,6 +9,8 @@
 
 !SSC-C
 !SSC-C/**
+
+SSC-C/target
 *.class
 
 # test files
