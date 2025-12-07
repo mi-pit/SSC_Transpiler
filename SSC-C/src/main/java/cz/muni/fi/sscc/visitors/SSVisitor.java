@@ -26,22 +26,20 @@ public class SSVisitor extends ConvertorVisitor {
         final StringBuilder result = new StringBuilder();
 
         result.append(String.format("superstruct %s {\n", ss.name()));
-        for (SSMember s : ss.member()) {
-            if (s.isDeclaration()) {
-                assert s.data().getLeft().isPresent();
+        for (SSMember member : ss.member()) {
+            if (member.isDeclaration()) {
+                assert member.data().getLeft().isPresent();
                 result
                         .append("\t")
-                        .append(s.data().getLeft().get().data())
+                        .append(member.data().getLeft().get().data())
                         .append("\n");
             }
         }
         result.append("}\n");
 
-        for (SSMember s : ss.member()) {
-            if (s.isFunctionDefinition()) {
-                assert s.data().getRight().isPresent();
-                result.append(s.data().getRight().get().getText().stripLeading());
-
+        for (SSMember member : ss.member()) {
+            if (member.isFunctionDefinition()) {
+                assert member.data().getRight().isPresent();
                 result
                         /* :( ts is really horrible
                          * basically -- superstruct can not have a semicolon after itself
@@ -50,7 +48,7 @@ public class SSVisitor extends ConvertorVisitor {
                          * warnings against extra semicolons are turned off anyway ;)
                          */
                         .append(";")
-                        .append(s.data().getRight().get().getText().stripLeading());
+                        .append(member.data().getRight().get().getText().stripLeading());
             }
         }
 
