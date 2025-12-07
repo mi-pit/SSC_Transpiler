@@ -28,7 +28,16 @@ public class Main {
     private static CommandLineArguments parsedArgs;
     public static Logger logger;
 
-    private static final List<String> CC_OPTIONS = List.of("-Werror", "-Wno-extra-semi");
+    private static final List<String> CC_OPTIONS = List.of(
+            "-Werror",
+            "-Wall",
+            "-Wextra",
+            "-Wno-extra-semi",      /* transpiler creates extra semicolons */
+            "-Wno-unused-function"  /* preprocessor extracts "static" functions */
+    );
+
+    public static final SSCErrorListener errorListener = new SSCErrorListener();
+
 
     public static void main(String[] args) {
         parsedArgs = new CommandLineArguments(args);
