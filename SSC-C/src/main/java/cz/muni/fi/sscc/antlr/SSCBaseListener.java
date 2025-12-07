@@ -1,4 +1,5 @@
-package cz.muni.fi.sscc.antlr;
+package cz.muni.fi.sscc.antlr; /* added to project in `./setup.sh` */
+
 // Generated from SSC.g4 by ANTLR 4.13.2
 
 import org.antlr.v4.runtime.ParserRuleContext;
