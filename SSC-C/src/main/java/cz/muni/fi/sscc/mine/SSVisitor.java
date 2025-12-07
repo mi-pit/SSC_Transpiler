@@ -28,10 +28,10 @@ public class SSVisitor extends ConvertorVisitor {
         result.append(String.format("superstruct %s {\n", ss.name()));
         for (SSMember s : ss.member()) {
             if (s.isDeclaration()) {
-                assert s.getData().getLeft().isPresent();
+                assert s.data().getLeft().isPresent();
                 result
                         .append("\t")
-                        .append(s.getData().getLeft().get().data())
+                        .append(s.data().getLeft().get().data())
                         .append("\n");
             }
         }
@@ -39,8 +39,8 @@ public class SSVisitor extends ConvertorVisitor {
 
         for (SSMember s : ss.member()) {
             if (s.isFunctionDefinition()) {
-                assert s.getData().getRight().isPresent();
-                result.append(s.getData().getRight().get().getText().stripLeading());
+                assert s.data().getRight().isPresent();
+                result.append(s.data().getRight().get().getText().stripLeading());
             }
         }
 

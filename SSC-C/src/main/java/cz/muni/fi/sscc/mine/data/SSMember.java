@@ -4,13 +4,7 @@ import cz.muni.fi.sscc.util.Either;
 
 import java.util.Objects;
 
-public class SSMember {
-    private final Either<Declaration, FunctionDefinition> data;
-
-    private SSMember(Either<Declaration, FunctionDefinition> data) {
-        this.data = data;
-    }
-
+public record SSMember(Either<Declaration, FunctionDefinition> data) {
     public static SSMember declaration(Declaration value) {
         Objects.requireNonNull(value);
         return new SSMember(Either.left(value));
@@ -27,9 +21,5 @@ public class SSMember {
 
     public boolean isFunctionDefinition() {
         return data.getLeft().isEmpty();
-    }
-
-    public Either<Declaration, FunctionDefinition> getData() {
-        return data;
     }
 }

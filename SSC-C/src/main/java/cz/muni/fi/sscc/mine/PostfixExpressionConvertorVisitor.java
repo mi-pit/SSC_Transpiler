@@ -226,7 +226,7 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
                 .findFirst().orElseThrow(() -> new IllegalStateException("Must be present"))
                 .member().stream()
                 .filter(SSMember::isFunctionDefinition)
-                .map(ssMember -> ssMember.getData().getRight().get(/* safe because ifFnDef above */).name())
+                .map(ssMember -> ssMember.data().getRight().get(/* safe because ifFnDef above */).name())
                 .noneMatch(methodName::equals)) {
             throw new SSCSyntaxException(
                     "superstruct with name `" + className
