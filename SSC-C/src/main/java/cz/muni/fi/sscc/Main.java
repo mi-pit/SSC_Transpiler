@@ -118,6 +118,7 @@ public class Main {
         logger.printVerbose("Compiling...");
         // TODO: compile all files at once
         compileCCode(parsedArgs.getCompileTarget().get(), workingFile);
+        workingFile.toFile().deleteOnExit();
         return true;
     }
 
