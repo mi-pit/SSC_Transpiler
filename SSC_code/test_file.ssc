@@ -3,10 +3,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-superstruct SecondSS
+typedef superstruct SecondSS
 {
-    int unused;
-};
+    char *str;
+    int len;
+}
+String;
 
 superstruct SSName
 {
@@ -27,7 +29,8 @@ superstruct SSName
     static int static_method( int a )
     {
         struct SSName s;
-        superstruct SecondSS ss = ( superstruct SecondSS ) { .unused = -1 };
+        superstruct SecondSS ss = ( superstruct SecondSS ) { .len = -1 };
+        String second_ss        = ( String ) { .str = "A", .len = 1 };
 
         struct SSName s1, s2;
         superstruct SSName ss1, ss2;
@@ -36,6 +39,7 @@ superstruct SSName
 
         ( void ) s;
         ( void ) ss;
+        ( void ) second_ss;
         ( void ) s1;
         ( void ) s2;
         ( void ) ss1;

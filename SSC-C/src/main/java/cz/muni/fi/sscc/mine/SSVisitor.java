@@ -35,12 +35,22 @@ public class SSVisitor extends ConvertorVisitor {
                         .append("\n");
             }
         }
-        result.append("};\n");
+        result.append("}\n");
 
         for (SSMember s : ss.member()) {
             if (s.isFunctionDefinition()) {
                 assert s.data().getRight().isPresent();
                 result.append(s.data().getRight().get().getText().stripLeading());
+
+                result
+                        /* :( ts is really horrible
+                         * basically -- superstruct can not have a semicolon after itself
+                         * because it would mess up `typedef`s
+                         * therefore append one BEFORE each method
+                         * warnings against extra semicolons are turned off anyway ;)
+                         */
+                        .append(";")
+                        .append(s.data().getRight().get().getText().stripLeading());
             }
         }
 
