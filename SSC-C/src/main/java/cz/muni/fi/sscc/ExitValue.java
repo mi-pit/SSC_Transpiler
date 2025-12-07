@@ -11,7 +11,11 @@ public enum ExitValue {
     ;
 
     public static void err(final ExitValue exitCode, String message) {
-        System.err.println("SSC Transpiler: " + message + ": " + exitCode.name().toLowerCase().replace("_", " "));
+        warn(message);
         System.exit(exitCode.ordinal());
+    }
+
+    public static void warn(final String message) {
+        System.err.println("SSC Transpiler: " + message);
     }
 }

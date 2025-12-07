@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.List;
 
 import static cz.muni.fi.sscc.ExitValue.err;
+import static cz.muni.fi.sscc.ExitValue.warn;
 
 public class Main {
     private static final String SSC_DEF_MACRO_STRING = "__SSC_LANG__";
@@ -41,15 +42,12 @@ public class Main {
     public static final SSCErrorListener errorListener = new SSCErrorListener();
 
 
-    public static void main(String[] args) {
+    public static void main(String[] args)
+            throws IOException, InterruptedException {
         parsedArgs = new CommandLineArguments(args);
         logger = new Logger(parsedArgs);
 
-        try {
-            processFiles(parsedArgs.getFilesToProcess());
-        } catch (IOException | InterruptedException e) {
-            err(ExitValue.IO_EXCEPTION, e.getMessage());
-        }
+        processFiles(parsedArgs.getFilesToProcess());
     }
 
     private static void processFiles(List<Path> files) throws IOException, InterruptedException {
@@ -67,7 +65,7 @@ public class Main {
         }
 
         if (aggregate != 0) {
-            err(ExitValue.TRANSPILATION_FAIL, "Could not process " + aggregate + " file(s)");
+            warn("Could not process " + aggregate + " file(s)");
         }
     }
 
@@ -78,48 +76,71 @@ public class Main {
      *      transpile AND compile (remove `.c` file)
      */
     private static boolean processFile(final Path fileAbsolutePath) throws IOException, InterruptedException {
+        if (!Files.exists(fileAbsolutePath)) {
+            warn("File " + fileAbsolutePath + " not found");
+            return false;
+        }
+
         logger.printVerbose("Parsing file: `" + fileAbsolutePath + "`");
-        final Path inputFileDir = fileAbsolutePath.getParent();
+        final Path inputFileDir = getFileDir(fileAbsolutePath);
 
-        final Path workingFile = Path.of(fileAbsolutePath.toString().replaceFirst("\\.ssc$", ".c"));
+        final Path workingFileAbsolutePath =
+                Path.of(fileAbsolutePath.toString().replaceFirst("\\.ssc$", ".c"));
 
-        logger.printVerbose("Preprocessing file " + workingFile + " ...");
-        preprocessSSCCode(inputFileDir, fileAbsolutePath, workingFile);
+        logger.printVerbose("Preprocessing file " + workingFileAbsolutePath + " ...");
+        if (!preprocessSSCCode(inputFileDir, fileAbsolutePath, workingFileAbsolutePath)) {
+            return false;
+        }
 
         {
-            final VisitorData data = getVisitorData(workingFile);
+            final VisitorData data = getVisitorData(workingFileAbsolutePath);
 
             logger.printVerbose("Extracting superstructs...");
-            if (!extractSuperstructMembers(data.tokens(), data.tree(), workingFile)) {
+            if (!extractSuperstructMembers(data.tokens(), data.tree(), workingFileAbsolutePath)) {
                 logger.printVerbose("Failed to extract superstructs.");
                 return false; // Error nodes encountered
             }
         }
         {
-            final VisitorData data = getVisitorData(workingFile);
+            final VisitorData data = getVisitorData(workingFileAbsolutePath);
 
             logger.printVerbose("Replacing superstruct references...");
-            if (!replaceSuperstructCalls(data.tokens(), data.tree(), workingFile)) {
+            if (!replaceSuperstructCalls(data.tokens(), data.tree(), workingFileAbsolutePath)) {
                 logger.printVerbose("Failed to replace superstruct references.");
                 return false;
             }
         }
 
         logger.printVerbose("Formatting...");
-        formatCCode(workingFile);
+        if (!formatCCode(workingFileAbsolutePath)) {
+            logger.printVerbose("Failed to format C code.");
+            return false;
+        }
 
         logger.printVerbose("Verifying...");
-        verifyCCode(workingFile);
+        final int exitCode = verifyCCode(workingFileAbsolutePath);
+        if (exitCode != 0) {
+            logger.printVerbose("Verification failed with exit code: " + exitCode);
+            return false;
+        }
 
         if (parsedArgs.getCompileTarget().isEmpty()) {
+            logger.printVerbose("Not compiling anything.");
             return true;
         }
 
         logger.printVerbose("Compiling...");
         // TODO: compile all files at once
-        compileCCode(parsedArgs.getCompileTarget().get(), workingFile);
-        workingFile.toFile().deleteOnExit();
+        compileCCode(parsedArgs.getCompileTarget().get(), workingFileAbsolutePath);
+        workingFileAbsolutePath.toFile().deleteOnExit();
         return true;
+    }
+
+    private static Path getFileDir(final Path file) {
+        final Path parent = file.getParent();
+        return parent == null
+                ? Path.of(".")
+                : parent;
     }
 
     private static VisitorData getVisitorData(Path file) throws IOException {
@@ -159,7 +180,9 @@ public class Main {
         return visitor.hasNoErrors();
     }
 
-    private static void preprocessSSCCode(Path dir, Path inFile, Path outFile)
+    private static boolean preprocessSSCCode(final Path dir,
+                                             final Path inFile,
+                                             final Path outFile)
             throws IOException, InterruptedException {
         final Path tempOut = Files.createTempFile(dir, inFile.getFileName().toString(), ".i");
 
@@ -180,13 +203,15 @@ public class Main {
 
         final int exitCode = process.waitFor();
         if (exitCode != 0) {
-            err(ExitValue.C_PREPROCESSING_FAIL, "C preprocessor failed with exit code: " + exitCode);
+            tempOut.toFile().deleteOnExit();
+            return false;
         }
 
         Files.move(tempOut, outFile, StandardCopyOption.REPLACE_EXISTING);
+        return true;
     }
 
-    private static void formatCCode(Path file) throws IOException, InterruptedException {
+    private static boolean formatCCode(Path file) throws IOException, InterruptedException {
         final ProcessBuilder pb = new ProcessBuilder(
                 "/opt/homebrew/bin/clang-format", // fixme
                 "-i" /* in place */,
@@ -195,12 +220,10 @@ public class Main {
         pb.inheritIO();
         final Process process = pb.start();
         final int exitCode = process.waitFor();
-        if (exitCode != 0) {
-            err(ExitValue.IO_EXCEPTION, "Formatting failed with exit code: " + exitCode);
-        }
+        return exitCode == 0;
     }
 
-    private static void verifyCCode(Path file) throws IOException, InterruptedException {
+    private static int verifyCCode(Path file) throws IOException, InterruptedException {
         final List<String> cmd = new ArrayList<>();
         cmd.add("cc");
         cmd.addAll(CC_OPTIONS);
@@ -210,10 +233,7 @@ public class Main {
         final ProcessBuilder pb = new ProcessBuilder(cmd);
         pb.inheritIO();
         final Process process = pb.start();
-        final int exitCode = process.waitFor();
-        if (exitCode != 0) {
-            err(ExitValue.C_VERIFICATION_FAIL, "Verification failed with exit code: " + exitCode);
-        }
+        return process.waitFor();
     }
 
     private static void compileCCode(String binaryName, Path... files) throws IOException, InterruptedException {
