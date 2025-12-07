@@ -1,4 +1,4 @@
-package cz.muni.fi.sscc.mine.data;
+package cz.muni.fi.sscc.data;
 
 public record Declaration(String data) {
 }

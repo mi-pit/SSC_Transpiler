@@ -1,4 +1,4 @@
-package cz.muni.fi.sscc.mine.data;
+package cz.muni.fi.sscc.data;
 
 import java.util.List;
 import java.util.Objects;

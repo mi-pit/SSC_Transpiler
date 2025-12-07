@@ -1,4 +1,4 @@
-package cz.muni.fi.sscc.mine;
+package cz.muni.fi.sscc.visitors;
 
 import cz.muni.fi.sscc.exceptions.AntlrException;
 import antlr.SSCBaseVisitor;

@@ -1,11 +1,11 @@
-package cz.muni.fi.sscc.mine;
+package cz.muni.fi.sscc.visitors;
 
 import cz.muni.fi.sscc.exceptions.SSCSyntaxException;
 import antlr.SSCParser;
-import cz.muni.fi.sscc.mine.data.Declaration;
-import cz.muni.fi.sscc.mine.data.FunctionDefinition;
-import cz.muni.fi.sscc.mine.data.SSMember;
-import cz.muni.fi.sscc.mine.data.SuperStructRepre;
+import cz.muni.fi.sscc.data.Declaration;
+import cz.muni.fi.sscc.data.FunctionDefinition;
+import cz.muni.fi.sscc.data.SSMember;
+import cz.muni.fi.sscc.data.SuperStructRepre;
 import cz.muni.fi.sscc.util.Util;
 import org.antlr.v4.runtime.CommonTokenStream;
 
