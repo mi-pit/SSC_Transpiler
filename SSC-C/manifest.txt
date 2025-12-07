@@ -1,0 +1,2 @@
+Main-Class: cz.muni.fi.sscc.Main
+Class-Path: antlr-4.13.2-complete.jar
