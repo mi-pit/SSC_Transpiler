@@ -3,7 +3,6 @@ package cz.muni.fi.sscc.exceptions;
 import cz.muni.fi.sscc.util.Util;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.Token;
-import org.antlr.v4.runtime.misc.Pair;
 
 import java.util.Objects;
 
@@ -13,16 +12,6 @@ public class AntlrException extends RuntimeException {
                 Objects.requireNonNull(token),
                 Objects.requireNonNull(tokens)
         ));
-    }
-
-    public AntlrException(Pair<String, Object> message) {
-        super(String.format("""
-                        Antlr parser exception: '%s'
-                            in the middle of: `%s`
-                            in:
-                        """,
-                message.a,
-                message.b));
     }
 
     private static final String RESET = "\u001B[0m";
