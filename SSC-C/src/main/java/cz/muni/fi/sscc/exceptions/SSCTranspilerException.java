@@ -21,29 +21,32 @@ public class SSCTranspilerException extends RuntimeException /* todo? make not r
     public static final String COLOR_LOCATOR = Colors.create(Colors.Ground.FORE, Colors.Color.CYAN);
 
     private SSCTranspilerException(Type type, String message, String context) {
-        super(COLOR_MESSAGE + "SSC Transpiler: " + type + " exception: " + message + COLOR_RESET + "\n"
-                + context);
+        super(COLOR_MESSAGE + "SSC Transpiler: " +
+                Objects.requireNonNull(type, "Exception type") +
+                " exception: " +
+                Objects.requireNonNull(message, "Message") + COLOR_RESET + "\n" +
+                Objects.requireNonNull(context, "Internal, how is this possible?"));
     }
 
     public SSCTranspilerException(Type type, String message,
                                   ParserRuleContext ctx, CommonTokenStream tokens) {
-        this(
-                Objects.requireNonNull(type, "Exception type"),
-                Objects.requireNonNull(message, "Message"),
-                getFormattedMessage(
-                        Objects.requireNonNull(ctx, "Context"),
-                        Objects.requireNonNull(tokens, "Tokens")
-                )
-        );
+        this(type, message, getFormattedMessage(
+                Objects.requireNonNull(ctx, "Context"),
+                Objects.requireNonNull(tokens, "Token stream")
+        ));
     }
 
     public SSCTranspilerException(Type type, Token tok, CommonTokenStream tokens) {
-        this(type, "Could not parse token", getFormattedMessage(tok, tokens));
+        this(type, "Could not parse token", getFormattedMessage(
+                Objects.requireNonNull(tok, "Token"),
+                Objects.requireNonNull(tokens, "Token stream")
+        ));
     }
 
 
     public static String getFormattedMessage(Token token, CommonTokenStream tokens) {
         return COLOR_MESSAGE +
+                "    at line: " + token.getLine() + "\n" +
                 "    in the middle of: `" +
                 COLOR_CODE +
                 Strings.getContextAroundToken(token, tokens, 2, 2)
