@@ -6,7 +6,7 @@ import cz.muni.fi.sscc.data.FunctionDefinition;
 import cz.muni.fi.sscc.data.SSMember;
 import cz.muni.fi.sscc.data.SuperStructRepre;
 import cz.muni.fi.sscc.exceptions.SSCSyntaxException;
-import cz.muni.fi.sscc.util.Util;
+import cz.muni.fi.sscc.util.Strings;
 import org.antlr.v4.runtime.CommonTokenStream;
 
 import java.util.ArrayList;
@@ -71,7 +71,7 @@ public class SSVisitor extends ConvertorVisitor {
 
         for (SSCParser.SuperStructMemberContext memberCtx : ctx.superStructBody().superStructMember()) {
             if (memberCtx.declaration() != null) {
-                final String text = Util.getContextText(memberCtx, tokens);
+                final String text = Strings.getContextText(memberCtx, tokens);
                 memberList.add(SSMember.declaration(new Declaration(text)));
             } else if (memberCtx.functionDefinition() != null) {
                 final FunctionDefinition functionDefinition =

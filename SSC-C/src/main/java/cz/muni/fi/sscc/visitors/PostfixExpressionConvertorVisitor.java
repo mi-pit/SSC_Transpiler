@@ -13,7 +13,7 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.*;
 
-import static cz.muni.fi.sscc.util.Util.getContextText;
+import static cz.muni.fi.sscc.util.Strings.getContextText;
 
 public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
     private final Collection<SuperStructRepre> superstructs;

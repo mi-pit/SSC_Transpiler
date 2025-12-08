@@ -2,7 +2,7 @@ package cz.muni.fi.sscc.data;
 
 import antlr.SSCParser;
 import cz.muni.fi.sscc.exceptions.SSCSyntaxException;
-import cz.muni.fi.sscc.util.Util;
+import cz.muni.fi.sscc.util.Strings;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.RuleContext;
 
@@ -53,12 +53,12 @@ public record FunctionDefinition(List<String> specs,
 
         for (var spec : declSpecs.declarationSpecifier()) {
             if (spec.typeSpecifier() != null) {
-                builder.add(Util.getContextText(spec.typeSpecifier(), tokens));
+                builder.add(Strings.getContextText(spec.typeSpecifier(), tokens));
             }
         }
 
         if (decl.pointer() != null) {
-            builder.add(Util.getContextText(decl.pointer(), tokens));
+            builder.add(Strings.getContextText(decl.pointer(), tokens));
         }
 
         return String.join(" ", builder);
@@ -69,14 +69,14 @@ public record FunctionDefinition(List<String> specs,
         assert directDecl != null;
 
         if (directDecl.Identifier() == null && directDecl.LeftParen() == null || directDecl.RightParen() == null) {
-            return Util.getContextText(ctx, tokens);
+            return Strings.getContextText(ctx, tokens);
         }
 
         if (directDecl.Identifier() != null) {
             return directDecl.Identifier().getText();
         }
         if (directDecl.LeftParen() != null) {
-            return Util.getContextText(directDecl.directDeclarator(), tokens);
+            return Strings.getContextText(directDecl.directDeclarator(), tokens);
         }
 
         throw new SSCSyntaxException("Unknown problem", ctx, tokens);
@@ -90,7 +90,7 @@ public record FunctionDefinition(List<String> specs,
             return args;
         }
         for (var param : ctx.directDeclarator().parameterTypeList().parameterList().parameterDeclaration()) {
-            args.add(Util.getContextText(param, tokens));
+            args.add(Strings.getContextText(param, tokens));
         }
 
         if (ctx.directDeclarator().parameterTypeList().Ellipsis() != null) {
@@ -103,7 +103,7 @@ public record FunctionDefinition(List<String> specs,
     public static List<String> parseFunctionBody(SSCParser.CompoundStatementContext ctx, CommonTokenStream tokens) {
         List<String> statements = new ArrayList<>();
         for (var statement : ctx.blockItemList().blockItem()) {
-            statements.add(Util.getContextText(statement, tokens));
+            statements.add(Strings.getContextText(statement, tokens));
         }
         return statements;
     }

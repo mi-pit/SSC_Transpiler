@@ -1,7 +1,7 @@
 package cz.muni.fi.sscc.exceptions;
 
 import cz.muni.fi.sscc.util.Colors;
-import cz.muni.fi.sscc.util.Util;
+import cz.muni.fi.sscc.util.Strings;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
@@ -46,16 +46,16 @@ public abstract class SSCTranspilerException extends RuntimeException /* todo? m
         return COLOR_MESSAGE +
                 "    in the middle of: `" +
                 COLOR_CODE +
-                Util.getContextAroundToken(token, tokens, 2, 2)
+                Strings.getContextAroundToken(token, tokens, 2, 2)
                         .replaceAll("\\s+", " ") +
                 COLOR_MESSAGE +
                 "`\n" +
                 "    in:\n" +
                 COLOR_CODE_BOLD +
-                Util.getLinesAroundToken(token, tokens, LINES_BEFORE, LINES_AFTER) +
+                Strings.getLinesAroundToken(token, tokens, LINES_BEFORE, LINES_AFTER) +
                 COLOR_RESET +
                 "\n" +
-                Util.getLocalizationMessage(token, COLOR_LOCATOR);
+                Strings.getLocalizationMessage(token, COLOR_LOCATOR);
     }
 
     public static String getFormattedMessage(ParserRuleContext ctx, CommonTokenStream tokens) {

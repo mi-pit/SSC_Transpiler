@@ -11,8 +11,8 @@ import java.util.List;
 
 import static cz.muni.fi.sscc.util.Colors.COLOR_RESET;
 
-public final class Util {
-    private Util() {
+public final class Strings {
+    private Strings() {
     }
 
     /**
@@ -29,32 +29,51 @@ public final class Util {
                                                final CommonTokenStream tokens,
                                                final int back,
                                                final int forward) {
-        final int idx = token.getTokenIndex();
-        final List<Token> tokenList = tokens.getTokens();
+        final List<Token> all = tokens.getTokens();
+        final int n = all.size();
+        final int index = token.getTokenIndex();
 
-        final int from = Math.max(0, idx - back);
-        final int to = Math.min(tokenList.size() - 1, idx + forward);
+        final List<String> collected = new ArrayList<>(back + 1 + forward);
 
-        final StringBuilder sb = new StringBuilder();
-
-        for (int i = from; i <= to; ++i) {
-            final Token t = tokenList.get(i);
-            sb.append(t.getText());
+        // --- Collect backward tokens ---
+        int i = index - 1;
+        int backCount = 0;
+        while (i >= 0 && backCount < back) {
+            Token t = all.get(i);
+            String text = t.getText();
+            if (!text.isBlank()) {
+                collected.add(0, text); // prepend in correct order
+                backCount++;
+            }
+            i--;
         }
 
-        return sb.toString();
+        // --- Current token ---
+        collected.add(token.getText());
+
+        // --- Collect forward tokens ---
+        i = index + 1;
+        int forwardCount = 0;
+        while (i < n && forwardCount < forward) {
+            Token t = all.get(i);
+            String text = t.getText();
+            if (!text.isBlank()) {
+                collected.add(text);
+                forwardCount++;
+            }
+            i++;
+        }
+
+        return String.join(" ", collected);
     }
 
-    public static String getContextAroundToken(final ParserRuleContext ctx,
-                                               final CommonTokenStream tokenStream,
-                                               final int back,
-                                               final int forward) {
-        return getContextAroundToken(ctx.getStart(), tokenStream, back, forward);
-    }
 
-    private static int maxLineLen = 150;
+    private static final int MAX_LINE_LEN = 150;
 
-    public static String getLinesAroundToken(Token token, CommonTokenStream tokens, int before, int after) {
+    public static String getLinesAroundToken(final Token token,
+                                             final CommonTokenStream tokens,
+                                             final int before,
+                                             final int after) {
         String fullText = tokens.getTokenSource().getInputStream().toString();
         String[] lines = fullText.split("\n", -1);
 
@@ -64,23 +83,18 @@ public final class Util {
 
         final List<String> ls = new ArrayList<>(Arrays.asList(lines).subList(start, end + 1))
                 .stream()
-                .map(line -> line.length() < maxLineLen
+                .map(line -> line.length() < MAX_LINE_LEN
                         ? line
-                        : line.substring(0, maxLineLen - 2) + "...")
+                        : line.substring(0, MAX_LINE_LEN - 2) + "...")
                 .toList();
         return String.join("\n", ls);
     }
 
 
     public static String getLocalizationMessage(Token token, String color) {
-        final int offset = Math.min(token.getCharPositionInLine(), maxLineLen);
+        final int offset = Math.min(token.getCharPositionInLine(), MAX_LINE_LEN);
         final int desiredLen = token.getStopIndex() - token.getStartIndex() + 1;
-        final int len = Math.min(desiredLen, maxLineLen - offset);
+        final int len = Math.min(desiredLen, MAX_LINE_LEN - offset);
         return " ".repeat(offset) + color + "^".repeat(len) + (desiredLen > len ? " there ->" : " here") + COLOR_RESET;
-    }
-
-
-    public static void setMaxLineLen(int maxLineLen) {
-        Util.maxLineLen = maxLineLen;
     }
 }
