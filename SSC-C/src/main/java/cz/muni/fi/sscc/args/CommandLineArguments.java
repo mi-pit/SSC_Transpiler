@@ -1,9 +1,8 @@
-package cz.muni.fi.sscc;
+package cz.muni.fi.sscc.args;
 
 import cz.muni.fi.sscc.exceptions.ExitValue;
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -14,7 +13,7 @@ public class CommandLineArguments {
     private String compileTarget;
     private boolean verbose;
     private boolean printDebug;
-    private final List<Path> filesToProcess;
+    private final List<InputFile> filesToProcess;
 
     public CommandLineArguments(String[] args) {
         filesToProcess = new ArrayList<>();
@@ -53,7 +52,7 @@ public class CommandLineArguments {
                                 err(ExitValue.INVALID_ARGUMENTS, "Unknown option: " + arg);
                         }
                     } else {
-                        filesToProcess.add(Paths.get(arg));
+                        filesToProcess.add(InputFile.fromAbsolutePath(Path.of(arg)));
                     }
 
                     yield NextOperation.None;
@@ -78,7 +77,7 @@ public class CommandLineArguments {
         return printDebug;
     }
 
-    public List<Path> getFilesToProcess() {
+    public List<InputFile> getFilesToProcess() {
         return filesToProcess;
     }
 }

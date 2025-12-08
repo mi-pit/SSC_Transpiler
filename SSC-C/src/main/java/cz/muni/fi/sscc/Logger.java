@@ -1,5 +1,7 @@
 package cz.muni.fi.sscc;
 
+import cz.muni.fi.sscc.args.CommandLineArguments;
+
 public final class Logger {
     private final CommandLineArguments args;
 

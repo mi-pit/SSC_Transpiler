@@ -2,6 +2,8 @@ package cz.muni.fi.sscc;
 
 import antlr.SSCLexer;
 import antlr.SSCParser;
+import cz.muni.fi.sscc.args.CommandLineArguments;
+import cz.muni.fi.sscc.args.InputFile;
 import cz.muni.fi.sscc.data.SuperStructRepre;
 import cz.muni.fi.sscc.exceptions.AntlrException;
 import cz.muni.fi.sscc.exceptions.ExitValue;
@@ -19,10 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 import static cz.muni.fi.sscc.exceptions.ExitValue.err;
 import static cz.muni.fi.sscc.exceptions.ExitValue.warn;
@@ -56,14 +55,24 @@ public final class Main {
         processFiles(parsedArgs.getFilesToProcess());
     }
 
-    private static void processFiles(List<Path> files) throws IOException, InterruptedException {
+    private static void processFiles(final List<InputFile> files)
+            throws IOException, InterruptedException {
         if (files.isEmpty()) {
             err(ExitValue.INVALID_ARGUMENTS, "No files given to process");
         }
 
         int totalFailed = 0;
-        final List<Path> outputtedFiles = new ArrayList<>();
-        for (Path fileArg : files) {
+        final Set<Path> outputtedFiles = new HashSet<>();
+        for (InputFile fileArg : files) {
+            if (!fileArg.suffix().equals("ssc")) {
+                logger.printVerbose("Skipping transpilation of file '"
+                        + fileArg.absolutePathString()
+                        + "' (not an ssc file)");
+                outputtedFiles.add(fileArg.toAbsolutePath());
+                logger.printDebug("Added to compilation files set");
+                continue;
+            }
+
             try {
                 final Optional<Path> processed = processFile(fileArg);
                 if (processed.isEmpty()) {
@@ -93,20 +102,17 @@ public final class Main {
      *      transpile to C only
      *      transpile AND compile (remove `.c` file)
      */
-    private static Optional<Path> processFile(final Path fileAbsolutePath) throws IOException, InterruptedException {
-        if (!Files.exists(fileAbsolutePath)) {
-            warn("File " + fileAbsolutePath + " not found");
-            return Optional.empty();
-        }
+    private static Optional<Path> processFile(final InputFile inputFile) throws IOException, InterruptedException {
+        Optional<Path> pathVerified = getPathVerified(inputFile.toAbsolutePath());
+        if (pathVerified.isEmpty())
+            return pathVerified;
 
-        logger.printVerbose("Parsing file: `" + fileAbsolutePath + "`");
-        final Path inputFileDir = getFileDir(fileAbsolutePath);
+        logger.printVerbose("Parsing file: '" + inputFile.absolutePathString() + "'");
 
-        final Path workingFileAbsolutePath =
-                Path.of(fileAbsolutePath.toString().replaceFirst("\\.ssc$", ".c"));
+        final Path workingFileAbsolutePath = inputFile.getChangedSuffix("c").toAbsolutePath();
 
-        logger.printVerbose("Preprocessing file " + workingFileAbsolutePath + " ...");
-        if (!preprocessSSCCode(inputFileDir, fileAbsolutePath, workingFileAbsolutePath)) {
+        logger.printVerbose("Preprocessing file...");
+        if (!preprocessSSCCode(inputFile, workingFileAbsolutePath)) {
             return Optional.empty();
         }
 
@@ -145,14 +151,21 @@ public final class Main {
         return Optional.of(workingFileAbsolutePath);
     }
 
-    private static Path getFileDir(final Path file) {
-        final Path parent = file.getParent();
-        return parent == null
-                ? Path.of(".")
-                : parent;
+    private static Optional<Path> getPathVerified(final Path fileAbsolutePath) {
+        if (!Files.exists(fileAbsolutePath)) {
+            warn("File " + fileAbsolutePath + " not found");
+            return Optional.empty();
+        }
+
+        if (!Files.isRegularFile(fileAbsolutePath)) {
+            warn("File " + fileAbsolutePath + " is not a regular file");
+            return Optional.empty();
+        }
+
+        return Optional.of(fileAbsolutePath);
     }
 
-    private static VisitorData getVisitorData(Path file) throws IOException {
+    private static VisitorData getVisitorData(final Path file) throws IOException {
         final SSCLexer lexer = new SSCLexer(CharStreams.fromString(Files.readString(file)));
         final CommonTokenStream tokens = new CommonTokenStream(lexer);
         final SSCParser parser = new SSCParser(tokens);
@@ -164,7 +177,9 @@ public final class Main {
         return new VisitorData(tokens, tree);
     }
 
-    private static boolean extractSuperstructMembers(CommonTokenStream tokens, ParseTree tree, Path outputFile)
+    private static boolean extractSuperstructMembers(final CommonTokenStream tokens,
+                                                     final ParseTree tree,
+                                                     final Path outputFile)
             throws IOException {
         SSVisitor visitor = new SSVisitor(tokens);
         String result = visitor.visit(tree);
@@ -175,8 +190,9 @@ public final class Main {
         return visitor.hasNoErrors();
     }
 
-    private static boolean replaceSuperstructCalls(CommonTokenStream tokens, ParseTree tree,
-                                                   Path outputFile)
+    private static boolean replaceSuperstructCalls(final CommonTokenStream tokens,
+                                                   final ParseTree tree,
+                                                   final Path outputFile)
             throws IOException {
         final ConvertorVisitor visitor = new PostfixExpressionConvertorVisitor(tokens, sss);
         final String result = visitor.visit(tree) + "\n";
@@ -189,11 +205,10 @@ public final class Main {
         return visitor.hasNoErrors();
     }
 
-    private static boolean preprocessSSCCode(final Path dir,
-                                             final Path inFile,
+    private static boolean preprocessSSCCode(final InputFile inFile,
                                              final Path outFile)
             throws IOException, InterruptedException {
-        final Path tempOut = Files.createTempFile(dir, inFile.getFileName().toString(), ".i");
+        final Path tempOut = Files.createTempFile(inFile.dir(), inFile.getFullName(), ".i");
 
         /* cc -E -x c test_file.ssc -P */
         final ProcessBuilder pb = new ProcessBuilder(
@@ -202,7 +217,7 @@ public final class Main {
                 "-P",       // Do not output # line directives
                 "-D" + SSC_DEF_MACRO_STRING + "=1",
                 "-x", "c",  // treat the .ssc file as C
-                inFile.toString(),
+                inFile.toAbsolutePath().toString(),
                 "-o", tempOut.toString() // output file
         );
 
@@ -220,7 +235,7 @@ public final class Main {
         return true;
     }
 
-    private static boolean formatCCode(Path file) throws IOException, InterruptedException {
+    private static boolean formatCCode(final Path file) throws IOException, InterruptedException {
         final ProcessBuilder pb = new ProcessBuilder(
                 "/opt/homebrew/bin/clang-format", // fixme
                 "-i" /* in place */,
