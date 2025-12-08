@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static cz.muni.fi.sscc.exceptions.ExitValue.err;
+import static cz.muni.fi.sscc.exceptions.ExitValue.warn;
 
 public class CommandLineArguments {
     private String compileTarget;
@@ -29,6 +30,16 @@ public class CommandLineArguments {
         for (String arg : args) {
             nextOperation = switch (nextOperation) {
                 case CompileTarget -> {
+                    final Path asPath = Path.of(arg);
+                    if (asPath.toFile().exists()) {
+                        warn("File chosen as output already exists");
+                    }
+                    if (asPath.toFile().isDirectory()) {
+                        err(ExitValue.INVALID_ARGUMENTS, "'" + arg + "' is a directory");
+                    }
+                    if (asPath.toString().split("\\.").length != 1) {
+                        err(ExitValue.INVALID_ARGUMENTS, "Output file has a strange suffix");
+                    }
                     compileTarget = arg;
                     yield NextOperation.None;
                 }
