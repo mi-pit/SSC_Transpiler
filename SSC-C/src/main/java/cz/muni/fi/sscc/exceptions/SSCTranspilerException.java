@@ -10,23 +10,23 @@ import java.util.Objects;
 
 import static cz.muni.fi.sscc.util.Colors.COLOR_RESET;
 
-public abstract class SSCTranspilerException extends RuntimeException /* todo? make not runtime */ {
+public class SSCTranspilerException extends RuntimeException /* todo? make not runtime */ {
     private static final int LINES_BEFORE = 4;
     private static final int LINES_AFTER = 0;
 
-    protected static final String COLOR_MESSAGE = Colors.create(Colors.Ground.FORE, Colors.Color.RED);
-    protected static final String COLOR_CODE = Colors.create(Colors.Ground.FORE, Colors.Color.WHITE);
+    public static final String COLOR_MESSAGE = Colors.create(Colors.Ground.FORE, Colors.Color.RED);
+    public static final String COLOR_CODE = Colors.create(Colors.Ground.FORE, Colors.Color.WHITE);
     private static final String BOLD = "\u001B[1m";
-    protected static final String COLOR_CODE_BOLD = BOLD + Colors.create(Colors.Ground.FORE, Colors.Color.WHITE);
-    protected static final String COLOR_LOCATOR = Colors.create(Colors.Ground.FORE, Colors.Color.CYAN);
+    public static final String COLOR_CODE_BOLD = BOLD + Colors.create(Colors.Ground.FORE, Colors.Color.WHITE);
+    public static final String COLOR_LOCATOR = Colors.create(Colors.Ground.FORE, Colors.Color.CYAN);
 
     private SSCTranspilerException(Type type, String message, String context) {
         super(COLOR_MESSAGE + "SSC Transpiler: " + type + " exception: " + message + COLOR_RESET + "\n"
                 + context);
     }
 
-    protected SSCTranspilerException(Type type, String message,
-                                     ParserRuleContext ctx, CommonTokenStream tokens) {
+    public SSCTranspilerException(Type type, String message,
+                                  ParserRuleContext ctx, CommonTokenStream tokens) {
         this(
                 Objects.requireNonNull(type, "Exception type"),
                 Objects.requireNonNull(message, "Message"),
@@ -37,7 +37,7 @@ public abstract class SSCTranspilerException extends RuntimeException /* todo? m
         );
     }
 
-    protected SSCTranspilerException(Type type, Token tok, CommonTokenStream tokens) {
+    public SSCTranspilerException(Type type, Token tok, CommonTokenStream tokens) {
         this(type, "Could not parse token", getFormattedMessage(tok, tokens));
     }
 
@@ -63,8 +63,8 @@ public abstract class SSCTranspilerException extends RuntimeException /* todo? m
     }
 
 
-    protected enum Type {
-        Syntax, Antlr_parser;
+    public enum Type {
+        Syntax, Antlr_parser, Other;
 
         @Override
         public String toString() {

@@ -2,6 +2,7 @@ package cz.muni.fi.sscc.data;
 
 import antlr.SSCParser;
 import cz.muni.fi.sscc.exceptions.SSCSyntaxException;
+import cz.muni.fi.sscc.exceptions.SSCTranspilerException;
 import cz.muni.fi.sscc.util.Strings;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.RuleContext;
@@ -66,9 +67,11 @@ public record FunctionDefinition(List<String> specs,
 
     public static String parseName(SSCParser.DeclaratorContext ctx, CommonTokenStream tokens) {
         var directDecl = ctx.directDeclarator();
-        assert directDecl != null;
+        if (directDecl == null) {
+            throw new SSCSyntaxException("Direct declarator is null", ctx, tokens);
+        }
 
-        if (directDecl.Identifier() == null && directDecl.LeftParen() == null || directDecl.RightParen() == null) {
+        if (directDecl.Identifier() == null && (directDecl.LeftParen() == null || directDecl.RightParen() == null)) {
             return Strings.getContextText(ctx, tokens);
         }
 
@@ -76,10 +79,19 @@ public record FunctionDefinition(List<String> specs,
             return directDecl.Identifier().getText();
         }
         if (directDecl.LeftParen() != null) {
+            if (directDecl.RightParen() == null) {
+                throw new SSCSyntaxException("Direct declarator has left parenthesis, but not a matching right one", ctx, tokens);
+            }
+            if (directDecl.directDeclarator() == null) {
+                throw new SSCSyntaxException("Missing direct declarator (perhaps missing a variable name?)", directDecl, tokens);
+            }
             return Strings.getContextText(directDecl.directDeclarator(), tokens);
         }
 
-        throw new SSCSyntaxException("Unknown problem", ctx, tokens);
+        throw new SSCTranspilerException(
+                SSCTranspilerException.Type.Other,
+                "Unknown problem", ctx, tokens
+        );
     }
 
     public static List<String> parseFunctionArgs(final SSCParser.DeclaratorContext ctx,
