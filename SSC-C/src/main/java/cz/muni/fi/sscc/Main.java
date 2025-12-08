@@ -41,9 +41,6 @@ public final class Main {
             "-Wno-unused-function"  /* preprocessor extracts "static" functions */
     );
 
-    public static final SSCErrorListener errorListener = new SSCErrorListener();
-
-
     public static void main(String[] args)
             throws IOException, InterruptedException {
         parsedArgs = new CommandLineArguments(args);
