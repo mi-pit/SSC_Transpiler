@@ -266,15 +266,45 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
             Main.logger.printDebug("\t\tlocal vars: " + functionVariables.get(functionName));
             return getContextText(ctx, tokens);
         }
-        if (superstructs.stream().noneMatch(s -> s.name().equals(foundVar.get().type()))) {
+
+        final Optional<SuperStructRepre> optSS = superstructs
+                .stream()
+                .filter(s -> s.name().equals(foundVar.get().type()))
+                .findAny();
+        if (optSS.isEmpty()) {
+            throw new RuntimeException(
+                    "Could not find superstruct with name `" + foundVar.get().name() + "` even after finding such a variable");
+        }
+
+        boolean found = false;
+        for (FunctionDefinition func : optSS.get().member().stream()
+                .filter(SSMember::isFunctionDefinition)
+                .map(member -> member.data().getRight().get())
+                .toList()) {
+            if (func.name().equals(methodName)) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
             Main.logger.printDebug("Variable does not have such a method");
+            if (optSS.get().member()
+                    .stream()
+                    .filter(SSMember::isDeclaration)
+                    .map(mem -> mem.data().getLeft().get())
+                    .noneMatch(decl -> decl.data().contains(methodName))) {
+                throw new SSCSyntaxException(
+                        "superstruct " + optSS.get().name() + " has no member called `" + methodName + "`",
+                        ctx, tokens);
+            }
             return getContextText(ctx, tokens);
         }
+
         if (foundVar.get().pointer() && arrowOrDot == ArrowOrDot.Dot) {
             throw new SSCSyntaxException("Pointer to superstruct must be accessed with `->`", ctx, tokens);
         }
 
-        final String ssName = foundVar.get().type();
+        final String ssName = optSS.get().name();
 
         final StringBuilder finalExpression =
                 new StringBuilder(ssName)
