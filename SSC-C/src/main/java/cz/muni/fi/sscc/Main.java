@@ -20,6 +20,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 import static cz.muni.fi.sscc.ExitValue.err;
 import static cz.muni.fi.sscc.ExitValue.warn;
@@ -55,17 +56,29 @@ public class Main {
             err(ExitValue.INVALID_ARGUMENTS, "No files given to process");
         }
 
-        int aggregate = 0;
+        int totalFailed = 0;
+        final List<Path> outputtedFiles = new ArrayList<>();
         for (Path fileArg : files) {
             try {
-                aggregate += processFile(fileArg) ? 0 : 1;
+                final Optional<Path> processed = processFile(fileArg);
+                if (processed.isEmpty()) {
+                    totalFailed++;
+                } else {
+                    outputtedFiles.add(processed.get());
+                }
             } catch (SSCSyntaxException | AntlrException e) {
                 System.err.println(e.getMessage());
             }
         }
 
-        if (aggregate != 0) {
-            warn("Could not process " + aggregate + " file(s)");
+        if (totalFailed != 0) {
+            warn("Could not process " + totalFailed + " file(s)");
+            return;
+        }
+
+        if (parsedArgs.getCompileTarget().isPresent()) {
+            logger.printVerbose("Compiling...");
+            compileCCode(parsedArgs.getCompileTarget().get(), outputtedFiles);
         }
     }
 
@@ -75,10 +88,10 @@ public class Main {
      *      transpile to C only
      *      transpile AND compile (remove `.c` file)
      */
-    private static boolean processFile(final Path fileAbsolutePath) throws IOException, InterruptedException {
+    private static Optional<Path> processFile(final Path fileAbsolutePath) throws IOException, InterruptedException {
         if (!Files.exists(fileAbsolutePath)) {
             warn("File " + fileAbsolutePath + " not found");
-            return false;
+            return Optional.empty();
         }
 
         logger.printVerbose("Parsing file: `" + fileAbsolutePath + "`");
@@ -89,7 +102,7 @@ public class Main {
 
         logger.printVerbose("Preprocessing file " + workingFileAbsolutePath + " ...");
         if (!preprocessSSCCode(inputFileDir, fileAbsolutePath, workingFileAbsolutePath)) {
-            return false;
+            return Optional.empty();
         }
 
         {
@@ -98,7 +111,7 @@ public class Main {
             logger.printVerbose("Extracting superstructs...");
             if (!extractSuperstructMembers(data.tokens(), data.tree(), workingFileAbsolutePath)) {
                 logger.printVerbose("Failed to extract superstructs.");
-                return false; // Error nodes encountered
+                return Optional.empty(); // Error nodes encountered
             }
         }
         {
@@ -107,33 +120,24 @@ public class Main {
             logger.printVerbose("Replacing superstruct references...");
             if (!replaceSuperstructCalls(data.tokens(), data.tree(), workingFileAbsolutePath)) {
                 logger.printVerbose("Failed to replace superstruct references.");
-                return false;
+                return Optional.empty();
             }
         }
 
         logger.printVerbose("Formatting...");
         if (!formatCCode(workingFileAbsolutePath)) {
             logger.printVerbose("Failed to format C code.");
-            return false;
+            return Optional.empty();
         }
 
         logger.printVerbose("Verifying...");
         final int exitCode = verifyCCode(workingFileAbsolutePath);
         if (exitCode != 0) {
             logger.printVerbose("Verification failed with exit code: " + exitCode);
-            return false;
+            return Optional.empty();
         }
 
-        if (parsedArgs.getCompileTarget().isEmpty()) {
-            logger.printVerbose("Not compiling anything.");
-            return true;
-        }
-
-        logger.printVerbose("Compiling...");
-        // TODO: compile all files at once
-        compileCCode(parsedArgs.getCompileTarget().get(), workingFileAbsolutePath);
-        workingFileAbsolutePath.toFile().deleteOnExit();
-        return true;
+        return Optional.of(workingFileAbsolutePath);
     }
 
     private static Path getFileDir(final Path file) {
@@ -236,7 +240,8 @@ public class Main {
         return process.waitFor();
     }
 
-    private static void compileCCode(String binaryName, Path... files) throws IOException, InterruptedException {
+    private static void compileCCode(String binaryName, Collection<Path> files)
+            throws IOException, InterruptedException {
         /* cc -Werror -Wall -Wextra -pedantic -fsyntax-only "$file" */
         final List<String> cmd = new ArrayList<>();
         cmd.add("cc");
@@ -245,7 +250,7 @@ public class Main {
         cmd.add(binaryName);
 
         // add all source files
-        for (Path file : files) {
+        for (final Path file : files) {
             cmd.add(file.toString());
         }
         final ProcessBuilder pb = new ProcessBuilder(cmd);
