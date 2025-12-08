@@ -6,6 +6,8 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 
+import java.util.Objects;
+
 import static cz.muni.fi.sscc.util.Colors.COLOR_RESET;
 
 public abstract class SSCTranspilerException extends RuntimeException /* todo? make not runtime */ {
@@ -25,7 +27,14 @@ public abstract class SSCTranspilerException extends RuntimeException /* todo? m
 
     protected SSCTranspilerException(Type type, String message,
                                      ParserRuleContext ctx, CommonTokenStream tokens) {
-        this(type, message, getFormattedMessage(ctx, tokens));
+        this(
+                Objects.requireNonNull(type, "Exception type"),
+                Objects.requireNonNull(message, "Message"),
+                getFormattedMessage(
+                        Objects.requireNonNull(ctx, "Context"),
+                        Objects.requireNonNull(tokens, "Tokens")
+                )
+        );
     }
 
     protected SSCTranspilerException(Type type, Token tok, CommonTokenStream tokens) {
