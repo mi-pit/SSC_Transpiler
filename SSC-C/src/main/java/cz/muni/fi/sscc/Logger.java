@@ -1,6 +1,7 @@
 package cz.muni.fi.sscc;
 
 import cz.muni.fi.sscc.args.CommandLineArguments;
+import cz.muni.fi.sscc.util.Colors;
 
 public final class Logger {
     private final CommandLineArguments args;
@@ -10,20 +11,25 @@ public final class Logger {
     }
 
     public void printDebug(String string) {
-        printDebug("%s\n", string);
+        printDebug("%s", string);
     }
+
+    private static final String DEBUG_COLOR = Colors.create(Colors.Ground.FORE, Colors.Color.MAGENTA);
+    private static final String VERBOSE_COLOR = Colors.create(Colors.Ground.FORE, Colors.Color.YELLOW);
 
     public void printDebug(String fmt, Object... objects) {
         if (args.isPrintDebug()) {
-            System.out.print("[DEBUG] ");
+            System.out.print(DEBUG_COLOR + "[DEBUG] ");
             System.out.printf(fmt, objects);
+            System.out.println(Colors.COLOR_RESET);
         }
     }
 
     public void printVerbose(String fmt, Object... objects) {
         if (args.isVerbose()) {
+            System.out.print(VERBOSE_COLOR);
             System.out.printf(fmt, objects);
-            System.out.println();
+            System.out.println(Colors.COLOR_RESET);
         }
     }
 

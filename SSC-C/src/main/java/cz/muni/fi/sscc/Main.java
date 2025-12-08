@@ -74,17 +74,25 @@ public final class Main {
                 final Optional<Path> processed = processFile(fileArg);
                 if (processed.isEmpty()) {
                     totalFailed++;
+                    if (parsedArgs.isStopOnError()) {
+                        logger.printVerbose("Stopping.");
+                        break;
+                    }
                 } else {
                     outputtedFiles.add(processed.get());
                 }
             } catch (SSCTranspilerException e) {
                 System.err.println(e.getMessage());
                 totalFailed++;
+                if (parsedArgs.isStopOnError()) {
+                    logger.printVerbose("Stopping.");
+                    break;
+                }
             }
         }
 
         if (totalFailed != 0) {
-            warn("Could not process " + totalFailed + " file(s)");
+            err(ExitValue.TRANSPILATION_FAIL, "Could not process " + totalFailed + " file(s)");
             return;
         }
 

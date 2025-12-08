@@ -1,24 +1,27 @@
 package cz.muni.fi.sscc.exceptions;
 
+import cz.muni.fi.sscc.util.Colors;
 import cz.muni.fi.sscc.util.Util;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 
+import static cz.muni.fi.sscc.util.Colors.COLOR_RESET;
 import static cz.muni.fi.sscc.util.Util.getContextAroundToken;
 
 public abstract class SSCTranspilerException extends RuntimeException /* todo? make not runtime */ {
-    protected static final String COLOR_RESET = "\u001B[0m";
-    protected static final String COLOR_CYAN = "\u001B[36m";
-    protected static final String COLOR_WHITE = "\u001B[37m";
-    protected static final String COLOR_WHITE_BOLD = "\u001B[1m\u001B[37m";
-    protected static final String COLOR_RED = "\u001B[31m";
-
     private static final int LINES_BEFORE = 4;
     private static final int LINES_AFTER = 0;
 
+    protected static final String COLOR_MESSAGE = Colors.create(Colors.Ground.FORE, Colors.Color.RED);
+    protected static final String COLOR_CODE = Colors.create(Colors.Ground.FORE, Colors.Color.WHITE);
+    private static final String BOLD = "\u001B[1m";
+    protected static final String COLOR_CODE_BOLD = BOLD + Colors.create(Colors.Ground.FORE, Colors.Color.WHITE);
+    protected static final String COLOR_LOCATOR = Colors.create(Colors.Ground.FORE, Colors.Color.CYAN);
+
     private SSCTranspilerException(Type type, String message, String context) {
-        super(COLOR_RED + "SSC Transpiler: " + type + " exception: " + message + COLOR_RESET + "\n" + context);
+        super(COLOR_MESSAGE + "SSC Transpiler: " + type + " exception: " + message + COLOR_RESET + "\n"
+                + context);
     }
 
     protected SSCTranspilerException(Type type, String message,
@@ -32,15 +35,15 @@ public abstract class SSCTranspilerException extends RuntimeException /* todo? m
 
 
     public static String getFormattedMessage(Token token, CommonTokenStream tokens) {
-        return COLOR_RED +
+        return COLOR_MESSAGE +
                 "    in the middle of: `" +
-                COLOR_WHITE +
+                COLOR_CODE +
                 getContextAroundToken(token, tokens, 2, 2)
                         .replaceAll("\\s+", " ") +
-                COLOR_RED +
+                COLOR_MESSAGE +
                 "`\n" +
                 "    in:\n" +
-                COLOR_WHITE_BOLD +
+                COLOR_CODE_BOLD +
                 Util.getLinesAroundToken(token, tokens, LINES_BEFORE, LINES_AFTER) +
                 COLOR_RESET +
                 "\n" +
@@ -54,7 +57,7 @@ public abstract class SSCTranspilerException extends RuntimeException /* todo? m
     public static String getLocalizationMessage(Token token) {
         final int offset = token.getCharPositionInLine();
         final int len = token.getStopIndex() - token.getStartIndex() + 1;
-        return " ".repeat(offset) + COLOR_CYAN + "^".repeat(len) + " here" + COLOR_RESET;
+        return " ".repeat(offset) + COLOR_LOCATOR + "^".repeat(len) + " here" + COLOR_RESET;
     }
 
 

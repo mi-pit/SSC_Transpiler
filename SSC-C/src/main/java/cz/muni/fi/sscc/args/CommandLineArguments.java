@@ -14,12 +14,14 @@ public class CommandLineArguments {
     private boolean verbose;
     private boolean printDebug;
     private final List<InputFile> filesToProcess;
+    private boolean stopOnError;
 
     public CommandLineArguments(String[] args) {
         filesToProcess = new ArrayList<>();
         verbose = false;
         printDebug = false;
         compileTarget = null;
+        stopOnError = false;
 
         enum NextOperation {None, CompileTarget}
 
@@ -36,6 +38,10 @@ public class CommandLineArguments {
                         switch (arg) {
                             case "-v":
                                 verbose = true;
+                                break;
+
+                            case "-s":
+                                stopOnError = true;
                                 break;
 
                             case "--debug":
@@ -79,5 +85,9 @@ public class CommandLineArguments {
 
     public List<InputFile> getFilesToProcess() {
         return filesToProcess;
+    }
+
+    public boolean isStopOnError() {
+        return stopOnError;
     }
 }
