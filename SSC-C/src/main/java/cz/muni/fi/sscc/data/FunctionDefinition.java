@@ -103,6 +103,7 @@ public record FunctionDefinition(List<String> specs,
             args.remove(0);
         }
 
+        // todo: move this into parser
         if (isStatic && isPure) {
             throw new SSCSyntaxException("Method may not be both `static` and `pure`", null, null);
         }
