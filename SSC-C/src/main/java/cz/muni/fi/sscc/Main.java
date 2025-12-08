@@ -4,6 +4,8 @@ import antlr.SSCLexer;
 import antlr.SSCParser;
 import cz.muni.fi.sscc.data.SuperStructRepre;
 import cz.muni.fi.sscc.exceptions.AntlrException;
+import cz.muni.fi.sscc.exceptions.ExitValue;
+import cz.muni.fi.sscc.exceptions.SSCErrorListener;
 import cz.muni.fi.sscc.exceptions.SSCSyntaxException;
 import cz.muni.fi.sscc.visitors.ConvertorVisitor;
 import cz.muni.fi.sscc.visitors.PostfixExpressionConvertorVisitor;
@@ -22,14 +24,14 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-import static cz.muni.fi.sscc.ExitValue.err;
-import static cz.muni.fi.sscc.ExitValue.warn;
+import static cz.muni.fi.sscc.exceptions.ExitValue.err;
+import static cz.muni.fi.sscc.exceptions.ExitValue.warn;
 
 public final class Main {
     private Main() {
     }
 
-    private static final String SSC_DEF_MACRO_STRING = "__SSC_LANG__";
+    private static final String SSC_DEF_MACRO_STRING = "__SSC_LANGUAGE__";
 
     private static Collection<SuperStructRepre> sss;
     private static CommandLineArguments parsedArgs;
@@ -198,7 +200,7 @@ public final class Main {
                 "cc",
                 "-E",       // Preprocess
                 "-P",       // Do not output # line directives
-                "-D" + SSC_DEF_MACRO_STRING,
+                "-D" + SSC_DEF_MACRO_STRING + "=1",
                 "-x", "c",  // treat the .ssc file as C
                 inFile.toString(),
                 "-o", tempOut.toString() // output file

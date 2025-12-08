@@ -1,31 +1,10 @@
-*
+SSC-C/src/main/java/antlr/*.java
 
-# Git stuff
-!.gitignore
+SSC-C/target
 
-!README.md
-!LICENSE
+.idea
+.DS_Store
 
-# Antlr stuff
-!third-party
-!third-party/**
+ssc-examples/*
 
-# The OFFICIAL SSC format
-!_clang-format
-
-# For execution
-!refresh-grammar.sh
-!build.sh
-!run.sh
-
-# SSC Grammar
-!SSC.g4
-
-# Java
-!SSC-C/src/main/**
-## Generatable -- don't include
-SSC-C/src/main/java/antlr
-
-# SSC example code
-!ssc-examples
-!*.ssc
+*.jar

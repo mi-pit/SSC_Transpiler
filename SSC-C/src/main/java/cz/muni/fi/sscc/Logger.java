@@ -18,9 +18,9 @@ public final class Logger {
         }
     }
 
-    public void printVerbose(String string, Object... objects) {
+    public void printVerbose(String fmt, Object... objects) {
         if (args.isVerbose()) {
-            System.out.printf(string, objects);
+            System.out.printf(fmt, objects);
             System.out.println();
         }
     }

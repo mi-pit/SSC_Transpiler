@@ -1,4 +1,4 @@
-package cz.muni.fi.sscc;
+package cz.muni.fi.sscc.exceptions;
 
 public enum ExitValue {
     SUCCESS /* = 0 */,

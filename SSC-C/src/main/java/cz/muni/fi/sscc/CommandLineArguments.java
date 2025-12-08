@@ -1,12 +1,14 @@
 package cz.muni.fi.sscc;
 
+import cz.muni.fi.sscc.exceptions.ExitValue;
+
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import static cz.muni.fi.sscc.ExitValue.err;
+import static cz.muni.fi.sscc.exceptions.ExitValue.err;
 
 public class CommandLineArguments {
     private String compileTarget;

@@ -1,4 +1,4 @@
-package cz.muni.fi.sscc;
+package cz.muni.fi.sscc.exceptions;
 
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.RecognitionException;
