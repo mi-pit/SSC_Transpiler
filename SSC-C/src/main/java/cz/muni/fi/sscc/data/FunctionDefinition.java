@@ -1,7 +1,7 @@
 package cz.muni.fi.sscc.data;
 
-import cz.muni.fi.sscc.exceptions.SSCSyntaxException;
 import antlr.SSCParser;
+import cz.muni.fi.sscc.exceptions.SSCSyntaxException;
 import cz.muni.fi.sscc.util.Util;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.RuleContext;

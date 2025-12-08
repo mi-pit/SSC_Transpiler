@@ -2,12 +2,12 @@ package cz.muni.fi.sscc;
 
 import antlr.SSCLexer;
 import antlr.SSCParser;
+import cz.muni.fi.sscc.data.SuperStructRepre;
 import cz.muni.fi.sscc.exceptions.AntlrException;
 import cz.muni.fi.sscc.exceptions.SSCSyntaxException;
 import cz.muni.fi.sscc.visitors.ConvertorVisitor;
 import cz.muni.fi.sscc.visitors.PostfixExpressionConvertorVisitor;
 import cz.muni.fi.sscc.visitors.SSVisitor;
-import cz.muni.fi.sscc.data.SuperStructRepre;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -25,7 +25,10 @@ import java.util.Optional;
 import static cz.muni.fi.sscc.ExitValue.err;
 import static cz.muni.fi.sscc.ExitValue.warn;
 
-public class Main {
+public final class Main {
+    private Main() {
+    }
+
     private static final String SSC_DEF_MACRO_STRING = "__SSC_LANG__";
 
     private static Collection<SuperStructRepre> sss;
