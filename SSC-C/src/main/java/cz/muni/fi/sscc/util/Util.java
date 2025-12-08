@@ -45,7 +45,7 @@ public final class Util {
 
     public static String getLinesAroundToken(Token token, CommonTokenStream tokens, int before, int after) {
         String fullText = tokens.getTokenSource().getInputStream().toString();
-        String[] lines = fullText.split("\r?\n", -1);
+        String[] lines = fullText.split("\n", -1);
 
         int lineIndex = token.getLine() - 1;
         int start = Math.max(0, lineIndex - before);
@@ -53,6 +53,4 @@ public final class Util {
 
         return String.join("\n", new ArrayList<>(Arrays.asList(lines).subList(start, end + 1)));
     }
-
-
 }

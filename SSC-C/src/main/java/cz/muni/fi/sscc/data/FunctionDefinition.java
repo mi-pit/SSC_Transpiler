@@ -130,6 +130,6 @@ public record FunctionDefinition(List<String> specs,
                 + "("
                 + selfRef
                 + String.join(", ", args) + ")"
-                + " {\n\t" + String.join("\n\t", statements) + "\n}\n";
+                + " {\n    " + String.join("\n    ", statements) + "\n}\n";
     }
 }

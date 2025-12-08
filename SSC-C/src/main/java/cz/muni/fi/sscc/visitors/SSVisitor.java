@@ -30,7 +30,7 @@ public class SSVisitor extends ConvertorVisitor {
             if (member.isDeclaration()) {
                 assert member.data().getLeft().isPresent();
                 result
-                        .append("\t")
+                        .append("    ")
                         .append(member.data().getLeft().get().data())
                         .append("\n");
             }
