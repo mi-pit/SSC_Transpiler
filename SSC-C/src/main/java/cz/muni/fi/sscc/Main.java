@@ -5,10 +5,7 @@ import antlr.SSCParser;
 import cz.muni.fi.sscc.args.CommandLineArguments;
 import cz.muni.fi.sscc.args.InputFile;
 import cz.muni.fi.sscc.data.SuperStructRepre;
-import cz.muni.fi.sscc.exceptions.AntlrException;
-import cz.muni.fi.sscc.exceptions.ExitValue;
-import cz.muni.fi.sscc.exceptions.SSCErrorListener;
-import cz.muni.fi.sscc.exceptions.SSCSyntaxException;
+import cz.muni.fi.sscc.exceptions.*;
 import cz.muni.fi.sscc.visitors.ConvertorVisitor;
 import cz.muni.fi.sscc.visitors.PostfixExpressionConvertorVisitor;
 import cz.muni.fi.sscc.visitors.SSVisitor;
@@ -80,8 +77,9 @@ public final class Main {
                 } else {
                     outputtedFiles.add(processed.get());
                 }
-            } catch (SSCSyntaxException | AntlrException e) {
+            } catch (SSCTranspilerException e) {
                 System.err.println(e.getMessage());
+                totalFailed++;
             }
         }
 
@@ -105,7 +103,7 @@ public final class Main {
     private static Optional<Path> processFile(final InputFile inputFile) throws IOException, InterruptedException {
         Optional<Path> pathVerified = getPathVerified(inputFile.toAbsolutePath());
         if (pathVerified.isEmpty())
-            return pathVerified;
+            return Optional.empty();
 
         logger.printVerbose("Parsing file: '" + inputFile.absolutePathString() + "'");
 
@@ -171,7 +169,6 @@ public final class Main {
         final SSCParser parser = new SSCParser(tokens);
 
         parser.removeErrorListeners();
-        parser.addErrorListener(errorListener);
 
         final ParseTree tree = parser.compilationUnit();
         return new VisitorData(tokens, tree);
@@ -181,8 +178,8 @@ public final class Main {
                                                      final ParseTree tree,
                                                      final Path outputFile)
             throws IOException {
-        SSVisitor visitor = new SSVisitor(tokens);
-        String result = visitor.visit(tree);
+        final SSVisitor visitor = new SSVisitor(tokens);
+        final String result = visitor.visit(tree);
         sss = visitor.getSuperStructs();
 
         Files.writeString(outputFile, result, StandardOpenOption.TRUNCATE_EXISTING);

@@ -43,6 +43,13 @@ public final class Util {
         return sb.toString();
     }
 
+    public static String getContextAroundToken(final ParserRuleContext ctx,
+                                               final CommonTokenStream tokenStream,
+                                               final int back,
+                                               final int forward) {
+        return getContextAroundToken(ctx.getStart(), tokenStream, back, forward);
+    }
+
     public static String getLinesAroundToken(Token token, CommonTokenStream tokens, int before, int after) {
         String fullText = tokens.getTokenSource().getInputStream().toString();
         String[] lines = fullText.split("\n", -1);

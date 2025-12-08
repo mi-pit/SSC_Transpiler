@@ -43,10 +43,7 @@ public abstract class ConvertorVisitor extends SSCBaseVisitor<String> {
     @Override
     public String visitErrorNode(ErrorNode node) {
         hasErrors = true;
-
-        final Token token = node.getSymbol();
-        System.err.println(new AntlrException(token, tokens).getMessage());
-        return super.visitErrorNode(node);
+        throw new AntlrException(node.getSymbol(), tokens);
     }
 
     public boolean hasNoErrors() {
