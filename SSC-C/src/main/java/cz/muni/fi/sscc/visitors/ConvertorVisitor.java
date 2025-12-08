@@ -1,6 +1,7 @@
 package cz.muni.fi.sscc.visitors;
 
 import antlr.SSCBaseVisitor;
+import antlr.SSCParser;
 import cz.muni.fi.sscc.exceptions.AntlrException;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.Token;
@@ -27,9 +28,21 @@ public abstract class ConvertorVisitor extends SSCBaseVisitor<String> {
     }
 
     @Override
+    public String visitExternalDeclaration(SSCParser.ExternalDeclarationContext ctx) {
+        if (ctx.functionDefinition() != null) {
+            return super.visitExternalDeclaration(ctx) + "\n";
+        }
+        return super.visitExternalDeclaration(ctx);
+    }
+
+    @Override
     public String visitTerminal(TerminalNode node) {
         if (node.getSymbol().getType() == Token.EOF) {
             return "";  // ignore <EOF>
+        }
+
+        if (node.getSymbol().getType() == SSCParser.Semi) {
+            return ";\n";
         }
 
         return node.getText() + " ";

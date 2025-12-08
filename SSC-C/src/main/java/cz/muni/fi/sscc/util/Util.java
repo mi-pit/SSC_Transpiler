@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static cz.muni.fi.sscc.util.Colors.COLOR_RESET;
+
 public final class Util {
     private Util() {
     }
@@ -50,6 +52,8 @@ public final class Util {
         return getContextAroundToken(ctx.getStart(), tokenStream, back, forward);
     }
 
+    private static int maxLineLen = 150;
+
     public static String getLinesAroundToken(Token token, CommonTokenStream tokens, int before, int after) {
         String fullText = tokens.getTokenSource().getInputStream().toString();
         String[] lines = fullText.split("\n", -1);
@@ -58,6 +62,25 @@ public final class Util {
         int start = Math.max(0, lineIndex - before);
         int end = Math.min(lines.length - 1, lineIndex + after);
 
-        return String.join("\n", new ArrayList<>(Arrays.asList(lines).subList(start, end + 1)));
+        final List<String> ls = new ArrayList<>(Arrays.asList(lines).subList(start, end + 1))
+                .stream()
+                .map(line -> line.length() < maxLineLen
+                        ? line
+                        : line.substring(0, maxLineLen - 2) + "...")
+                .toList();
+        return String.join("\n", ls);
+    }
+
+
+    public static String getLocalizationMessage(Token token, String color) {
+        final int offset = Math.min(token.getCharPositionInLine(), maxLineLen);
+        final int desiredLen = token.getStopIndex() - token.getStartIndex() + 1;
+        final int len = Math.min(desiredLen, maxLineLen - offset);
+        return " ".repeat(offset) + color + "^".repeat(len) + (desiredLen > len ? " there ->" : " here") + COLOR_RESET;
+    }
+
+
+    public static void setMaxLineLen(int maxLineLen) {
+        Util.maxLineLen = maxLineLen;
     }
 }

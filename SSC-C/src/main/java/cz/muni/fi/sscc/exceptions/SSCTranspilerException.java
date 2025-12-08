@@ -7,7 +7,6 @@ import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 
 import static cz.muni.fi.sscc.util.Colors.COLOR_RESET;
-import static cz.muni.fi.sscc.util.Util.getContextAroundToken;
 
 public abstract class SSCTranspilerException extends RuntimeException /* todo? make not runtime */ {
     private static final int LINES_BEFORE = 4;
@@ -38,7 +37,7 @@ public abstract class SSCTranspilerException extends RuntimeException /* todo? m
         return COLOR_MESSAGE +
                 "    in the middle of: `" +
                 COLOR_CODE +
-                getContextAroundToken(token, tokens, 2, 2)
+                Util.getContextAroundToken(token, tokens, 2, 2)
                         .replaceAll("\\s+", " ") +
                 COLOR_MESSAGE +
                 "`\n" +
@@ -47,17 +46,11 @@ public abstract class SSCTranspilerException extends RuntimeException /* todo? m
                 Util.getLinesAroundToken(token, tokens, LINES_BEFORE, LINES_AFTER) +
                 COLOR_RESET +
                 "\n" +
-                getLocalizationMessage(token);
+                Util.getLocalizationMessage(token, COLOR_LOCATOR);
     }
 
     public static String getFormattedMessage(ParserRuleContext ctx, CommonTokenStream tokens) {
         return getFormattedMessage(ctx.getStart(), tokens);
-    }
-
-    public static String getLocalizationMessage(Token token) {
-        final int offset = token.getCharPositionInLine();
-        final int len = token.getStopIndex() - token.getStartIndex() + 1;
-        return " ".repeat(offset) + COLOR_LOCATOR + "^".repeat(len) + " here" + COLOR_RESET;
     }
 
 
