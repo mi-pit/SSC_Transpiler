@@ -18,7 +18,7 @@ public record FunctionDefinition(List<String> specs,
                                  String superstructMemberOf) {
     public FunctionDefinition(String ssName, SSCParser.FunctionDefinitionContext ctx, CommonTokenStream tokens) {
         this(
-                parseFunctionSpecs(ctx.declarationSpecifiers()),
+                parseFunctionSpecs(ctx.declarationSpecifiers(), tokens),
                 parseType(ctx.declarationSpecifiers(), ctx.declarator(), tokens),
                 parseName(ctx.declarator(), tokens),
                 parseFunctionArgs(ctx.declarator(), tokens),
@@ -27,10 +27,23 @@ public record FunctionDefinition(List<String> specs,
         );
     }
 
-    public static List<String> parseFunctionSpecs(SSCParser.DeclarationSpecifiersContext ctx) {
-        return ctx.declarationSpecifier().stream()
+    public static List<String> parseFunctionSpecs(final SSCParser.DeclarationSpecifiersContext ctx,
+                                                  final CommonTokenStream tokens) {
+        final List<String> specs = ctx
+                .declarationSpecifier()
+                .stream()
                 .filter(declSpec -> declSpec.typeSpecifier() == null) /* filter out type names */
-                .map(RuleContext::getText).collect(Collectors.toList());
+                .map(RuleContext::getText)
+                .toList();
+
+        final boolean isStatic = specs.stream().anyMatch("static"::equals);
+        final boolean isPure = specs.stream().anyMatch("pure"::equals);
+
+        if (isStatic && isPure) {
+            throw new SSCSyntaxException("Method may not be both `static` and `pure`", ctx, tokens);
+        }
+
+        return specs;
     }
 
     public static String parseType(SSCParser.DeclarationSpecifiersContext declSpecs,
@@ -98,14 +111,10 @@ public record FunctionDefinition(List<String> specs,
     public String getText() {
         final boolean isStatic = specs.stream().anyMatch("static"::equals);
         final boolean isPure = specs.stream().anyMatch("pure"::equals);
+        assert !isStatic || !isPure;
 
         if (!isStatic && args.size() == 1 && args.get(0).equals("void")) {
             args.remove(0);
-        }
-
-        // todo: move this into parser
-        if (isStatic && isPure) {
-            throw new SSCSyntaxException("Method may not be both `static` and `pure`", null, null);
         }
 
         final StringBuilder selfRef = new StringBuilder();
