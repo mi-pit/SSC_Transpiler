@@ -1,6 +1,6 @@
 package cz.muni.fi.sscc.exceptions;
 
-import cz.muni.fi.sscc.util.Colors;
+import cz.muni.fi.sscc.util.UnixTerminalColors;
 import cz.muni.fi.sscc.util.Strings;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -8,17 +8,17 @@ import org.antlr.v4.runtime.Token;
 
 import java.util.Objects;
 
-import static cz.muni.fi.sscc.util.Colors.COLOR_RESET;
+import static cz.muni.fi.sscc.util.UnixTerminalColors.COLOR_RESET;
 
-public class SSCTranspilerException extends RuntimeException /* todo? make not runtime */ {
+public class SSCTranspilerException extends RuntimeException {
     private static final int LINES_BEFORE = 4;
     private static final int LINES_AFTER = 0;
 
-    public static final String COLOR_MESSAGE = Colors.create(Colors.Ground.FORE, Colors.Color.RED);
-    public static final String COLOR_CODE = Colors.create(Colors.Ground.FORE, Colors.Color.WHITE);
+    public static final String COLOR_MESSAGE = UnixTerminalColors.create(UnixTerminalColors.Ground.FORE, UnixTerminalColors.Color.RED);
+    public static final String COLOR_CODE = UnixTerminalColors.create(UnixTerminalColors.Ground.FORE, UnixTerminalColors.Color.WHITE);
     private static final String BOLD = "\u001B[1m";
-    public static final String COLOR_CODE_BOLD = BOLD + Colors.create(Colors.Ground.FORE, Colors.Color.WHITE);
-    public static final String COLOR_LOCATOR = Colors.create(Colors.Ground.FORE, Colors.Color.CYAN);
+    public static final String COLOR_CODE_BOLD = BOLD + UnixTerminalColors.create(UnixTerminalColors.Ground.FORE, UnixTerminalColors.Color.WHITE);
+    public static final String COLOR_LOCATOR = UnixTerminalColors.create(UnixTerminalColors.Ground.FORE, UnixTerminalColors.Color.CYAN);
 
     private SSCTranspilerException(Type type, String message, String context) {
         super(COLOR_MESSAGE + "SSC Transpiler: " +

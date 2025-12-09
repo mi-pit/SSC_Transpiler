@@ -1,7 +1,7 @@
 package cz.muni.fi.sscc.util;
 
-public final class Colors {
-    private Colors() {
+public final class UnixTerminalColors {
+    private UnixTerminalColors() {
     }
 
     public enum Ground {

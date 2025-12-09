@@ -1,7 +1,7 @@
 package cz.muni.fi.sscc;
 
 import cz.muni.fi.sscc.args.CommandLineArguments;
-import cz.muni.fi.sscc.util.Colors;
+import cz.muni.fi.sscc.util.UnixTerminalColors;
 
 public final class Logger {
     private final CommandLineArguments args;
@@ -14,14 +14,14 @@ public final class Logger {
         printDebug("%s", string);
     }
 
-    private static final String DEBUG_COLOR = Colors.create(Colors.Ground.FORE, Colors.Color.MAGENTA);
-    private static final String VERBOSE_COLOR = Colors.create(Colors.Ground.FORE, Colors.Color.YELLOW);
+    private static final String DEBUG_COLOR = UnixTerminalColors.create(UnixTerminalColors.Ground.FORE, UnixTerminalColors.Color.MAGENTA);
+    private static final String VERBOSE_COLOR = UnixTerminalColors.create(UnixTerminalColors.Ground.FORE, UnixTerminalColors.Color.YELLOW);
 
     public void printDebug(String fmt, Object... objects) {
         if (args.isPrintDebug()) {
             System.out.print(DEBUG_COLOR + "[DEBUG] ");
             System.out.printf(fmt, objects);
-            System.out.println(Colors.COLOR_RESET);
+            System.out.println(UnixTerminalColors.COLOR_RESET);
         }
     }
 
@@ -29,7 +29,7 @@ public final class Logger {
         if (args.isVerbose()) {
             System.out.print(VERBOSE_COLOR);
             System.out.printf(fmt, objects);
-            System.out.println(Colors.COLOR_RESET);
+            System.out.println(UnixTerminalColors.COLOR_RESET);
         }
     }
 

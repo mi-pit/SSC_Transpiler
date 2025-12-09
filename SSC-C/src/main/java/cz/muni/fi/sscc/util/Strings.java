@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static cz.muni.fi.sscc.util.Colors.COLOR_RESET;
+import static cz.muni.fi.sscc.util.UnixTerminalColors.COLOR_RESET;
 
 public final class Strings {
     private Strings() {
