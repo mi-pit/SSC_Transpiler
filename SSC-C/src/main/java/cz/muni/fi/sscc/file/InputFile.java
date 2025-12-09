@@ -1,4 +1,4 @@
-package cz.muni.fi.sscc.args;
+package cz.muni.fi.sscc.file;
 
 import java.nio.file.Path;
 import java.util.Objects;

@@ -3,7 +3,7 @@ package cz.muni.fi.sscc;
 import antlr.SSCLexer;
 import antlr.SSCParser;
 import cz.muni.fi.sscc.args.CommandLineArguments;
-import cz.muni.fi.sscc.args.InputFile;
+import cz.muni.fi.sscc.file.InputFile;
 import cz.muni.fi.sscc.data.SuperStructRepre;
 import cz.muni.fi.sscc.exceptions.*;
 import cz.muni.fi.sscc.visitors.ConvertorVisitor;
@@ -103,7 +103,18 @@ public final class Main {
         if (parsedArgs.getCompileTarget().isPresent()) {
             logger.printVerbose("Compiling...");
             compileCCode(parsedArgs.getCompileTarget().get(), outputtedFiles);
+
+            outputtedFiles.forEach(path -> {
+                logger.printVerbose("Trying to delete output file '" + path + "'...");
+                try {
+                    Files.delete(path);
+                    logger.printVerbose("    success");
+                } catch (IOException e) {
+                    warn("Could not delete file '" + path + "'");
+                }
+            });
         }
+        logger.printVerbose("Successfully processed.");
     }
 
     /*

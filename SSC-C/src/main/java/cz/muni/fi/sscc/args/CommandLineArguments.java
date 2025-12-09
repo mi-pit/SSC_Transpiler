@@ -1,30 +1,26 @@
 package cz.muni.fi.sscc.args;
 
 import cz.muni.fi.sscc.exceptions.ExitValue;
+import cz.muni.fi.sscc.file.DirectoryTreeParser;
+import cz.muni.fi.sscc.file.InputFile;
 
+import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 import static cz.muni.fi.sscc.exceptions.ExitValue.err;
 import static cz.muni.fi.sscc.exceptions.ExitValue.warn;
 
 public class CommandLineArguments {
-    private String compileTarget;
-    private boolean verbose;
-    private boolean printDebug;
-    private final List<InputFile> filesToProcess;
-    private boolean stopOnError;
+    private String compileTarget = null;
+    private boolean verbose = false;
+    private boolean printDebug = false;
+    private final List<InputFile> filesToProcess = new ArrayList<>();
+    private boolean stopOnError = false;
+    private final Collection<InputFile> libraryPaths = new HashSet<>();
 
-    public CommandLineArguments(String[] args) {
-        filesToProcess = new ArrayList<>();
-        verbose = false;
-        printDebug = false;
-        compileTarget = null;
-        stopOnError = false;
-
-        enum NextOperation {None, CompileTarget}
+    public CommandLineArguments(String[] args) throws IOException {
+        enum NextOperation {None, CompileTarget, LibPath}
 
         NextOperation nextOperation = NextOperation.None;
         for (String arg : args) {
@@ -41,6 +37,12 @@ public class CommandLineArguments {
                         err(ExitValue.INVALID_ARGUMENTS, "Output file has a strange suffix");
                     }
                     compileTarget = arg;
+                    yield NextOperation.None;
+                }
+
+                case LibPath -> {
+                    final DirectoryTreeParser parser = new DirectoryTreeParser(Path.of(arg));
+                    filesToProcess.addAll(parser.getFiles());
                     yield NextOperation.None;
                 }
 
@@ -65,6 +67,9 @@ public class CommandLineArguments {
                                 }
                                 yield NextOperation.CompileTarget;
 
+                            case "--lib":
+                                yield NextOperation.LibPath;
+
                             default:
                                 err(ExitValue.INVALID_ARGUMENTS, "Unknown option: " + arg);
                         }
@@ -77,8 +82,8 @@ public class CommandLineArguments {
             };
         }
 
-        if (nextOperation == NextOperation.CompileTarget) {
-            err(ExitValue.INVALID_ARGUMENTS, "Missing compile target");
+        if (nextOperation != NextOperation.None) {
+            err(ExitValue.INVALID_ARGUMENTS, "Missing option `" + nextOperation.name() + "` argument");
         }
     }
 
