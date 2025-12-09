@@ -2,7 +2,7 @@ package cz.muni.fi.sscc.data;
 
 import antlr.SSCParser;
 import cz.muni.fi.sscc.exceptions.SSCSyntaxException;
-import cz.muni.fi.sscc.exceptions.SSCTranspilerException;
+import cz.muni.fi.sscc.exceptions.UnknownTranspilationException;
 import cz.muni.fi.sscc.util.Strings;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.RuleContext;
@@ -88,10 +88,7 @@ public record FunctionDefinition(List<String> specs,
             return Strings.getContextText(directDecl.directDeclarator(), tokens);
         }
 
-        throw new SSCTranspilerException(
-                SSCTranspilerException.Type.Other,
-                "Unknown problem", ctx, tokens
-        );
+        throw new UnknownTranspilationException("Unknown problem in function definition", ctx, tokens);
     }
 
     public static List<String> parseFunctionArgs(final SSCParser.DeclaratorContext ctx,

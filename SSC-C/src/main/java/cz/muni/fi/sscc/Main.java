@@ -78,8 +78,15 @@ public final class Main {
                 } else {
                     outputtedFiles.add(processed.get());
                 }
-            } catch (SSCTranspilerException e) {
-                System.err.println(e.getMessage());
+            } catch (RuntimeException e) {
+                if (e instanceof UnknownTranspilationException ute) {
+                    System.err.println("Caught unknown exception while processing '" + fileArg.absolutePathString() + "'");
+                    ute.printStackTrace();
+                } else if (e instanceof SSCTranspilerException ste) {
+                    System.err.println(ste.getMessage());
+                } else {
+                    throw e;
+                }
                 totalFailed++;
                 if (parsedArgs.isStopOnError()) {
                     logger.printVerbose("Stopping.");
@@ -99,11 +106,12 @@ public final class Main {
         }
     }
 
-    /**
+    /*
      * TODO:
      *  add options
      *      transpile to C only
      *      transpile AND compile (remove `.c` file)
+     *      treat any file as SSC (`-x c` in cc)
      */
     private static Optional<Path> processFile(final InputFile inputFile) throws IOException, InterruptedException {
         Optional<Path> pathVerified = getPathVerified(inputFile.toAbsolutePath());
