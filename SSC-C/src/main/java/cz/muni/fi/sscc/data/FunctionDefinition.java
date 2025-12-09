@@ -78,17 +78,20 @@ public record FunctionDefinition(List<String> specs,
         if (directDecl.Identifier() != null) {
             return directDecl.Identifier().getText();
         }
-        if (directDecl.LeftParen() != null) {
-            if (directDecl.RightParen() == null) {
-                throw new SSCSyntaxException("Direct declarator has left parenthesis, but not a matching right one", ctx, tokens);
-            }
-            if (directDecl.directDeclarator() == null) {
-                throw new SSCSyntaxException("Missing direct declarator (perhaps missing a variable name?)", directDecl, tokens);
-            }
-            return Strings.getContextText(directDecl.directDeclarator(), tokens);
+
+        if (directDecl.LeftParen() == null) {
+            // How could this be parsed as a function definition?
+            throw new UnknownTranspilationException("Parser \"found\" function definition without parentheses", ctx, tokens);
         }
 
-        throw new UnknownTranspilationException("Unknown problem in function definition", ctx, tokens);
+        if (directDecl.RightParen() == null) {
+            throw new SSCSyntaxException("Direct declarator has left parenthesis, but not a matching right one", ctx, tokens);
+        }
+        if (directDecl.directDeclarator() == null) {
+            throw new SSCSyntaxException("Missing direct declarator (perhaps missing a variable name?)", directDecl, tokens);
+        }
+
+        return Strings.getContextText(directDecl.directDeclarator(), tokens);
     }
 
     public static List<String> parseFunctionArgs(final SSCParser.DeclaratorContext ctx,
