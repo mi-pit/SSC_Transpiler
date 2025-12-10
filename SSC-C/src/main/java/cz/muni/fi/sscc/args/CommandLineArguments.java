@@ -17,7 +17,7 @@ public class CommandLineArguments {
     private boolean verbose = false;
     private boolean printDebug = false;
     private final List<InputFile> filesToProcess = new ArrayList<>();
-    private boolean stopOnError = false;
+    private boolean stopOnError = true;
 
     private enum NextOperation {None, CompileTarget, LibPath}
 
@@ -82,7 +82,7 @@ public class CommandLineArguments {
                 yield NextOperation.None;
             }
             case "-s" -> {
-                stopOnError = true;
+                stopOnError = false;
                 yield NextOperation.None;
             }
             case "--debug" -> {

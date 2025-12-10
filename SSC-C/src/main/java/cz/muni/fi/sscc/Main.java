@@ -57,7 +57,7 @@ public final class Main {
 
         int totalFailed = 0;
         final Set<Path> outputtedFiles = new HashSet<>();
-        for (InputFile fileArg : files) {
+        for (final InputFile fileArg : files) {
             if (!"ssc".equals(fileArg.suffix())) {
                 logger.printVerbose("Skipping transpilation of file '"
                         + fileArg.absolutePathString()
