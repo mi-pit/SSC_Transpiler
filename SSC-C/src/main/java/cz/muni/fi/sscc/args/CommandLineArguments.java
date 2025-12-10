@@ -17,78 +17,87 @@ public class CommandLineArguments {
     private boolean printDebug = false;
     private final List<InputFile> filesToProcess = new ArrayList<>();
     private boolean stopOnError = false;
-    private final Collection<InputFile> libraryPaths = new HashSet<>();
 
-    public CommandLineArguments(String[] args) throws IOException {
-        enum NextOperation {None, CompileTarget, LibPath}
+    private enum NextOperation {None, CompileTarget, LibPath}
 
+    public CommandLineArguments(final String[] args) throws IOException {
         NextOperation nextOperation = NextOperation.None;
         for (String arg : args) {
             nextOperation = switch (nextOperation) {
-                case CompileTarget -> {
-                    final Path asPath = Path.of(arg);
-                    if (asPath.toFile().exists()) {
-                        warn("File chosen as output already exists");
-                    }
-                    if (asPath.toFile().isDirectory()) {
-                        err(ExitValue.INVALID_ARGUMENTS, "'" + arg + "' is a directory");
-                    }
-                    if (asPath.toString().split("\\.").length != 1) {
-                        err(ExitValue.INVALID_ARGUMENTS, "Output file has a strange suffix");
-                    }
-                    compileTarget = arg;
-                    yield NextOperation.None;
-                }
-
-                case LibPath -> {
-                    final DirectoryTreeParser parser = new DirectoryTreeParser(Path.of(arg));
-                    filesToProcess.addAll(parser.getFiles());
-                    yield NextOperation.None;
-                }
-
-                case None -> {
-                    if (arg.startsWith("-")) {
-                        switch (arg) {
-                            case "-v":
-                                verbose = true;
-                                break;
-
-                            case "-s":
-                                stopOnError = true;
-                                break;
-
-                            case "--debug":
-                                printDebug = true;
-                                break;
-
-                            case "--compile":
-                                if (compileTarget != null) {
-                                    err(ExitValue.INVALID_ARGUMENTS, "Compile target already specified");
-                                }
-                                yield NextOperation.CompileTarget;
-
-                            case "--lib":
-                                yield NextOperation.LibPath;
-
-                            default:
-                                err(ExitValue.INVALID_ARGUMENTS, "Unknown option: " + arg);
-                        }
-                    } else {
-                        filesToProcess.add(InputFile.fromAbsolutePath(Path.of(arg)));
-                    }
-
-                    yield NextOperation.None;
-                }
+                case CompileTarget -> getCompileTarget(arg);
+                case LibPath -> getLibraryFiles(arg);
+                case None -> getNextOperationFromNone(arg);
             };
         }
 
         if (nextOperation != NextOperation.None) {
-            err(ExitValue.INVALID_ARGUMENTS, "Missing option `" + nextOperation.name() + "` argument");
+            err(ExitValue.INVALID_ARGUMENTS, "Missing argument for option '" + nextOperation + "'");
         }
     }
 
+    private NextOperation getLibraryFiles(final String arg) throws IOException {
+        final DirectoryTreeParser parser = new DirectoryTreeParser(Path.of(arg));
+        filesToProcess.addAll(parser.getFiles());
+        return NextOperation.None;
+    }
+
+    private NextOperation getCompileTarget(String arg) {
+        final Path asPath = Path.of(arg);
+        if (asPath.toFile().exists()) {
+            warn("File chosen as output already exists");
+        }
+        if (asPath.toFile().isDirectory()) {
+            err(ExitValue.INVALID_ARGUMENTS, "'" + arg + "' is a directory");
+        }
+        if (asPath.toString().split("\\.").length != 1) {
+            err(ExitValue.INVALID_ARGUMENTS, "Output file has a strange suffix");
+        }
+        compileTarget = arg;
+        return NextOperation.None;
+    }
+
+    private NextOperation getNextOperationFromNone(final String arg) {
+        if (!arg.startsWith("-")) {
+            filesToProcess.add(InputFile.fromAbsolutePath(Path.of(arg)));
+            return NextOperation.None;
+        }
+
+        return processOption(arg);
+    }
+
+    private NextOperation processOption(final String arg) {
+        return switch (arg) {
+            case "-v" -> {
+                verbose = true;
+                yield NextOperation.None;
+            }
+            case "-s" -> {
+                stopOnError = true;
+                yield NextOperation.None;
+            }
+            case "--debug" -> {
+                printDebug = true;
+                yield NextOperation.None;
+            }
+
+            case "--compile" -> {
+                if (compileTarget != null) {
+                    err(ExitValue.INVALID_ARGUMENTS, "Compile target already specified");
+                }
+                yield NextOperation.CompileTarget;
+            }
+
+            case "--lib" -> NextOperation.LibPath;
+
+            default -> {
+                err(ExitValue.INVALID_ARGUMENTS, "Unknown option: " + arg);
+                throw new RuntimeException("Unreachable");
+            }
+        };
+    }
+
     public Optional<String> getCompileTarget() {
-        return compileTarget == null ? Optional.empty() : Optional.of(compileTarget);
+        return Optional.ofNullable(compileTarget);
     }
 
     public boolean isVerbose() {
