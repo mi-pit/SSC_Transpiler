@@ -15,13 +15,26 @@ public enum ExitValue {
     private static final String COLOR_WARN = UnixTerminalColors.create(UnixTerminalColors.Ground.FORE, UnixTerminalColors.Color.RED);
 
     public static void err(final ExitValue exitCode, String message) {
-        warn(message);
+        warnInternal(true, message);
+        warnInternalFmt(true, "Exiting with code %d (%s)", exitCode.ordinal(), exitCode.toString());
         System.exit(exitCode.ordinal());
     }
 
     public static void warn(final String message) {
+        warnInternal(false, message);
+    }
+
+    private static void warnInternal(final boolean isError, final String message) {
+        warnInternalFmt(isError, "%s", message);
+    }
+
+    private static void warnInternalFmt(final boolean isError, final String fmtstr, Object... args) {
         System.err.print(COLOR_WARN);
-        System.err.print("SSC Transpiler: warning: " + message);
+
+        final String warningString = isError ? "error" : "warning";
+        System.err.print("SSC Transpiler: " + warningString + ": ");
+        System.out.printf("%s", String.format(fmtstr, args));
+
         System.err.println(UnixTerminalColors.COLOR_RESET);
     }
 }
