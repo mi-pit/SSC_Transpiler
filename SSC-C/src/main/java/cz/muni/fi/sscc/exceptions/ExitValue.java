@@ -1,7 +1,5 @@
 package cz.muni.fi.sscc.exceptions;
 
-import cz.muni.fi.sscc.util.UnixTerminalColors;
-
 import static cz.muni.fi.sscc.util.UnixTerminalColors.*;
 
 public enum ExitValue {
@@ -17,6 +15,8 @@ public enum ExitValue {
     private static final String COLOR_WARN = create(Ground.BACK, Color.YELLOW);
     private static final String COLOR_ERROR = create(Ground.FORE, Color.RED);
 
+
+    /* TODO: replace with formatted exceptions */
     public static void err(final ExitValue exitCode, String message) {
         warnInternal(true, message);
         warnInternalFmt(true, "Exiting with code %d (%s)", exitCode.ordinal(), exitCode.toString());
