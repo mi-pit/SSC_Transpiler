@@ -58,7 +58,7 @@ public final class Main {
         int totalFailed = 0;
         final Set<Path> outputtedFiles = new HashSet<>();
         for (InputFile fileArg : files) {
-            if (!fileArg.suffix().equals("ssc")) {
+            if (!"ssc".equals(fileArg.suffix())) {
                 logger.printVerbose("Skipping transpilation of file '"
                         + fileArg.absolutePathString()
                         + "' (not an ssc file)");
@@ -79,19 +79,21 @@ public final class Main {
                     outputtedFiles.add(processed.get());
                 }
             } catch (RuntimeException e) {
-                if (e instanceof UnknownTranspilationException ute) {
+                if (e instanceof UnknownTranspilationException) {
                     System.err.println("Caught unknown exception while processing '" + fileArg.absolutePathString() + "'");
-                    ute.printStackTrace();
-                } else if (e instanceof SSCTranspilerException ste) {
-                    System.err.println(ste.getMessage());
+                    e.printStackTrace();
+                } else if (e instanceof SSCTranspilerException) {
+                    System.err.println(e.getMessage());
                 } else {
-                    throw e;
+                    throw e; /* doesn't get caught again */
                 }
                 totalFailed++;
                 if (parsedArgs.isStopOnError()) {
                     logger.printVerbose("Stopping.");
                     break;
                 }
+            } finally {
+                logger.printVerbose("Processed '" + fileArg.absolutePathString() + "'");
             }
         }
 

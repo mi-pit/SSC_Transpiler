@@ -5,6 +5,7 @@ import cz.muni.fi.sscc.file.DirectoryTreeParser;
 import cz.muni.fi.sscc.file.InputFile;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
@@ -58,7 +59,16 @@ public class CommandLineArguments {
 
     private NextOperation getNextOperationFromNone(final String arg) {
         if (!arg.startsWith("-")) {
-            filesToProcess.add(InputFile.fromAbsolutePath(Path.of(arg)));
+            final Path path = Path.of(arg);
+            if (!Files.exists(path)) {
+                err(ExitValue.INVALID_ARGUMENTS, "File '" + arg + "' does not exist");
+            }
+
+            final InputFile inputFile = InputFile.fromAbsolutePath(path.toAbsolutePath());
+            if (inputFile.suffix() == null) {
+                err(ExitValue.INVALID_ARGUMENTS, "Could not verify type of file '" + arg + "'");
+            }
+            filesToProcess.add(inputFile);
             return NextOperation.None;
         }
 
