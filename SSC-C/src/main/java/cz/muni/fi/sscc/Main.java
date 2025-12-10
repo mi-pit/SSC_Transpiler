@@ -157,6 +157,13 @@ public final class Main {
             }
         }
 
+        if (parsedArgs.getCompileTarget().isPresent()) {
+            /* don't format if you're going to delete the files anyway;
+             * don't verify if you're going to compile the files anyway
+             */
+            return Optional.of(workingFileAbsolutePath);
+        }
+
         logger.printVerbose("Formatting...");
         if (!formatCCode(workingFileAbsolutePath)) {
             logger.printVerbose("Failed to format C code.");
