@@ -22,7 +22,6 @@ public final class DirectoryTreeParser {
                 }
 
                 final String name = path.getFileName().toString();
-                System.out.println("Found entry: " + name);
                 if (!name.endsWith(".c") && !name.endsWith(".ssc")) {
                     return;
                 }
