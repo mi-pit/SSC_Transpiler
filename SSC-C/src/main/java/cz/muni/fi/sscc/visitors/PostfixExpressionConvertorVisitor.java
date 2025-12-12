@@ -190,7 +190,7 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
 
         boolean hasParens = ctx.LeftParen() != null && ctx.RightParen() != null;
         if (!hasParens) {
-            throw new SSCSyntaxException("Can not access static `superstruct` member", ctx, tokens);
+            throw new SSCSyntaxException("Can not access static `superstruct` members", ctx, tokens);
         }
 
         if (ctx.primaryExpression() == null)
@@ -224,9 +224,9 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
         if (superstructs.stream()
                 .filter(s -> s.name().equals(className))
                 .findFirst().orElseThrow(() -> new IllegalStateException("Must be present"))
-                .member().stream()
+                .members().stream()
                 .filter(SSMember::isFunctionDefinition)
-                .map(ssMember -> ssMember.data().getRight().get(/* safe because ifFnDef above */).name())
+                .map(ssMember -> ssMember.data().getRight().get(/* safe because ifFnDef above */).getName())
                 .noneMatch(methodName::equals)) {
             throw new SSCSyntaxException(
                     "superstruct with name `" + className
@@ -277,24 +277,24 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
         }
 
         boolean found = false;
-        for (FunctionDefinition func : optSS.get().member().stream()
+        for (FunctionDefinition func : optSS.get().members().stream()
                 .filter(SSMember::isFunctionDefinition)
                 .map(member -> member.data().getRight().get())
                 .toList()) {
-            if (func.name().equals(methodName)) {
+            if (func.getName().equals(methodName)) {
                 found = true;
                 break;
             }
         }
         if (!found) {
             Main.logger.printDebug("Variable does not have such a method");
-            if (optSS.get().member()
+            if (optSS.get().members()
                     .stream()
                     .filter(SSMember::isDeclaration)
                     .map(mem -> mem.data().getLeft().get())
-                    .noneMatch(decl -> decl.data().contains(methodName))) {
+                    .noneMatch(decl -> decl.getData().contains(methodName))) {
                 throw new SSCSyntaxException(
-                        "superstruct " + optSS.get().name() + " has no member called `" + methodName + "`",
+                        "superstruct " + optSS.get().name() + " has no members called `" + methodName + "`",
                         ctx, tokens);
             }
             return getContextText(ctx, tokens);

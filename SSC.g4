@@ -191,6 +191,7 @@ declarationSpecifier
     | typeQualifier
     | functionSpecifier
     | alignmentSpecifier
+    | 'private'
     ;
 
 initDeclaratorList
@@ -316,7 +317,6 @@ typeQualifier
 
 functionSpecifier
     : 'inline'
-    | 'private'
     | 'pure'
     | '_Noreturn'
     | '__inline__' // GCC extension
@@ -615,6 +615,14 @@ If
 
 Inline
     : 'inline'
+    ;
+
+Private
+    : 'private'
+    ;
+
+Pure
+    : 'pure'
     ;
 
 Int

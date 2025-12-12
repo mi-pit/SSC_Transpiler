@@ -9,22 +9,52 @@ import org.antlr.v4.runtime.RuleContext;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
-public record FunctionDefinition(List<String> specs,
-                                 String type,
-                                 String name,
-                                 List<String> args,
-                                 List<String> statements,
-                                 String superstructMemberOf) {
-    public FunctionDefinition(String ssName, SSCParser.FunctionDefinitionContext ctx, CommonTokenStream tokens) {
-        this(
-                parseFunctionSpecs(ctx.declarationSpecifiers(), tokens),
+public class FunctionDefinition {
+    private final List<String> specs;
+    private final boolean isStatic;
+    private final boolean isPure;
+    private final boolean isPrivate;
+    private final String type;
+    private final String name;
+    private final List<String> args;
+    private final List<String> statements; /* body */
+    private final String superstructMemberOfName;
+
+    private FunctionDefinition(List<String> specs,
+                               boolean isStatic,
+                               boolean isPure,
+                               boolean isPrivate,
+                               String type,
+                               String name,
+                               List<String> args,
+                               List<String> statements,
+                               String superstructMemberOfName) {
+        this.specs = specs;
+        this.isStatic = isStatic;
+        this.isPure = isPure;
+        this.isPrivate = isPrivate;
+        this.type = type;
+        this.name = name;
+        this.args = args;
+        this.statements = statements;
+        this.superstructMemberOfName = superstructMemberOfName;
+    }
+
+    public static FunctionDefinition fromSemiParsedContext(final boolean isStatic,
+                                                           final boolean isPure,
+                                                           final boolean isPrivate,
+                                                           final List<String> specsWithoutCustom,
+                                                           final SSCParser.FunctionDefinitionContext ctx,
+                                                           final CommonTokenStream tokens,
+                                                           final String superstructMemberOfName) {
+        return new FunctionDefinition(
+                specsWithoutCustom, isStatic, isPure, isPrivate,
                 parseType(ctx.declarationSpecifiers(), ctx.declarator(), tokens),
                 parseName(ctx.declarator(), tokens),
                 parseFunctionArgs(ctx.declarator(), tokens),
                 parseFunctionBody(ctx.compoundStatement(), tokens),
-                ssName
+                superstructMemberOfName
         );
     }
 
@@ -121,8 +151,6 @@ public record FunctionDefinition(List<String> specs,
     }
 
     public String getText() {
-        final boolean isStatic = specs.stream().anyMatch("static"::equals);
-        final boolean isPure = specs.stream().anyMatch("pure"::equals);
         assert !isStatic || !isPure;
 
         if (!isStatic && args.size() == 1 && args.get(0).equals("void")) {
@@ -135,7 +163,7 @@ public record FunctionDefinition(List<String> specs,
                 selfRef.append("const ");
             }
             selfRef.append("superstruct ");
-            selfRef.append(superstructMemberOf);
+            selfRef.append(superstructMemberOfName);
             selfRef.append(" *this");
 
             if (!args.isEmpty()) {
@@ -143,15 +171,16 @@ public record FunctionDefinition(List<String> specs,
             }
         }
 
-        final String specsString = specs.stream().filter(spec -> !"pure".equals(spec) && !"static".equals(spec))
-                .collect(Collectors.joining(" "));
+        final String specsString = String.join(" ", specs);
 
         return specsString
                 + " " + type
-                + " " + superstructMemberOf + "__" + name
-                + "("
-                + selfRef
-                + String.join(", ", args) + ")"
+                + " " + superstructMemberOfName + "__" + name
+                + "(" + selfRef + String.join(", ", args) + ")"
                 + " {\n    " + String.join("\n    ", statements) + "\n}\n";
+    }
+
+    public String getName() {
+        return name;
     }
 }
