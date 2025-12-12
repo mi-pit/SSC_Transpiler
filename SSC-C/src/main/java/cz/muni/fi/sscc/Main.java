@@ -62,7 +62,7 @@ public final class Main {
             filesToCompile.add(fileArg.toAbsolutePath());
 
             if (!"ssc".equals(fileArg.suffix())) {
-                logger.printVerbose("Skipping transpilation of file '"
+                logger.printDebug("Skipping transpilation of file '"
                         + fileArg.absolutePathString()
                         + "' (not an ssc file)");
                 continue;
@@ -80,14 +80,8 @@ public final class Main {
                     outputtedFiles.add(processed.get());
                 }
             } catch (RuntimeException e) {
-                if (e instanceof UnknownTranspilationException) {
-                    System.err.println("Caught unknown exception while processing '" + fileArg.absolutePathString() + "'");
-                    e.printStackTrace();
-                } else if (e instanceof SSCTranspilerException) {
-                    System.err.println(e.getMessage());
-                } else {
-                    throw e; /* doesn't get caught again */
-                }
+                handleKnownExceptionsOrRethrow(fileArg, e);
+
                 totalFailed++;
                 if (parsedArgs.isStopOnError()) {
                     logger.printVerbose("Stopping.");
@@ -101,10 +95,6 @@ public final class Main {
         if (totalFailed != 0) {
             err(ExitValue.TRANSPILATION_FAIL, "Could not process " + totalFailed + " file(s)");
             return;
-        }
-
-        for (final Path file : outputtedFiles) {
-            assert filesToCompile.contains(file);
         }
 
         if (parsedArgs.getCompileTarget().isPresent()) {
@@ -124,13 +114,18 @@ public final class Main {
         logger.printVerbose("Successfully processed.");
     }
 
-    /*
-     * TODO:
-     *  add options
-     *      transpile to C only
-     *      transpile AND compile (remove `.c` file)
-     *      treat any file as SSC (`-x c` in cc)
-     */
+    private static void handleKnownExceptionsOrRethrow(InputFile fileArg, RuntimeException e) {
+        if (e instanceof UnknownTranspilationException) {
+            System.err.println("Caught unknown exception while processing '" + fileArg.absolutePathString() + "'");
+            //noinspection CallToPrintStackTrace
+            e.printStackTrace();
+        } else if (e instanceof SSCTranspilerException) {
+            System.err.println(e.getMessage());
+        } else {
+            throw e; /* doesn't get caught again */
+        }
+    }
+
     private static Optional<Path> processFile(final InputFile inputFile) throws IOException, InterruptedException {
         logger.printVerbose("Parsing file: '" + inputFile.absolutePathString() + "'");
 
