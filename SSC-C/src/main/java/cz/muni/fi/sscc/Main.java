@@ -127,10 +127,6 @@ public final class Main {
      *      treat any file as SSC (`-x c` in cc)
      */
     private static Optional<Path> processFile(final InputFile inputFile) throws IOException, InterruptedException {
-        Optional<Path> pathVerified = getPathVerified(inputFile.toAbsolutePath());
-        if (pathVerified.isEmpty())
-            return Optional.empty();
-
         logger.printVerbose("Parsing file: '" + inputFile.absolutePathString() + "'");
 
         final Path workingFileAbsolutePath = inputFile.getChangedSuffix("c").toAbsolutePath();
@@ -180,20 +176,6 @@ public final class Main {
         }
 
         return Optional.of(workingFileAbsolutePath);
-    }
-
-    private static Optional<Path> getPathVerified(final Path fileAbsolutePath) {
-        if (!Files.exists(fileAbsolutePath)) {
-            warn("File " + fileAbsolutePath + " not found");
-            return Optional.empty();
-        }
-
-        if (!Files.isRegularFile(fileAbsolutePath)) {
-            warn("File " + fileAbsolutePath + " is not a regular file");
-            return Optional.empty();
-        }
-
-        return Optional.of(fileAbsolutePath);
     }
 
     private static VisitorData getVisitorData(final Path file) throws IOException {
@@ -270,14 +252,14 @@ public final class Main {
                 "/opt/homebrew/bin/clang-format", // fixme
                 "-i" /* in place */,
                 file.toString()
-        );
-        pb.inheritIO();
+        )
+                .inheritIO();
         final Process process = pb.start();
         final int exitCode = process.waitFor();
         return exitCode == 0;
     }
 
-    private static int verifyCCode(Path file) throws IOException, InterruptedException {
+    private static int verifyCCode(final Path file) throws IOException, InterruptedException {
         final List<String> cmd = new ArrayList<>();
         cmd.add("cc");
         cmd.addAll(CC_OPTIONS);

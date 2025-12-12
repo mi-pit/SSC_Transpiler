@@ -60,19 +60,30 @@ public class CommandLineArguments {
     private NextOperation getNextOperationFromNone(final String arg) {
         if (!arg.startsWith("-")) {
             final Path path = Path.of(arg);
-            if (!Files.exists(path)) {
-                err(ExitValue.INVALID_ARGUMENTS, "File '" + arg + "' does not exist");
-            }
+            final InputFile inputFile = verifyInputFilePath(path);
 
-            final InputFile inputFile = InputFile.fromAbsolutePath(path.toAbsolutePath());
-            if (inputFile.suffix() == null) {
-                err(ExitValue.INVALID_ARGUMENTS, "Could not verify type of file '" + arg + "'");
-            }
             filesToProcess.add(inputFile);
             return NextOperation.None;
         }
 
         return processOption(arg);
+    }
+
+    private InputFile verifyInputFilePath(final Path path) {
+        if (!Files.exists(path)) {
+            err(ExitValue.INVALID_ARGUMENTS, "File '" + path + "' does not exist");
+        }
+        if (!Files.isRegularFile(path)) {
+            err(ExitValue.INVALID_ARGUMENTS, "File '" + path + "' is not a regular file");
+        }
+
+        final InputFile inputFile = InputFile.fromAbsolutePath(path.toAbsolutePath());
+
+        if (inputFile.suffix() == null) {
+            err(ExitValue.INVALID_ARGUMENTS, "Could not verify type of file '" + inputFile.absolutePathString() + "'");
+        }
+
+        return inputFile;
     }
 
     private NextOperation processOption(final String arg) {

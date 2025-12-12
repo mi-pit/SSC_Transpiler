@@ -12,7 +12,6 @@ public record InputFile(Path dir, String name, String suffix) {
 
     public static InputFile fromAbsolutePath(final Path fileAbsolutePath) {
         final Path dir = fileAbsolutePath.getParent();
-
         final String fullName = fileAbsolutePath.getFileName().toString();
 
         final int dotIndex = fullName.lastIndexOf('.');
