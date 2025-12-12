@@ -82,29 +82,10 @@ public class SSVisitor extends ConvertorVisitor {
             memberList.add(SSMember.field(field));
 
         } else if (memberCtx.functionDefinition() != null) {
-            final boolean isStatic = declSpecs
-                    .stream()
-                    .map(SSCParser.DeclarationSpecifierContext::storageClassSpecifier)
-                    .filter(Objects::nonNull)
-                    .anyMatch(storageSpec -> storageSpec.Static() != null);
+            final boolean isStatic = hasStaticDeclSpec(declSpecs);
+            final boolean isPure = hasPureDeclSpec(declSpecs);
 
-            final boolean isPure = declSpecs
-                    .stream()
-                    .map(SSCParser.DeclarationSpecifierContext::functionSpecifier)
-                    .filter(Objects::nonNull)
-                    .anyMatch(funcSpec -> funcSpec.Pure() != null);
-
-            final List<String> withoutCustom = noPrivateSpecs
-                    .stream()
-                    /* filter out type names */
-                    .filter(declSpec -> declSpec.typeSpecifier() == null)
-                    /* filter out pure and static */
-                    .filter(s -> s.functionSpecifier() == null
-                            || s.functionSpecifier().Pure() == null)
-                    .filter(s -> s.storageClassSpecifier() == null
-                            || s.storageClassSpecifier().Static() == null)
-                    .map(s -> Strings.getContextText(s, tokens))
-                    .toList();
+            final List<String> withoutCustom = getDeclSpecsWithoutCustom(noPrivateSpecs);
 
             final FunctionDefinition functionDefinition = FunctionDefinition.fromSemiParsedContext(
                     isStatic,
@@ -118,5 +99,47 @@ public class SSVisitor extends ConvertorVisitor {
 
             memberList.add(SSMember.function(functionDefinition));
         }
+    }
+
+    private static boolean hasPureDeclSpec(List<SSCParser.DeclarationSpecifierContext> declSpecs) {
+        for (SSCParser.DeclarationSpecifierContext declSpec : declSpecs) {
+            SSCParser.FunctionSpecifierContext funcSpec = declSpec.functionSpecifier();
+            if (funcSpec != null) {
+                if (funcSpec.Pure() != null) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * filter out type names & {@code pure} and {@code static}
+     */
+    private List<String> getDeclSpecsWithoutCustom(List<SSCParser.DeclarationSpecifierContext> noPrivateSpecs) {
+        final List<String> withoutCustom = new ArrayList<>();
+        for (SSCParser.DeclarationSpecifierContext declSpec : noPrivateSpecs) {
+            if (declSpec.typeSpecifier() == null
+                    && (declSpec.functionSpecifier() == null
+                    || declSpec.functionSpecifier().Pure() == null)
+                    && (declSpec.storageClassSpecifier() == null
+                    || declSpec.storageClassSpecifier().Static() == null)) {
+                String contextText = Strings.getContextText(declSpec, tokens);
+                withoutCustom.add(contextText);
+            }
+        }
+        return withoutCustom;
+    }
+
+    private static boolean hasStaticDeclSpec(List<SSCParser.DeclarationSpecifierContext> declSpecs) {
+        for (SSCParser.DeclarationSpecifierContext declarationSpecifierContext : declSpecs) {
+            SSCParser.StorageClassSpecifierContext storageSpec = declarationSpecifierContext.storageClassSpecifier();
+            if (storageSpec != null) {
+                if (storageSpec.Static() != null) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

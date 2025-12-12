@@ -45,17 +45,16 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
             return super.visitFunctionDefinition(ctx);
         }
 
-        List<SSCParser.DeclarationContext> declarations = ctx.compoundStatement()
+        final List<SSCParser.DeclarationContext> declarations = ctx.compoundStatement()
                 .blockItemList()
                 .blockItem()
                 .stream()
                 .map(SSCParser.BlockItemContext::declaration)
-                .filter(Objects::nonNull)
-                .filter(d -> d.staticAssertDeclaration() == null)
+                .filter(d -> d != null && d.staticAssertDeclaration() == null)
                 .toList();
 
         extractFunctionVariables(ctx, declarations, funcName);
-        // Main.logger.printDebug("In function `" + funcName + "`\tvars: " + functionVariables.get(funcName));
+        Main.logger.printDebug("In function `" + funcName + "`; vars: " + functionVariables.get(funcName));
 
         return super.visitFunctionDefinition(ctx);
     }
@@ -171,7 +170,7 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
             return convertMethod(ctx, functionName);
         }
         if (!ctx.DoubleColon().isEmpty()) {
-            return convertStaticFunction(ctx);
+            return convertStaticFunctionCall(ctx);
         }
         return visitChildren(ctx);
     }
@@ -191,7 +190,7 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
         return Optional.empty();
     }
 
-    public String convertStaticFunction(SSCParser.PostfixExpressionContext ctx) {
+    public String convertStaticFunctionCall(final SSCParser.PostfixExpressionContext ctx) {
         Main.logger.printDebug("Double colon in: %s\n", getContextText(ctx, tokens));
 
         boolean hasParens = ctx.LeftParen() != null && ctx.RightParen() != null;
@@ -200,7 +199,7 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
         }
 
         if (ctx.primaryExpression() == null)
-            throw new SSCSyntaxException("Arrow or dot expression has no left side (Superstruct name) expression", ctx, tokens);
+            throw new SSCSyntaxException("Double colon expression has no left side (Superstruct name) expression", ctx, tokens);
         final String className = getContextText(ctx.primaryExpression(), tokens);
 
         if (ctx.Identifier().isEmpty())
@@ -222,14 +221,16 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
     }
 
     private void verifyStaticCall(SSCParser.PostfixExpressionContext ctx, String className, String methodName) {
-        if (superstructs.stream().noneMatch(s -> s.name().equals(className))) {
+        final Optional<SuperStructRepre> ss = superstructs.stream()
+                .filter(s -> s.name().equals(className))
+                .findFirst();
+
+        if (ss.isEmpty()) {
             throw new SSCSyntaxException("Could not find superstruct with name `" + className + "`", ctx, tokens);
         }
 
-        if (superstructs.stream()
-                .filter(s -> s.name().equals(className))
-                .findFirst().orElseThrow(() -> new IllegalStateException("Must be present"))
-                .members().stream()
+        if (ss.get().members()
+                .stream()
                 .filter(mem -> mem.data().getRight().isPresent())
                 .map(ssMember -> ssMember.data().getRight().get().getName())
                 .noneMatch(methodName::equals)) {
@@ -265,15 +266,7 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
         }
         final SuperstructVariable var = maybeVar.get();
 
-        final Optional<SuperStructRepre> optSS = superstructs
-                .stream()
-                .filter(s -> s.name().equals(var.type()))
-                .findAny();
-        if (optSS.isEmpty()) {
-            throw new RuntimeException(
-                    "Could not find superstruct with name `" + var.name() + "` even after finding such a variable");
-        }
-        final SuperStructRepre superstruct = optSS.get();
+        final SuperStructRepre superstruct = getSuperStructFromVariable(ctx, var);
 
         final boolean hasLeftParen = !ctx.LeftParen().isEmpty();
         final boolean hasRightParen = !ctx.RightParen().isEmpty();
@@ -344,6 +337,41 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
 
         Main.logger.printDebug("\tFinal Expression: " + finalExpression);
         return finalExpression.toString();
+    }
+
+    /**
+     * Always returns a valid superstruct.
+     * If one is not found -> throw.
+     *
+     * @param ctx postfix expression
+     * @param var local variable
+     * @return valid ss
+     */
+    private SuperStructRepre getSuperStructFromVariable(final SSCParser.PostfixExpressionContext ctx,
+                                                        final SuperstructVariable var) {
+        final Optional<SuperStructRepre> optSS = findSuperStructFromVariable(var);
+        if (optSS.isEmpty()) {
+            throw new SSCSyntaxException(
+                    "Superstruct of variable " + var.type() + " " + var.name() + " is not properly defined",
+                    ctx, tokens
+            );
+        }
+        return optSS.get();
+    }
+
+    /**
+     * Tries finding a valid superstruct
+     *
+     * @param var local variable
+     * @return empty if no ss matches
+     */
+    private Optional<SuperStructRepre> findSuperStructFromVariable(final SuperstructVariable var) {
+        for (SuperStructRepre candidate : superstructs) {
+            if (candidate.name().equals(var.type())) {
+                return Optional.of(candidate);
+            }
+        }
+        return Optional.empty();
     }
 
     private String getFieldAccessString(SSCParser.PostfixExpressionContext ctx, String functionName, SuperStructRepre superstruct) {

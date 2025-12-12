@@ -8,7 +8,6 @@ import org.antlr.v4.runtime.Token;
 import java.util.Objects;
 
 import static cz.muni.fi.sscc.util.UnixTerminalColors.*;
-import static cz.muni.fi.sscc.util.UnixTerminalColors.COLOR_RESET;
 
 public abstract class SSCTranspilerException extends RuntimeException {
     private static final int LINES_BEFORE = 4;
