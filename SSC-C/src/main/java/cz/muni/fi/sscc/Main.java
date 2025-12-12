@@ -59,12 +59,11 @@ public final class Main {
         final Set<Path> outputtedFiles = new HashSet<>();
         final Set<Path> filesToCompile = new HashSet<>();
         for (final InputFile fileArg : files) {
-            filesToCompile.add(fileArg.toAbsolutePath());
-
             if (!"ssc".equals(fileArg.suffix())) {
                 logger.printDebug("Skipping transpilation of file '"
                         + fileArg.absolutePathString()
                         + "' (not an ssc file)");
+                filesToCompile.add(fileArg.toAbsolutePath());
                 continue;
             }
 
@@ -77,7 +76,9 @@ public final class Main {
                         break;
                     }
                 } else {
-                    outputtedFiles.add(processed.get());
+                    final Path file = processed.get();
+                    outputtedFiles.add(file);
+                    filesToCompile.add(file);
                 }
             } catch (RuntimeException e) {
                 handleKnownExceptionsOrRethrow(fileArg, e);
