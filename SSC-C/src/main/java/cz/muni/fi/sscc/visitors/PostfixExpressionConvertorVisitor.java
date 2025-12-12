@@ -220,13 +220,12 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
             throw new SSCSyntaxException("Could not find superstruct with name `" + className + "`", ctx, tokens);
         }
 
-        //noinspection OptionalGetWithoutIsPresent
         if (superstructs.stream()
                 .filter(s -> s.name().equals(className))
                 .findFirst().orElseThrow(() -> new IllegalStateException("Must be present"))
                 .members().stream()
-                .filter(SSMember::isFunctionDefinition)
-                .map(ssMember -> ssMember.data().getRight().get(/* safe because ifFnDef above */).getName())
+                .filter(mem -> mem.data().getRight().isPresent())
+                .map(ssMember -> ssMember.data().getRight().get().getName())
                 .noneMatch(methodName::equals)) {
             throw new SSCSyntaxException(
                     "superstruct with name `" + className
@@ -235,7 +234,17 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
         }
     }
 
-    public String convertMethod(SSCParser.PostfixExpressionContext ctx, String functionName) {
+    public String convertMethod(final SSCParser.PostfixExpressionContext ctx,
+                                final String functionName) {
+        final boolean amInSuperstructMethod = superstructs.stream().anyMatch(
+                s -> s.members()
+                        .stream()
+                        .map(member -> member.data().getRight())
+                        .filter(Optional::isPresent)
+                        .map(Optional::get)
+                        .anyMatch(funcDef -> funcDef.getName().equals(functionName))
+        );
+
         enum ArrowOrDot {Arrow, Dot, Neither}
         final ArrowOrDot arrowOrDot =
                 !ctx.Arrow().isEmpty() ? ArrowOrDot.Arrow
@@ -277,9 +286,10 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
         }
 
         boolean found = false;
-        for (FunctionDefinition func : optSS.get().members().stream()
-                .filter(SSMember::isFunctionDefinition)
-                .map(member -> member.data().getRight().get())
+        for (final FunctionDefinition func : optSS.get().members().stream()
+                .map(m -> m.data().getRight())
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .toList()) {
             if (func.getName().equals(methodName)) {
                 found = true;
@@ -290,7 +300,7 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
             Main.logger.printDebug("Variable does not have such a method");
             if (optSS.get().members()
                     .stream()
-                    .filter(SSMember::isDeclaration)
+                    .filter(mem -> mem.data().getLeft().isPresent())
                     .map(mem -> mem.data().getLeft().get())
                     .noneMatch(decl -> decl.getData().contains(methodName))) {
                 throw new SSCSyntaxException(

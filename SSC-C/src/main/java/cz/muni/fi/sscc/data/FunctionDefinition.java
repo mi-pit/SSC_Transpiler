@@ -48,6 +48,10 @@ public class FunctionDefinition {
                                                            final SSCParser.FunctionDefinitionContext ctx,
                                                            final CommonTokenStream tokens,
                                                            final String superstructMemberOfName) {
+        if (isStatic && isPure) {
+            throw new SSCSyntaxException("Method may not be both `static` and `pure`", ctx, tokens);
+        }
+
         return new FunctionDefinition(
                 specsWithoutCustom, isStatic, isPure, isPrivate,
                 parseType(ctx.declarationSpecifiers(), ctx.declarator(), tokens),
@@ -71,7 +75,6 @@ public class FunctionDefinition {
         final boolean isPure = specs.stream().anyMatch("pure"::equals);
 
         if (isStatic && isPure) {
-            throw new SSCSyntaxException("Method may not be both `static` and `pure`", ctx, tokens);
         }
 
         return specs;

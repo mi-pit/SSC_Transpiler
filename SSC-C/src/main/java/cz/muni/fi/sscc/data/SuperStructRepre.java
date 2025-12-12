@@ -9,29 +9,32 @@ public record SuperStructRepre(String name, List<SSMember> members) {
 
         result.append(String.format("superstruct %s {\n", name));
         for (SSMember member : members) {
-            if (member.isDeclaration()) {
-                assert member.data().getLeft().isPresent();
-                result
-                        .append("    ")
-                        .append(member.data().getLeft().get().getData())
-                        .append("\n");
+            if (member.data().getLeft().isEmpty()) {
+                continue;
             }
+
+            result
+                    /* do a little bit of formatting for mid-compilation error messages */
+                    .append("    ")
+                    .append(member.data().getLeft().get().getData())
+                    .append("\n");
         }
         result.append("}\n");
 
         for (SSMember member : members) {
-            if (member.isFunctionDefinition()) {
-                assert member.data().getRight().isPresent();
-                result
-                        /* :( ts is really horrible
-                         * basically -- superstruct can not have a semicolon after itself
-                         * because it would mess up `typedef`s
-                         * therefore append one BEFORE each method
-                         * warnings against extra semicolons are turned off anyway ;)
-                         */
-                        .append(";")
-                        .append(member.data().getRight().get().getText().stripLeading());
+            if (member.data().getRight().isEmpty()) {
+                continue;
             }
+
+            result
+                    /* :( ts is really horrible
+                     * basically -- superstruct can not have a semicolon after itself
+                     * because it would mess up `typedef`s
+                     * therefore append one BEFORE each method
+                     * warnings against extra semicolons are turned off anyway ;)
+                     */
+                    .append(";")
+                    .append(member.data().getRight().get().getText());
         }
 
         return result.toString();

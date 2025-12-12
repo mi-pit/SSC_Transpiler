@@ -29,12 +29,4 @@ public record SSMember(Either<Field, FunctionDefinition> data) {
                 }
         );
     }
-
-    public boolean isDeclaration() {
-        return data.getRight().isEmpty();
-    }
-
-    public boolean isFunctionDefinition() {
-        return data.getLeft().isEmpty();
-    }
 }

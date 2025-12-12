@@ -10,6 +10,7 @@ import cz.muni.fi.sscc.util.Strings;
 import org.antlr.v4.runtime.CommonTokenStream;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 
 public class SSVisitor extends ConvertorVisitor {
@@ -34,53 +35,7 @@ public class SSVisitor extends ConvertorVisitor {
         }
 
         for (SSCParser.SuperStructMemberContext memberCtx : ctx.superStructBody().superStructMember()) {
-            final var declSpecsCtx = (memberCtx.functionDefinition() != null
-                    ? memberCtx.functionDefinition().declarationSpecifiers()
-                    : memberCtx.declaration().declarationSpecifiers());
-            final var declSpecs = declSpecsCtx.declarationSpecifier();
-
-            final boolean isPrivate = declSpecs
-                    .stream()
-                    .map(SSCParser.DeclarationSpecifierContext::Private)
-                    .anyMatch(Objects::nonNull);
-
-            final var withoutCustom = declSpecs
-                    .stream()
-                    .filter(declSpec -> declSpec.Private() == null)
-                    .map(s -> Strings.getContextText(s, tokens))
-                    .filter(s -> !"static".equals(s))
-                    .filter(s -> !"pure".equals(s))
-                    .toList();
-
-            if (memberCtx.declaration() != null) {
-                memberList.add(SSMember.field(
-                        new Field(isPrivate, String.join(" ", withoutCustom))
-                ));
-            } else if (memberCtx.functionDefinition() != null) {
-                final boolean isStatic = declSpecs
-                        .stream()
-                        .map(SSCParser.DeclarationSpecifierContext::storageClassSpecifier)
-                        .filter(Objects::nonNull)
-                        .anyMatch(storageSpec -> storageSpec.Static() != null);
-
-                final boolean isPure = declSpecs
-                        .stream()
-                        .map(SSCParser.DeclarationSpecifierContext::functionSpecifier)
-                        .filter(Objects::nonNull)
-                        .anyMatch(funcSpec -> funcSpec.Pure() != null);
-
-                final FunctionDefinition functionDefinition = FunctionDefinition.fromSemiParsedContext(
-                        isStatic,
-                        isPure,
-                        isPrivate,
-                        withoutCustom,
-                        memberCtx.functionDefinition(),
-                        tokens,
-                        thisSSName
-                );
-
-                memberList.add(SSMember.function(functionDefinition));
-            }
+            processMemberCtx(memberCtx, memberList, thisSSName);
         }
 
         // Save to record
@@ -90,5 +45,78 @@ public class SSVisitor extends ConvertorVisitor {
         }
 
         return repr.convert();
+    }
+
+    private void processMemberCtx(final SSCParser.SuperStructMemberContext memberCtx,
+                                  final List<SSMember> memberList,
+                                  final String thisSSName) {
+        final var declSpecsCtx = (memberCtx.functionDefinition() != null
+                ? memberCtx.functionDefinition().declarationSpecifiers()
+                : memberCtx.declaration().declarationSpecifiers());
+        final var declSpecs = declSpecsCtx.declarationSpecifier();
+
+        final boolean isPrivate = declSpecs
+                .stream()
+                .map(SSCParser.DeclarationSpecifierContext::Private)
+                .anyMatch(Objects::nonNull);
+
+        final List<SSCParser.DeclarationSpecifierContext> noPrivateSpecs = declSpecs
+                .stream()
+                .filter(spec -> spec.Private() == null)
+                .toList();
+
+        if (memberCtx.declaration() != null) {
+            final var declList = memberCtx.declaration().initDeclaratorList();
+
+            final String noPrivateSpecsString = noPrivateSpecs
+                    .stream()
+                    .map(s -> Strings.getContextText(s, tokens))
+                    .collect(Collectors.joining(" "));
+            final String fieldData = noPrivateSpecsString +
+                    (declList == null
+                            ? ""
+                            : " " + Strings.getContextText(declList, tokens)) +
+                    ";";
+
+            final Field field = new Field(isPrivate, fieldData);
+            memberList.add(SSMember.field(field));
+
+        } else if (memberCtx.functionDefinition() != null) {
+            final boolean isStatic = declSpecs
+                    .stream()
+                    .map(SSCParser.DeclarationSpecifierContext::storageClassSpecifier)
+                    .filter(Objects::nonNull)
+                    .anyMatch(storageSpec -> storageSpec.Static() != null);
+
+            final boolean isPure = declSpecs
+                    .stream()
+                    .map(SSCParser.DeclarationSpecifierContext::functionSpecifier)
+                    .filter(Objects::nonNull)
+                    .anyMatch(funcSpec -> funcSpec.Pure() != null);
+
+            final List<String> withoutCustom = noPrivateSpecs
+                    .stream()
+                    /* filter out type names */
+                    .filter(declSpec -> declSpec.typeSpecifier() == null)
+                    /* filter out pure and static */
+                    .filter(s -> s.functionSpecifier() == null
+                            || s.functionSpecifier().Pure() == null)
+                    .filter(s -> s.storageClassSpecifier() == null
+                            || s.storageClassSpecifier().Static() == null)
+                    .map(s -> Strings.getContextText(s, tokens))
+                    .toList();
+
+            final FunctionDefinition functionDefinition = FunctionDefinition.fromSemiParsedContext(
+                    isStatic,
+                    isPure,
+                    isPrivate,
+                    withoutCustom,
+                    memberCtx.functionDefinition(),
+                    tokens,
+                    thisSSName
+            );
+
+            memberList.add(SSMember.function(functionDefinition));
+        }
     }
 }
