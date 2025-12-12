@@ -170,7 +170,6 @@ public final class Main {
         logger.printVerbose("Formatting...");
         if (!formatCCode(workingFileAbsolutePath)) {
             logger.printVerbose("Failed to format C code.");
-            return Optional.empty();
         }
 
         logger.printVerbose("Verifying...");
