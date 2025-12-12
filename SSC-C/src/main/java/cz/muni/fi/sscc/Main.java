@@ -57,13 +57,14 @@ public final class Main {
 
         int totalFailed = 0;
         final Set<Path> outputtedFiles = new HashSet<>();
+        final Set<Path> filesToCompile = new HashSet<>();
         for (final InputFile fileArg : files) {
+            filesToCompile.add(fileArg.toAbsolutePath());
+
             if (!"ssc".equals(fileArg.suffix())) {
                 logger.printVerbose("Skipping transpilation of file '"
                         + fileArg.absolutePathString()
                         + "' (not an ssc file)");
-                outputtedFiles.add(fileArg.toAbsolutePath());
-                logger.printDebug("Added to compilation files set");
                 continue;
             }
 
@@ -102,9 +103,13 @@ public final class Main {
             return;
         }
 
+        for (final Path file : outputtedFiles) {
+            assert filesToCompile.contains(file);
+        }
+
         if (parsedArgs.getCompileTarget().isPresent()) {
             logger.printVerbose("Compiling...");
-            compileCCode(parsedArgs.getCompileTarget().get(), outputtedFiles);
+            compileCCode(parsedArgs.getCompileTarget().get(), filesToCompile);
 
             outputtedFiles.forEach(path -> {
                 logger.printVerbose("Trying to delete output file '" + path + "'...");
