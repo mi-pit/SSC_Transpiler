@@ -32,5 +32,5 @@ FILES=(
 for f in "${FILES[@]}"; do
     prepend "$BASE_DIR/$f" "package antlr; /* added to project in \`refresh-grammar.sh\` */"
     mv "$BASE_DIR/$f" "$BASE_DIR/SSC-C/src/main/java/antlr/$f"
-    # echo "Moved $f -> $TARGET_DIR/$f"
+    # echo Moved "$BASE_DIR/$f" "$BASE_DIR/SSC-C/src/main/java/antlr/$f"
 done
