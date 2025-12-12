@@ -5,7 +5,6 @@ import cz.muni.fi.sscc.exceptions.SSCSyntaxException;
 import cz.muni.fi.sscc.exceptions.UnknownTranspilationException;
 import cz.muni.fi.sscc.util.Strings;
 import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.RuleContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -60,24 +59,6 @@ public class FunctionDefinition {
                 parseFunctionBody(ctx.compoundStatement(), tokens),
                 superstructMemberOfName
         );
-    }
-
-    public static List<String> parseFunctionSpecs(final SSCParser.DeclarationSpecifiersContext ctx,
-                                                  final CommonTokenStream tokens) {
-        final List<String> specs = ctx
-                .declarationSpecifier()
-                .stream()
-                .filter(declSpec -> declSpec.typeSpecifier() == null) /* filter out type names */
-                .map(RuleContext::getText)
-                .toList();
-
-        final boolean isStatic = specs.stream().anyMatch("static"::equals);
-        final boolean isPure = specs.stream().anyMatch("pure"::equals);
-
-        if (isStatic && isPure) {
-        }
-
-        return specs;
     }
 
     public static String parseType(SSCParser.DeclarationSpecifiersContext declSpecs,
@@ -185,5 +166,9 @@ public class FunctionDefinition {
 
     public String getName() {
         return name;
+    }
+
+    public boolean isPrivate() {
+        return isPrivate;
     }
 }
