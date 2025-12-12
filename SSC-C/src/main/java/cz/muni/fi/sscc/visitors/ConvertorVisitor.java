@@ -41,11 +41,13 @@ public abstract class ConvertorVisitor extends SSCBaseVisitor<String> {
             return "";  // ignore <EOF>
         }
 
-        if (node.getSymbol().getType() == SSCParser.Semi) {
-            return ";\n";
-        }
+        return switch (node.getSymbol().getType()) {
+            case SSCParser.LeftBrace -> "{\n";
+            case SSCParser.RightBrace -> "}\n";
+            case SSCParser.Semi -> ";\n";
 
-        return node.getText() + " ";
+            default -> node.getText() + " ";
+        };
     }
 
     @Override
