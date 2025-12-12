@@ -30,17 +30,21 @@ Method call outside a superstruct-method definition depends on whether variable 
 (just like structs `.` for local, `->` for pointer).
 Self-reference in a method is `this`, followed by `->` to access a field or call a method.
 
-Methods may be declared `static` or `pure`:
+Methods may be declared `static`, `pure` or `private`:
 
 - `pure` methods don't modify the SS in any way (is passed as `const`)
 - `static` functions behave like normal C functions, namespaced
   – those aren't called on an SS, rather as `Classname::methodname(‹args›)`
+- `private` members (fields or methods) are not visible outside the superstruct's "namespace"
 
 ### Caveats
 
 Since this language is just a hobby project of one idiot, there will be a lot of bugs.
 
 Hopefully, I have made the error messages at least ***somewhat*** helpful.
+
+Code in the messages in the "Replacing superstruct references" stage is a little mangled,
+but should be readable and the output `.c` file doesn't get deleted, so (worst case) look there.
 
 As a guide (not a rule):
 
@@ -49,14 +53,13 @@ As a guide (not a rule):
   (problem could be in the java code, antlr grammar, ssc code being transpiled or any number of other reasons)
 - Any other exception is entirely on me
 
-### Conventions?
-
-#### Headers
-
-similar to c++, for class-like headers (header with one superstruct and nothing else) I use `.ssch`,
-otherwise headers can just be `.h`, since it's compatible with plain C
-
 #### Formatting
+
+```yml
+AttributeMacros:
+  - private
+  - pure
+```
 
 ---
 

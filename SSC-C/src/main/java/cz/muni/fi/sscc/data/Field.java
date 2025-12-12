@@ -14,4 +14,8 @@ public class Field {
     public String getData() {
         return data;
     }
+
+    public boolean isPrivate() {
+        return isPrivate;
+    }
 }

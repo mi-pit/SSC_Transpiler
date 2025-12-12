@@ -2,6 +2,7 @@ package cz.muni.fi.sscc.visitors;
 
 import antlr.SSCParser;
 import cz.muni.fi.sscc.Main;
+import cz.muni.fi.sscc.data.Field;
 import cz.muni.fi.sscc.data.FunctionDefinition;
 import cz.muni.fi.sscc.data.SSMember;
 import cz.muni.fi.sscc.data.SuperStructRepre;
@@ -11,7 +12,13 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 
 import static cz.muni.fi.sscc.util.Strings.getContextText;
 
@@ -180,7 +187,6 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
                 return Optional.of(res);
             }
         } catch (NullPointerException ignored) {
-            //System.out.println("[DEBUG] Null pointer exception in: " + getContextText(ctx, tokens).replace("\n", ""));
         }
         return Optional.empty();
     }
@@ -236,91 +242,85 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
 
     public String convertMethod(final SSCParser.PostfixExpressionContext ctx,
                                 final String functionName) {
-        final boolean amInSuperstructMethod = superstructs.stream().anyMatch(
-                s -> s.members()
-                        .stream()
-                        .map(member -> member.data().getRight())
-                        .filter(Optional::isPresent)
-                        .map(Optional::get)
-                        .anyMatch(funcDef -> funcDef.getName().equals(functionName))
-        );
-
         enum ArrowOrDot {Arrow, Dot, Neither}
         final ArrowOrDot arrowOrDot =
                 !ctx.Arrow().isEmpty() ? ArrowOrDot.Arrow
                         : !ctx.Dot().isEmpty() ? ArrowOrDot.Dot
                         : ArrowOrDot.Neither;
 
-        assert arrowOrDot != ArrowOrDot.Neither;
         Main.logger.printDebug(arrowOrDot + " in: " + getContextText(ctx, tokens));
-
-        final boolean hasLeftParen = !ctx.LeftParen().isEmpty();
-        final boolean hasRightParen = !ctx.RightParen().isEmpty();
-        final boolean hasParens = hasLeftParen && hasRightParen;
-        if (!hasParens) {
-            Main.logger.printDebug("\tNo parentheses");
-            return getContextText(ctx, tokens);
-        }
+        assert arrowOrDot != ArrowOrDot.Neither;
 
         final String objectName = getContextText(ctx.primaryExpression(), tokens);
         if (ctx.Identifier().isEmpty())
-            throw new SSCSyntaxException("Arrow or dot expression has no right side expression", ctx, tokens);
-        final String methodName = ctx.Identifier().get(0).toString();
+            throw new SSCSyntaxException(arrowOrDot + " expression has no right side expression", ctx, tokens);
 
-        final Optional<SuperstructVariable> foundVar = functionVariables.get(functionName).stream()
+        final Optional<SuperstructVariable> maybeVar = functionVariables.get(functionName).stream()
                 .filter(var -> var.name().equals(objectName))
                 .findFirst();
-        if (foundVar.isEmpty()) {
+        if (maybeVar.isEmpty()) {
             Main.logger.printDebug("\tVariable is not superstruct");
             Main.logger.printDebug("\t\tlocal vars: " + functionVariables.get(functionName));
             return getContextText(ctx, tokens);
         }
+        final SuperstructVariable var = maybeVar.get();
 
         final Optional<SuperStructRepre> optSS = superstructs
                 .stream()
-                .filter(s -> s.name().equals(foundVar.get().type()))
+                .filter(s -> s.name().equals(var.type()))
                 .findAny();
         if (optSS.isEmpty()) {
             throw new RuntimeException(
-                    "Could not find superstruct with name `" + foundVar.get().name() + "` even after finding such a variable");
+                    "Could not find superstruct with name `" + var.name() + "` even after finding such a variable");
+        }
+        final SuperStructRepre superstruct = optSS.get();
+
+        final boolean hasLeftParen = !ctx.LeftParen().isEmpty();
+        final boolean hasRightParen = !ctx.RightParen().isEmpty();
+        assert hasLeftParen == hasRightParen;
+        if (!hasLeftParen) {
+            Main.logger.printDebug("\tNo parentheses");
+            return getFieldAccessString(ctx, functionName, superstruct);
         }
 
-        boolean found = false;
-        for (final FunctionDefinition func : optSS.get().members().stream()
-                .map(m -> m.data().getRight())
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .toList()) {
-            if (func.getName().equals(methodName)) {
-                found = true;
-                break;
-            }
-        }
-        if (!found) {
+        final String methodName = ctx.Identifier(0).getText();
+        final Optional<FunctionDefinition> maybeMethod = findMethod(superstruct, methodName);
+
+        if (maybeMethod.isEmpty()) {
             Main.logger.printDebug("Variable does not have such a method");
-            if (optSS.get().members()
+            if (superstruct.members()
                     .stream()
                     .filter(mem -> mem.data().getLeft().isPresent())
                     .map(mem -> mem.data().getLeft().get())
                     .noneMatch(decl -> decl.getData().contains(methodName))) {
                 throw new SSCSyntaxException(
-                        "superstruct " + optSS.get().name() + " has no members called `" + methodName + "`",
+                        "superstruct '" + superstruct.name() + "' has no members called `" + methodName + "`",
                         ctx, tokens);
             }
             return getContextText(ctx, tokens);
         }
+        final FunctionDefinition method = maybeMethod.get();
 
-        if (foundVar.get().pointer() && arrowOrDot == ArrowOrDot.Dot) {
+        if (var.pointer() && arrowOrDot == ArrowOrDot.Dot) {
             throw new SSCSyntaxException("Pointer to superstruct must be accessed with `->`", ctx, tokens);
         }
 
-        final String ssName = optSS.get().name();
+        if (method.isPrivate()) {
+            Main.logger.printDebug("Method '" + methodName + "' is private. Going to check if it may be used here...");
+            if (notInSuperstructMethod(functionName)) {
+                throw new SSCSyntaxException(
+                        "Cannot access private method `" + methodName + "` from outside the superstruct", ctx, tokens
+                );
+            }
+        }
+
+        final String ssName = superstruct.name();
 
         final StringBuilder finalExpression =
                 new StringBuilder(ssName)
                         .append("__")
                         .append(methodName)
-                        .append("( ");
+                        .append("(");
 
         if (arrowOrDot == ArrowOrDot.Dot) {
             finalExpression.append("&");
@@ -340,10 +340,77 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
 
         finalExpression
                 .append(String.join(", ", args))
-                .append(" )");
+                .append(")");
 
         Main.logger.printDebug("\tFinal Expression: " + finalExpression);
         return finalExpression.toString();
+    }
+
+    private String getFieldAccessString(SSCParser.PostfixExpressionContext ctx, String functionName, SuperStructRepre superstruct) {
+        final String fieldName = ctx.Identifier(0).getText();
+
+        final var allMatching = superstruct.members()
+                .stream()
+                .map(SSMember::data)
+                .filter(either -> either.getLeft().isPresent())
+                .map(either -> either.getLeft().get())
+                .filter(field -> field.getData().matches(".*?" + fieldName + "\\s*;"))
+                .toList();
+        if (allMatching.size() > 1) {
+            throw new SSCSyntaxException(
+                    "Found more than one matching field in superstruct `" + superstruct.name() + "`", ctx, tokens
+            );
+        }
+        if (allMatching.isEmpty()) {
+            throw new SSCSyntaxException(
+                    "Found no matching field in superstruct `" + superstruct.name() + "`", ctx, tokens
+            );
+        }
+
+        final Field field = allMatching.get(0);
+
+        if (field.isPrivate()) {
+            Main.logger.printDebug("Field `" + fieldName + "` is private. Going to check if it may be used here...");
+            if (notInSuperstructMethod(functionName)) {
+                throw new SSCSyntaxException(
+                        "Cannot access private field `" + fieldName + "` from outside the superstruct", ctx, tokens
+                );
+            }
+        }
+
+        return getContextText(ctx, tokens);
+    }
+
+    private boolean notInSuperstructMethod(final String functionName) {
+        /* TODO (?) look if methods was defined inside the ss
+         *  (currently checks namespace only)
+         */
+        Main.logger.printDebug("Looking for function: " + functionName);
+        for (SuperStructRepre ssr : superstructs) {
+            Main.logger.printDebug("\tin superstruct: " + ssr.name());
+            if (functionName.startsWith(ssr.name() + "__")) {
+                Main.logger.printDebug("... found");
+                return false;
+            }
+            Main.logger.printDebug("... not found");
+        }
+
+        return true;
+    }
+
+    private Optional<FunctionDefinition> findMethod(final SuperStructRepre ssr,
+                                                    final String methodName) {
+        for (final FunctionDefinition func : ssr.members().stream()
+                .map(m -> m.data().getRight())
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .toList()) {
+            if (func.getName().equals(methodName)) {
+                return Optional.of(func);
+            }
+        }
+
+        return Optional.empty();
     }
 
 
