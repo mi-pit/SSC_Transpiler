@@ -34,6 +34,7 @@ public final class Main {
     public static Logger logger;
 
     private static final List<String> CC_OPTIONS = List.of(
+            "--std=c17", // todo: add option
             "-Werror",
             "-Wall",
             "-Wextra",
