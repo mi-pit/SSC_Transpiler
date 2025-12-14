@@ -25,7 +25,7 @@ import static cz.muni.fi.sscc.util.Strings.getContextText;
 public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
     private final Collection<SuperStructRepre> superstructs;
 
-    public final Map<String/* Function name */, List<SuperstructVariable>> functionVariables = new HashMap<>();
+    public final Map<String /* Function name */, List<SuperstructVariable>> functionVariables = new HashMap<>();
 
     public PostfixExpressionConvertorVisitor(CommonTokenStream tokens,
                                              Collection<SuperStructRepre> sss) {
@@ -150,29 +150,33 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
         assert ctx != null;
 
         /* Compound literals for some reason have to be converted here */
-        Optional<String> res = getCompoundLiteralReplaced(ctx);
+        final Optional<String> res = getCompoundLiteralReplaced(ctx);
         if (res.isPresent()) {
             return res.get();
         }
 
-        ParserRuleContext parent = ctx;
-        while (parent != null && !(parent instanceof SSCParser.FunctionDefinitionContext)) {
-            parent = parent.getParent();
-        }
-        if (parent == null) {
+        Optional<ParserRuleContext> parent = getParent(ctx);
+        if (parent.isEmpty()) {
             return super.visitPostfixExpression(ctx);
         }
-        final SSCParser.FunctionDefinitionContext funcCtx = (SSCParser.FunctionDefinitionContext) parent;
+        final SSCParser.FunctionDefinitionContext funcCtx = (SSCParser.FunctionDefinitionContext) parent.get();
         final String functionName = FunctionDefinition.parseName(funcCtx.declarator(), tokens);
-
 
         if (!ctx.Arrow().isEmpty() || !ctx.Dot().isEmpty()) {
             return convertMethod(ctx, functionName);
         }
         if (!ctx.DoubleColon().isEmpty()) {
-            return convertStaticFunctionCall(ctx);
+            return convertStaticFunctionCall(ctx, functionName);
         }
         return visitChildren(ctx);
+    }
+
+    private static Optional<ParserRuleContext> getParent(SSCParser.PostfixExpressionContext ctx) {
+        ParserRuleContext parent = ctx;
+        while (parent != null && !(parent instanceof SSCParser.FunctionDefinitionContext)) {
+            parent = parent.getParent();
+        }
+        return Optional.ofNullable(parent);
     }
 
     private Optional<String> getCompoundLiteralReplaced(SSCParser.PostfixExpressionContext ctx) {
@@ -190,12 +194,13 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
         return Optional.empty();
     }
 
-    public String convertStaticFunctionCall(final SSCParser.PostfixExpressionContext ctx) {
+    public String convertStaticFunctionCall(final SSCParser.PostfixExpressionContext ctx,
+                                            final String ctxFunctionName) {
         Main.logger.printDebug("Double colon in: %s\n", getContextText(ctx, tokens));
 
-        boolean hasParens = ctx.LeftParen() != null && ctx.RightParen() != null;
-        if (!hasParens) {
-            throw new SSCSyntaxException("Can not access static `superstruct` members", ctx, tokens);
+        if (ctx.LeftParen() == null || ctx.RightParen() == null) {
+            assert false; // TODO? add to grammar for better error messages
+            throw new SSCSyntaxException("Static superstruct access not a function call", ctx, tokens);
         }
 
         if (ctx.primaryExpression() == null)
@@ -206,7 +211,7 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
             throw new SSCSyntaxException("Double colon expression has no right side (function) expression", ctx, tokens);
         final String methodName = ctx.Identifier().get(0).toString();
 
-        verifyStaticCall(ctx, className, methodName);
+        verifyStaticCall(ctx, ctxFunctionName, className, methodName);
 
         final List<String> args = new ArrayList<>();
         for (SSCParser.ArgumentExpressionListContext argListCtx : ctx.argumentExpressionList()) {
@@ -220,25 +225,54 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
         return result;
     }
 
-    private void verifyStaticCall(SSCParser.PostfixExpressionContext ctx, String className, String methodName) {
-        final Optional<SuperStructRepre> ss = superstructs.stream()
-                .filter(s -> s.name().equals(className))
-                .findFirst();
-
-        if (ss.isEmpty()) {
+    private void verifyStaticCall(final SSCParser.PostfixExpressionContext ctx,
+                                  final String ctxFunctionName,
+                                  final String className,
+                                  final String methodName) {
+        final Optional<SuperStructRepre> maybeSS = findSuperstructByName(className);
+        if (maybeSS.isEmpty()) {
             throw new SSCSyntaxException("Could not find superstruct with name `" + className + "`", ctx, tokens);
         }
+        final SuperStructRepre superstruct = maybeSS.get();
 
-        if (ss.get().members()
-                .stream()
-                .filter(mem -> mem.data().getRight().isPresent())
-                .map(ssMember -> ssMember.data().getRight().get().getName())
-                .noneMatch(methodName::equals)) {
+        final Optional<FunctionDefinition> maybeMethod = superstructHasMethod(methodName, superstruct);
+        if (maybeMethod.isEmpty()) {
             throw new SSCSyntaxException(
-                    "superstruct with name `" + className
+                    "Superstruct with name `" + className
                             + "` has no method called `" + methodName
                             + "`", ctx, tokens);
         }
+        final FunctionDefinition method = maybeMethod.get();
+
+        if (method.isPrivate()) {
+            Main.logger.printDebug("Method '" + methodName + "' is private. Going to check if it may be used here...");
+            if (notInSuperstructMethod(ctxFunctionName)) {
+                throw new SSCSyntaxException(
+                        "Cannot access private static method `" + methodName + "` from outside the superstruct", ctx, tokens
+                );
+            }
+        }
+    }
+
+    private static Optional<FunctionDefinition> superstructHasMethod(final String methodName,
+                                                                     final SuperStructRepre ss) {
+        for (SSMember mem : ss.members()) {
+            final Optional<FunctionDefinition> maybeFunc = mem.data().getRight();
+            if (maybeFunc.isPresent()
+                    && methodName.equals(maybeFunc.get().getName())) {
+                return maybeFunc;
+            }
+        }
+        return Optional.empty();
+    }
+
+    private Optional<SuperStructRepre> findSuperstructByName(final String className) {
+        for (SuperStructRepre s : superstructs) {
+            if (s.name().equals(className)) {
+                return Optional.of(s);
+            }
+        }
+        return Optional.empty();
     }
 
     public String convertMethod(final SSCParser.PostfixExpressionContext ctx,
