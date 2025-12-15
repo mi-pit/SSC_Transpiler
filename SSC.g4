@@ -64,7 +64,7 @@ postfixExpression
     : (primaryExpression | '__extension__'? '(' typeName ')' '{' initializerList ','? '}') (
         '[' expression ']'
         | '(' argumentExpressionList? ')'
-        | ('::')        Identifier '(' argumentExpressionList? ')' // Static superstruct function call
+        | '::'          Identifier '(' argumentExpressionList? ')' // Static superstruct function call
         | ('.' | '->')  Identifier '(' argumentExpressionList? ')' // Object method call
         | ('.' | '->')  Identifier // Attribute access (plain C)
         | '++'

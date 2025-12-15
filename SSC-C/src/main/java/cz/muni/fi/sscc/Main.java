@@ -6,6 +6,7 @@ import cz.muni.fi.sscc.args.CommandLineArguments;
 import cz.muni.fi.sscc.file.InputFile;
 import cz.muni.fi.sscc.data.SuperStructRepre;
 import cz.muni.fi.sscc.exceptions.*;
+import cz.muni.fi.sscc.util.ListBuilder;
 import cz.muni.fi.sscc.visitors.ConvertorVisitor;
 import cz.muni.fi.sscc.visitors.PostfixExpressionConvertorVisitor;
 import cz.muni.fi.sscc.visitors.SSVisitor;
@@ -34,7 +35,7 @@ public final class Main {
     public static Logger logger;
 
     private static final List<String> CC_OPTIONS = List.of(
-            "--std=c17", // todo: add option
+            "--std=c2x", // todo: add option
             "-Werror",
             "-Wall",
             "-Wextra",
@@ -101,7 +102,7 @@ public final class Main {
 
         if (parsedArgs.getCompileTarget().isPresent()) {
             logger.printVerbose("Compiling...");
-            compileCCode(parsedArgs.getCompileTarget().get(), filesToCompile);
+            compileCBatch(parsedArgs.getCompileTarget().get(), filesToCompile);
 
             outputtedFiles.forEach(path -> {
                 logger.printVerbose("Trying to delete output file '" + path + "'...");
@@ -116,20 +117,22 @@ public final class Main {
         logger.printVerbose("Successfully processed.");
     }
 
-    private static void handleKnownExceptionsOrRethrow(InputFile fileArg, RuntimeException e) {
-        if (e instanceof UnknownTranspilationException) {
+    private static void handleKnownExceptionsOrRethrow(final InputFile fileArg,
+                                                       final RuntimeException exception) throws RuntimeException {
+        if (exception instanceof UnknownTranspilationException) {
             System.err.println("Caught unknown exception while processing '" + fileArg.absolutePathString() + "'");
             //noinspection CallToPrintStackTrace
-            e.printStackTrace();
-        } else if (e instanceof SSCTranspilerException) {
-            System.err.println(e.getMessage());
+            exception.printStackTrace();
+        } else if (exception instanceof SSCTranspilerException) {
+            System.err.println(exception.getMessage());
         } else {
-            throw e; /* doesn't get caught again */
+            throw exception; /* doesn't get caught again */
         }
     }
 
-    private static Optional<Path> processFile(final InputFile inputFile) throws IOException, InterruptedException {
-        logger.printVerbose("Parsing file: '" + inputFile.absolutePathString() + "'");
+    private static Optional<Path> processFile(final InputFile inputFile)
+            throws IOException, InterruptedException {
+        logger.printVerbose("Processing file: '" + inputFile.absolutePathString() + "'");
 
         final Path workingFileAbsolutePath = inputFile.getChangedSuffix("c").toAbsolutePath();
 
@@ -218,27 +221,32 @@ public final class Main {
         return visitor.hasNoErrors();
     }
 
+    private static int doProcess(String... args)
+            throws IOException, InterruptedException {
+        return new ProcessBuilder(args).inheritIO().start().waitFor();
+    }
+
+    private static int doProcess(final List<String> args)
+            throws IOException, InterruptedException {
+        return new ProcessBuilder(args).inheritIO().start().waitFor();
+    }
+
     private static boolean preprocessSSCCode(final InputFile inFile,
                                              final Path outFile)
             throws IOException, InterruptedException {
         final Path tempOut = Files.createTempFile(inFile.dir(), inFile.getFullName(), ".i");
 
-        /* cc -E -x c test_file.ssc -P */
-        final ProcessBuilder pb = new ProcessBuilder(
+        /* cc -E -P -x c ‹file.ssc› -o tmp.i */
+        final int exitCode = doProcess(
                 "cc",
-                "-E",       // Preprocess
-                "-P",       // Do not output # line directives
-                "-D" + SSC_DEF_MACRO_STRING + "=1",
-                "-x", "c",  // treat the .ssc file as C
-                inFile.toAbsolutePath().toString(),
-                "-o", tempOut.toString() // output file
+                "-E",                               // Preprocess
+                "-P",                               // Do not output `#line` directives
+                "-D" + SSC_DEF_MACRO_STRING + "=1", // Define a way for C/SSC code to know which it is
+                "-x", "c",                          // Treat the .ssc file as C
+                inFile.toAbsolutePath().toString(), // Input file
+                "-o", tempOut.toString()            // Output file
         );
 
-        pb.inheritIO(); // shows warnings/errors in terminal
-
-        final Process process = pb.start();
-
-        final int exitCode = process.waitFor();
         if (exitCode != 0) {
             tempOut.toFile().deleteOnExit();
             return false;
@@ -248,49 +256,27 @@ public final class Main {
         return true;
     }
 
-    private static boolean formatCCode(final Path file) throws IOException, InterruptedException {
-        final ProcessBuilder pb = new ProcessBuilder(
-                "/opt/homebrew/bin/clang-format", // fixme
-                "-i" /* in place */,
-                file.toString()
-        )
-                .inheritIO();
-        final Process process = pb.start();
-        final int exitCode = process.waitFor();
-        return exitCode == 0;
-    }
-
     private static int verifyCCode(final Path file) throws IOException, InterruptedException {
-        final List<String> cmd = new ArrayList<>();
-        cmd.add("cc");
-        cmd.addAll(CC_OPTIONS);
-        cmd.add("-fsyntax-only");
-        cmd.add(file.toString());
+        final List<String> cmd = ListBuilder.from("cc")
+                .addAll(CC_OPTIONS)
+                .add("-fsyntax-only")
+                .add(file.toString())
+                .build();
 
-        final ProcessBuilder pb = new ProcessBuilder(cmd);
-        pb.inheritIO();
-        final Process process = pb.start();
-        return process.waitFor();
+        return doProcess(cmd);
     }
 
-    private static void compileCCode(String binaryName, Collection<Path> files)
+    private static void compileCBatch(String binaryName, Collection<Path> files)
             throws IOException, InterruptedException {
         /* cc -Werror -Wall -Wextra -pedantic -fsyntax-only "$file" */
-        final List<String> cmd = new ArrayList<>();
-        cmd.add("cc");
-        cmd.addAll(CC_OPTIONS);
-        cmd.add("-o");
-        cmd.add(binaryName);
+        final List<String> cmd = ListBuilder.from("cc")
+                .addAll(CC_OPTIONS)
+                .add("-o")
+                .add(binaryName)
+                .addMapped(files, Path::toString)
+                .build();
 
-        // add all source files
-        for (final Path file : files) {
-            cmd.add(file.toString());
-        }
-        final ProcessBuilder pb = new ProcessBuilder(cmd);
-        pb.inheritIO();
-
-        final Process process = pb.start();
-        final int exitCode = process.waitFor();
+        final int exitCode = doProcess(cmd);
         if (exitCode != 0) {
             err(ExitValue.C_COMPILATION_FAIL, "Compilation failed with exit code: " + exitCode);
         }
