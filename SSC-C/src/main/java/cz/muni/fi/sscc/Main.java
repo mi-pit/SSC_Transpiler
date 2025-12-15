@@ -167,11 +167,6 @@ public final class Main {
             return Optional.of(workingFileAbsolutePath);
         }
 
-        logger.printVerbose("Formatting...");
-        if (!formatCCode(workingFileAbsolutePath)) {
-            logger.printVerbose("Failed to format C code.");
-        }
-
         logger.printVerbose("Verifying...");
         final int exitCode = verifyCCode(workingFileAbsolutePath);
         if (exitCode != 0) {
