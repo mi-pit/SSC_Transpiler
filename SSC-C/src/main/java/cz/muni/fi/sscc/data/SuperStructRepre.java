@@ -4,6 +4,11 @@ import java.util.List;
 import java.util.Objects;
 
 public record SuperStructRepre(String name, List<SSMember> members) {
+    public SuperStructRepre(String name, List<SSMember> members) {
+        this.name = Objects.requireNonNull(name);
+        this.members = Objects.requireNonNull(members);
+    }
+
     public String convert() {
         final StringBuilder result = new StringBuilder();
 
