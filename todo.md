@@ -2,13 +2,20 @@
 
 ---
 
+## Fix/QOL
+
 * fix bugs
-* `private` members (methods & fields)
 * go through all `fixme`s and `todo`s
 * add options for:
     - adding files with different suffixes
     - compiling with custom flags
+    - format (off by default, maybe even impossible)
+* ? own macro preprocessor
 
 ---
 
-- ? own macro preprocessor
+## Features
+
+* lambda functions
+* library
+* namespaced macros

@@ -341,7 +341,7 @@ directDeclarator
     | directDeclarator '[' typeQualifierList 'static' assignmentExpression ']'
     | directDeclarator '[' typeQualifierList? '*' ']'
     | directDeclarator '(' parameterTypeList ')'
-    | directDeclarator '(' identifierList? ')'
+    | directDeclarator '(' identifierList? ')' /* K&R (deprecated) */
     | Identifier ':' DigitSequence         // bit field
     | vcSpecificModifer Identifier         // Visual C Extension
     | '(' vcSpecificModifer declarator ')' // Visual C Extension
@@ -542,7 +542,7 @@ externalDeclaration
     ;
 
 functionDefinition
-    : declarationSpecifiers? declarator declarationList? compoundStatement
+    : declarationSpecifiers? declarator declarationList? /* K&R decls (deprecated) */ compoundStatement
     ;
 
 declarationList
