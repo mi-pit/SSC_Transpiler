@@ -3,11 +3,15 @@ package cz.muni.fi.sscc.visitors;
 import antlr.SSCBaseVisitor;
 import antlr.SSCParser;
 import cz.muni.fi.sscc.exceptions.AntlrException;
+import cz.muni.fi.sscc.exceptions.SSCSyntaxException;
+import cz.muni.fi.sscc.exceptions.SSCTranspilerException;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.RuleNode;
 import org.antlr.v4.runtime.tree.TerminalNode;
+
+import java.util.function.Supplier;
 
 public abstract class ConvertorVisitor extends SSCBaseVisitor<String> {
     protected final CommonTokenStream tokens;
@@ -22,25 +26,22 @@ public abstract class ConvertorVisitor extends SSCBaseVisitor<String> {
         StringBuilder sb = new StringBuilder();
         int n = node.getChildCount();
         for (int i = 0; i < n; i++) {
-            sb.append(node.getChild(i).accept(this));
+            try {
+                sb.append(node.getChild(i).accept(this));
+            } catch (SSCSyntaxException e) {
+                printErrorMessage(() -> e);
+            }
         }
         return sb.toString();
     }
 
     @Override
-    public String visitExternalDeclaration(SSCParser.ExternalDeclarationContext ctx) {
-        if (ctx.functionDefinition() != null) {
-            return super.visitExternalDeclaration(ctx) + "\n";
-        }
-        return super.visitExternalDeclaration(ctx);
-    }
-
-    @Override
     public String visitTerminal(TerminalNode node) {
         if (node.getSymbol().getType() == Token.EOF) {
-            return "";  // ignore <EOF>
+            return "";
         }
 
+        // For better error messages between Extracting SSs & Replacing refs
         return switch (node.getSymbol().getType()) {
             case SSCParser.LeftBrace -> "{\n";
             case SSCParser.RightBrace -> "}\n";
@@ -58,9 +59,16 @@ public abstract class ConvertorVisitor extends SSCBaseVisitor<String> {
     @Override
     public String visitErrorNode(ErrorNode node) {
         hasErrors = true;
+
         // Don't throw! Let the user see the rest of the error nodes!
-        System.err.println(new AntlrException(node.getSymbol(), tokens).getMessage());
+        printErrorMessage(() -> new AntlrException(node.getSymbol(), tokens));
+
         return super.visitErrorNode(node);
+    }
+
+    private static void printErrorMessage(final Supplier<SSCTranspilerException> supplier) {
+        final SSCTranspilerException e = supplier.get();
+        System.err.println(e.getMessage());
     }
 
     public boolean hasNoErrors() {
