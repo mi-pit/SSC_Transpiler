@@ -108,8 +108,8 @@ public class FunctionDefinition {
         return Strings.getContextText(directDecl.directDeclarator(), tokens);
     }
 
-    public static List<String> parseFunctionArgs(final SSCParser.DeclaratorContext ctx,
-                                                 final CommonTokenStream tokens) {
+    private static List<String> parseFunctionArgs(final SSCParser.DeclaratorContext ctx,
+                                                  final CommonTokenStream tokens) {
         final List<String> args = new ArrayList<>();
         if (ctx.directDeclarator().parameterTypeList() == null) {
             /* function declaration without a prototype -- let cc deal with it */
@@ -146,9 +146,10 @@ public class FunctionDefinition {
             if (isPure) {
                 selfRef.append("const ");
             }
-            selfRef.append("superstruct ");
-            selfRef.append(superstructMemberOfName);
-            selfRef.append(" *this");
+            selfRef
+                    .append("superstruct ")
+                    .append(superstructMemberOfName)
+                    .append(" *const this");
 
             if (!args.isEmpty()) {
                 selfRef.append(", ");
