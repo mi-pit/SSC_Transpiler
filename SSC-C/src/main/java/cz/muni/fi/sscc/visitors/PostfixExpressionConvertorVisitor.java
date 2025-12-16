@@ -12,7 +12,14 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 import static cz.muni.fi.sscc.util.Strings.getContextText;
 
@@ -25,154 +32,138 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
                                              Collection<SuperStructRepre> sss) {
         super(tokens);
         this.superstructs = sss;
+
+        functionVariables.put(null /* Global variables */, new HashSet<>());
     }
 
-    private String currentMethodName = null;
+    private String currentFunctionName = null; /* null => no function => global */
 
     @Override
     public String visitFunctionDefinition(final SSCParser.FunctionDefinitionContext ctx) {
+        // Set currentFunctionName
         assert ctx.compoundStatement() != null;
 
         if (ctx.declarationList() != null) {
             throw new SSCSyntaxException("K&R C-style declarations are invalid in SSC", ctx, tokens);
         }
 
-        final String funcName = FunctionDefinition.parseName(ctx.declarator(), tokens);
-        functionVariables.put(funcName, new HashSet<>());
+        currentFunctionName = FunctionDefinition.parseName(ctx.declarator(), tokens);
+        functionVariables.put(currentFunctionName, new HashSet<>());
 
-        if (ctx.compoundStatement().blockItemList() == null) {
-            // no function body
-            return super.visitFunctionDefinition(ctx);
-        }
+        getSuperstructArgs(ctx);
 
-        extractFunctionVariables(ctx, funcName);
-
-        Main.logger.printDebug("In function `" + funcName + "`; vars: " + functionVariables.get(funcName));
-
-        return super.visitFunctionDefinition(ctx);
+        final String ret = super.visitFunctionDefinition(ctx);
+        currentFunctionName = null;
+        return ret;
     }
 
-    private void extractFunctionVariables(
-            final SSCParser.FunctionDefinitionContext ctx,
-            final String funcName
-    ) {
-        if ("loop".equals(funcName)) {
-            Main.logger.printDebug("here");
+    private void getSuperstructArgs(final SSCParser.FunctionDefinitionContext ctx) {
+        final SSCParser.ParameterTypeListContext paramTypeList =
+                ctx.declarator().directDeclarator().parameterTypeList();
+        if (paramTypeList == null) {
+            throw new SSCSyntaxException("Invalid function definition", ctx, tokens);
         }
 
-        extractFunctionArguments(ctx, functionVariables.get(funcName));
+        final List<SSCParser.ParameterDeclarationContext> paramList =
+                paramTypeList.parameterList().parameterDeclaration();
 
-        /*
-         * TODO: recurse
-         *  currently, this only reads top level declarations
-         */
-        final List<SSCParser.DeclarationContext> declarations =
-                getDeclarationsFromCompoundStatement(ctx.compoundStatement());
-
-        for (SSCParser.DeclarationContext declaration : declarations) {
-            final List<SSCParser.DeclarationSpecifierContext> specs =
-                    declaration.declarationSpecifiers().declarationSpecifier();
-
-            final Optional<String> superstructName = findSuperstructNameFromDeclSpecs(specs);
-            if (superstructName.isEmpty()) {
+        for (final SSCParser.ParameterDeclarationContext paramDecl : paramList) {
+            if (paramDecl.declarationSpecifiers2() != null) {
+                assert paramDecl.abstractDeclarator() != null;
                 continue;
             }
+            final var declarator = paramDecl.declarator();
 
-            if (declaration.initDeclaratorList() == null) {
-                Main.logger.printDebug("Decl without name: `" + getContextText(declaration, tokens) + "`");
-
-                final String name = getContextText(specs.get(specs.size() - 1).typeSpecifier(), tokens);
-
-                functionVariables.get(funcName).add(new SuperstructVariable(
-                        superstructName.get(),
-                        false,
-                        name
-                ));
-                continue;
-            }
-
-            // init decl list
-            functionVariables.get(funcName).addAll(
-                    declaration
-                            .initDeclaratorList()
-                            .initDeclarator()
-                            .stream()
-                            .map(initDecl -> new SuperstructVariable(
-                                    superstructName.get(),
-                                    initDecl.declarator().pointer() != null,
-                                    getContextText(initDecl.declarator().directDeclarator(), tokens)
-                            ))
-                            .toList()
+            final Optional<String> maybeSSName = findSSNameInDeclSpecs(
+                    paramDecl.declarationSpecifiers().declarationSpecifier()
             );
-        }
-    }
-
-    public static List<SSCParser.DeclarationContext> getDeclarationsFromCompoundStatement(
-            final SSCParser.CompoundStatementContext ctx
-    ) {
-        if (ctx.blockItemList() == null) {
-            return Collections.emptyList();
-        }
-
-        final List<SSCParser.DeclarationContext> list = new ArrayList<>();
-        for (var blockItemContext : ctx.blockItemList().blockItem()) {
-            final var statement = blockItemContext.statement();
-            if (statement != null && statement.compoundStatement() != null) {
-                list.addAll(getDeclarationsFromCompoundStatement(blockItemContext.statement().compoundStatement()));
-            }
-
-            final var declaration = blockItemContext.declaration();
-            if (declaration != null && declaration.staticAssertDeclaration() == null) {
-                list.add(declaration);
-            }
-        }
-        return list;
-    }
-
-    private static Optional<String> findSuperstructNameFromDeclSpecs(List<SSCParser.DeclarationSpecifierContext> specs) {
-        for (SSCParser.DeclarationSpecifierContext spec : specs) {
-            if (spec != null) {
-                var typeSpec = spec.typeSpecifier();
-                if (typeSpec != null && typeSpec.superStructSpecifier() != null) {
-                    return Optional.of(typeSpec.superStructSpecifier().Identifier().getText());
-                }
-            }
-        }
-        return Optional.empty();
-    }
-
-    private void extractFunctionArguments(SSCParser.FunctionDefinitionContext ctx,
-                                          final Set<SuperstructVariable> vars) {
-        for (SSCParser.ParameterDeclarationContext param :
-                ctx.declarator().directDeclarator().parameterTypeList().parameterList().parameterDeclaration()) {
-            if (param.declarationSpecifiers() == null) {
+            if (maybeSSName.isEmpty()) {
                 continue;
             }
+            final String ssName = maybeSSName.get();
 
-            final Optional<String> superstructName = param
-                    .declarationSpecifiers()
-                    .declarationSpecifier()
-                    .stream()
-                    .filter(specifier -> specifier.typeSpecifier() != null
-                            && specifier.typeSpecifier().superStructSpecifier() != null)
-                    .map(s -> s.typeSpecifier().superStructSpecifier().Identifier().getText())
-                    .findFirst();
-            if (superstructName.isEmpty()) {
-                continue;
-            }
-
-            vars.add(new SuperstructVariable(
-                    superstructName.get(),
-                    param.declarator().pointer() != null,
-                    param.declarator().directDeclarator().Identifier().getText()
-            ));
+            tryGetSuperstructVariableFromDeclarator(ssName, declarator)
+                    .ifPresent(ssVar -> functionVariables.get(currentFunctionName).add(ssVar));
         }
     }
 
     @Override
-    public String visitPostfixExpression(SSCParser.PostfixExpressionContext ctx) {
-        assert ctx != null;
+    public String visitDeclaration(SSCParser.DeclarationContext ctx) {
+        collectSuperstructVariablesFromDeclaration(ctx);
+        return super.visitDeclaration(ctx);
+    }
 
+    private void collectSuperstructVariablesFromDeclaration(
+            final SSCParser.DeclarationContext ctx
+    ) {
+        if (ctx.staticAssertDeclaration() != null) {
+            assert ctx.declarationSpecifiers() == null;
+            return;
+        }
+        assert ctx.declarationSpecifiers() != null;
+        assert !ctx.declarationSpecifiers().declarationSpecifier().isEmpty();
+
+        if (ctx.initDeclaratorList() == null) {
+            // e.g. `struct s;`
+            return;
+        }
+
+        final List<SSCParser.DeclarationSpecifierContext> declSpecs = ctx.declarationSpecifiers().declarationSpecifier();
+        final Optional<String> maybeSSName = findSSNameInDeclSpecs(declSpecs);
+        if (maybeSSName.isEmpty()) {
+            return;
+        }
+        final String ssName = maybeSSName.get();
+
+        final List<SSCParser.InitDeclaratorContext> initDeclList = ctx.initDeclaratorList().initDeclarator();
+
+        for (final SSCParser.InitDeclaratorContext initDeclarator : initDeclList) {
+            final var declarator = initDeclarator.declarator();
+
+            tryGetSuperstructVariableFromDeclarator(ssName, declarator)
+                    .ifPresent(ssVar -> functionVariables.get(currentFunctionName).add(ssVar));
+        }
+    }
+
+    private Optional<SuperstructVariable> tryGetSuperstructVariableFromDeclarator(
+            final String ssName,
+            final SSCParser.DeclaratorContext declarator
+    ) {
+        final var directDecl = declarator.directDeclarator();
+        if (directDecl.Identifier() == null) {
+            return Optional.empty();
+        }
+
+        final boolean pointer = declarator.pointer() != null;
+        final String varName = directDecl.Identifier().getText();
+
+        final SuperstructVariable ssVar = new SuperstructVariable(ssName, pointer, varName);
+        return Optional.of(ssVar);
+    }
+
+    private Optional<String> findSSNameInDeclSpecs(
+            final List<SSCParser.DeclarationSpecifierContext> declSpecs
+    ) {
+        for (final var declSpec : declSpecs) {
+            if (declSpec.typeSpecifier() == null) {
+                continue;
+            }
+
+            final var typeSpec = declSpec.typeSpecifier();
+            if (typeSpec.superStructSpecifier() == null) {
+                continue;
+            }
+
+            final var ssCtx = typeSpec.superStructSpecifier();
+            final String ssName = ssCtx.Identifier().getText();
+            return Optional.of(ssName);
+        }
+
+        return Optional.empty();
+    }
+
+    @Override
+    public String visitPostfixExpression(SSCParser.PostfixExpressionContext ctx) {
         /* Compound literals for some reason have to be converted here */
         final Optional<String> res = getCompoundLiteralReplaced(ctx);
         if (res.isPresent()) {
@@ -350,7 +341,7 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
         }
         final FunctionDefinition method = maybeMethod.get();
 
-        if (var.pointer() && arrowOrDot == ArrowOrDot.Dot) {
+        if (var.isPointer() && arrowOrDot == ArrowOrDot.Dot) {
             throw new SSCSyntaxException("Pointer to superstruct must be accessed with `->`", ctx, tokens);
         }
 
@@ -397,7 +388,7 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
 
     private Optional<SuperstructVariable> findSuperstructVariable(String functionName, String objectName) {
         for (SuperstructVariable var : functionVariables.get(functionName)) {
-            if (var.name().equals(objectName)) {
+            if (var.getName().equals(objectName)) {
                 return Optional.of(var);
             }
         }
@@ -417,8 +408,8 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
         final Optional<SuperStructRepre> optSS = findSuperStructFromVariable(var);
         if (optSS.isEmpty()) {
             throw new SSCSyntaxException(
-                    "`superstruct " + var.type() + "` "
-                            + "(type of variable \"" + var.name() + "\") is not properly defined",
+                    "`superstruct " + var.ssName() + "` "
+                            + "(type of variable \"" + var.getName() + "\") is not properly defined",
                     ctx, tokens
             );
         }
@@ -433,7 +424,7 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
      */
     private Optional<SuperStructRepre> findSuperStructFromVariable(final SuperstructVariable var) {
         for (SuperStructRepre candidate : superstructs) {
-            if (candidate.name().equals(var.type())) {
+            if (candidate.name().equals(var.ssName())) {
                 return Optional.of(candidate);
             }
         }

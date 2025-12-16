@@ -218,7 +218,7 @@ public final class Main {
 
     private static int doProcess(String... args)
             throws IOException, InterruptedException {
-        return new ProcessBuilder(args).inheritIO().start().waitFor();
+        return doProcess(Arrays.asList(args));
     }
 
     private static int doProcess(final List<String> args)
