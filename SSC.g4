@@ -65,8 +65,9 @@ postfixExpression
         '[' expression ']'
         | '(' argumentExpressionList? ')'
         | '::'          Identifier '(' argumentExpressionList? ')' // Static superstruct function call
+        | '::'          Identifier                                 // Static superstruct function reference
         | ('.' | '->')  Identifier '(' argumentExpressionList? ')' // Object method call
-        | ('.' | '->')  Identifier // Attribute access (plain C)
+        | ('.' | '->')  Identifier                                 // Attribute access (plain C)
         | '++'
         | '--'
     )*

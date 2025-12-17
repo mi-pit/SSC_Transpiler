@@ -213,11 +213,6 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
                                             final String ctxFunctionName) {
         Main.logger.printDebug("Double colon in: %s\n", getContextText(ctx, tokens));
 
-        if (ctx.LeftParen() == null || ctx.RightParen() == null) {
-            assert false; // TODO? add to grammar for better error messages
-            throw new SSCSyntaxException("Static superstruct access not a function call", ctx, tokens);
-        }
-
         if (ctx.primaryExpression() == null)
             throw new SSCSyntaxException("Double colon expression has no left side (Superstruct name) expression", ctx, tokens);
         final String className = getContextText(ctx.primaryExpression(), tokens);
@@ -228,6 +223,13 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
 
         verifyStaticCall(ctx, ctxFunctionName, className, methodName);
 
+        final String namespacedMethodName = className + "__" + methodName;
+
+        final boolean noCall = ctx.LeftParen() == null;
+        if (noCall) {
+            return namespacedMethodName;
+        }
+
         final List<String> args = new ArrayList<>();
         for (SSCParser.ArgumentExpressionListContext argListCtx : ctx.argumentExpressionList()) {
             for (SSCParser.AssignmentExpressionContext assExprCtx : argListCtx.assignmentExpression()) {
@@ -235,7 +237,7 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
             }
         }
 
-        final String result = className + "__" + methodName + "( " + String.join(", ", args) + " )";
+        final String result = namespacedMethodName + "( " + String.join(", ", args) + " )";
         Main.logger.printDebug("\tResult: " + result);
         return result;
     }
