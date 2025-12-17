@@ -39,18 +39,4 @@ public record SuperStruct(String name, List<SSMember> members) {
                     result.append(fnDef.getDeclaration()));
         }
     }
-
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass())
-            return false;
-
-        SuperStruct that = (SuperStruct) o;
-        return Objects.equals(name, that.name);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hashCode(name);
-    }
 }
