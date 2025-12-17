@@ -1,16 +1,15 @@
 #!/bin/bash
-
 set -e
+set -o pipefail
 
 BASE_DIR="$(cd "$(dirname "$0")" && pwd)"
+ANTLR_OUT_BASE="$BASE_DIR/SSC-C/src/main/java/antlr/"
 
-antlr "$BASE_DIR/SSC.g4" -Dlanguage=Java -visitor
-
-rm "$BASE_DIR/SSC.interp"
-rm "$BASE_DIR/SSC.tokens"
-rm "$BASE_DIR/SSCLexer.interp"
-rm "$BASE_DIR/SSCLexer.tokens"
-
+# Grammars to process (without .g4)
+GRAMMARS=(
+    "SSC"
+    "SSCPP"
+)
 
 prepend() {
     local file="$1"
@@ -20,17 +19,41 @@ prepend() {
         && mv "$file.tmp" "$file"
 }
 
-FILES=(
-    "SSCBaseListener.java"
-    "SSCBaseVisitor.java"
-    "SSCLexer.java"
-    "SSCListener.java"
-    "SSCParser.java"
-    "SSCVisitor.java"
-)
+for GRAMMAR in "${GRAMMARS[@]}"; do
+    echo "Generating ANTLR files for $GRAMMAR.g4"
 
-for f in "${FILES[@]}"; do
-    prepend "$BASE_DIR/$f" "package antlr; /* added to project in \`refresh-grammar.sh\` */"
-    mv "$BASE_DIR/$f" "$BASE_DIR/SSC-C/src/main/java/antlr/$f"
-    # echo Moved "$BASE_DIR/$f" "$BASE_DIR/SSC-C/src/main/java/antlr/$f"
+    # Lowercase dir name (ssc / sscpp)
+    GRAMMAR_LC="$(echo "$GRAMMAR" | tr '[:upper:]' '[:lower:]')"
+    OUT_DIR="$ANTLR_OUT_BASE/$GRAMMAR_LC"
+
+    mkdir -p "$OUT_DIR"
+
+    # Generate parser
+    antlr "$BASE_DIR/$GRAMMAR.g4" -Dlanguage=Java -visitor
+
+    # Cleanup ANTLR side files
+    rm -f \
+        "$BASE_DIR/$GRAMMAR.interp" \
+        "$BASE_DIR/$GRAMMAR.tokens" \
+        "$BASE_DIR/${GRAMMAR}Lexer.interp" \
+        "$BASE_DIR/${GRAMMAR}Lexer.tokens"
+
+    FILES=(
+        "${GRAMMAR}BaseListener.java"
+        "${GRAMMAR}BaseVisitor.java"
+        "${GRAMMAR}Lexer.java"
+        "${GRAMMAR}Listener.java"
+        "${GRAMMAR}Parser.java"
+        "${GRAMMAR}Visitor.java"
+    )
+
+    for f in "${FILES[@]}"; do
+        src="$BASE_DIR/$f"
+        dst="$OUT_DIR/$f"
+
+        prepend "$src" "package antlr.$GRAMMAR_LC; /* added by refresh-grammar.sh */"
+        mv "$src" "$dst"
+    done
 done
+
+echo "ANTLR grammars refreshed successfully."
