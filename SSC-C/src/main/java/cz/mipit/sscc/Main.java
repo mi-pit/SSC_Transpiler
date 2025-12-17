@@ -277,7 +277,4 @@ public final class Main {
             err(ExitValue.C_COMPILATION_FAIL, "Compilation failed with exit code: " + exitCode);
         }
     }
-
-    private record VisitorData(CommonTokenStream tokens, ParseTree tree) {
-    }
 }
