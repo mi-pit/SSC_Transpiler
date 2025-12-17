@@ -4,7 +4,7 @@ import antlr.SSCLexer;
 import antlr.SSCParser;
 import cz.muni.fi.sscc.args.CommandLineArguments;
 import cz.muni.fi.sscc.file.InputFile;
-import cz.muni.fi.sscc.data.SuperStructRepre;
+import cz.muni.fi.sscc.data.SuperStruct;
 import cz.muni.fi.sscc.exceptions.*;
 import cz.muni.fi.sscc.util.ListBuilder;
 import cz.muni.fi.sscc.visitors.ConvertorVisitor;
@@ -30,7 +30,7 @@ public final class Main {
 
     private static final String SSC_DEF_MACRO_STRING = "__SSC_LANGUAGE__";
 
-    private static Collection<SuperStructRepre> sss;
+    private static Collection<SuperStruct> sss;
     private static CommandLineArguments parsedArgs;
     public static Logger logger;
 

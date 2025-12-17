@@ -5,7 +5,7 @@ import cz.muni.fi.sscc.Main;
 import cz.muni.fi.sscc.data.Field;
 import cz.muni.fi.sscc.data.FunctionDefinition;
 import cz.muni.fi.sscc.data.SSMember;
-import cz.muni.fi.sscc.data.SuperStructRepre;
+import cz.muni.fi.sscc.data.SuperStruct;
 import cz.muni.fi.sscc.data.SuperstructVariable;
 import cz.muni.fi.sscc.exceptions.SSCSyntaxException;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -24,12 +24,12 @@ import java.util.Set;
 import static cz.muni.fi.sscc.util.Strings.getContextText;
 
 public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
-    private final Collection<SuperStructRepre> superstructs;
+    private final Collection<SuperStruct> superstructs;
 
     public final Map<String /* Function name */, Set<SuperstructVariable>> functionVariables = new HashMap<>();
 
     public PostfixExpressionConvertorVisitor(CommonTokenStream tokens,
-                                             Collection<SuperStructRepre> sss) {
+                                             Collection<SuperStruct> sss) {
         super(tokens);
         this.superstructs = sss;
 
@@ -246,11 +246,11 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
                                   final String ctxFunctionName,
                                   final String className,
                                   final String methodName) {
-        final Optional<SuperStructRepre> maybeSS = findSuperstructByName(className);
+        final Optional<SuperStruct> maybeSS = findSuperstructByName(className);
         if (maybeSS.isEmpty()) {
             throw new SSCSyntaxException("Could not find superstruct with name `" + className + "`", ctx, tokens);
         }
-        final SuperStructRepre superstruct = maybeSS.get();
+        final SuperStruct superstruct = maybeSS.get();
 
         final Optional<FunctionDefinition> maybeMethod = findSuperstructMethod(methodName, superstruct);
         if (maybeMethod.isEmpty()) {
@@ -272,7 +272,7 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
     }
 
     private static Optional<FunctionDefinition> findSuperstructMethod(final String methodName,
-                                                                      final SuperStructRepre ss) {
+                                                                      final SuperStruct ss) {
         for (SSMember mem : ss.members()) {
             final Optional<FunctionDefinition> maybeFunc = mem.data().getRight();
             if (maybeFunc.isPresent()
@@ -283,8 +283,8 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
         return Optional.empty();
     }
 
-    private Optional<SuperStructRepre> findSuperstructByName(final String className) {
-        for (SuperStructRepre s : superstructs) {
+    private Optional<SuperStruct> findSuperstructByName(final String className) {
+        for (SuperStruct s : superstructs) {
             if (s.name().equals(className)) {
                 return Optional.of(s);
             }
@@ -315,7 +315,7 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
         }
         final SuperstructVariable var = maybeVar.get();
 
-        final SuperStructRepre superstruct = getSuperStructFromVariable(ctx, var);
+        final SuperStruct superstruct = getSuperStructFromVariable(ctx, var);
 
         final boolean hasLeftParen = !ctx.LeftParen().isEmpty();
         final boolean hasRightParen = !ctx.RightParen().isEmpty();
@@ -405,9 +405,9 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
      * @param var local variable
      * @return valid ss
      */
-    private SuperStructRepre getSuperStructFromVariable(final SSCParser.PostfixExpressionContext ctx,
-                                                        final SuperstructVariable var) {
-        final Optional<SuperStructRepre> optSS = findSuperStructFromVariable(var);
+    private SuperStruct getSuperStructFromVariable(final SSCParser.PostfixExpressionContext ctx,
+                                                   final SuperstructVariable var) {
+        final Optional<SuperStruct> optSS = findSuperStructFromVariable(var);
         if (optSS.isEmpty()) {
             throw new SSCSyntaxException(
                     "`superstruct " + var.ssName() + "` "
@@ -424,8 +424,8 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
      * @param var local variable
      * @return empty if no ss matches
      */
-    private Optional<SuperStructRepre> findSuperStructFromVariable(final SuperstructVariable var) {
-        for (SuperStructRepre candidate : superstructs) {
+    private Optional<SuperStruct> findSuperStructFromVariable(final SuperstructVariable var) {
+        for (SuperStruct candidate : superstructs) {
             if (candidate.name().equals(var.ssName())) {
                 return Optional.of(candidate);
             }
@@ -433,7 +433,7 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
         return Optional.empty();
     }
 
-    private String getFieldAccessString(SSCParser.PostfixExpressionContext ctx, String functionName, SuperStructRepre superstruct) {
+    private String getFieldAccessString(SSCParser.PostfixExpressionContext ctx, String functionName, SuperStruct superstruct) {
         final String fieldName = ctx.Identifier(0).getText();
 
         final var allMatching = superstruct.members()
@@ -473,7 +473,7 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
          *  (currently checks namespace only)
          */
         Main.logger.printDebug("Looking for function: " + functionName);
-        for (SuperStructRepre ssr : superstructs) {
+        for (SuperStruct ssr : superstructs) {
             Main.logger.printDebug("\tin superstruct: " + ssr.name());
             if (functionName.startsWith(ssr.name() + "__")) {
                 Main.logger.printDebug("... found");
@@ -485,7 +485,7 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
         return true;
     }
 
-    private Optional<FunctionDefinition> findMethod(final SuperStructRepre ssr,
+    private Optional<FunctionDefinition> findMethod(final SuperStruct ssr,
                                                     final String methodName) {
         for (final FunctionDefinition func : ssr.members().stream()
                 .map(m -> m.data().getRight())

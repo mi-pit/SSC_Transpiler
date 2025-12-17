@@ -4,7 +4,7 @@ import antlr.SSCParser;
 import cz.muni.fi.sscc.data.Field;
 import cz.muni.fi.sscc.data.FunctionDefinition;
 import cz.muni.fi.sscc.data.SSMember;
-import cz.muni.fi.sscc.data.SuperStructRepre;
+import cz.muni.fi.sscc.data.SuperStruct;
 import cz.muni.fi.sscc.exceptions.SSCSyntaxException;
 import cz.muni.fi.sscc.util.Strings;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -14,13 +14,13 @@ import java.util.stream.Collectors;
 
 
 public class SuperstructConvertorVisitor extends ConvertorVisitor {
-    private final Set<SuperStructRepre> superStructs = new HashSet<>();
+    private final Set<SuperStruct> superStructs = new HashSet<>();
 
     public SuperstructConvertorVisitor(CommonTokenStream tokens) {
         super(tokens);
     }
 
-    public Set<SuperStructRepre> getSuperStructs() {
+    public Set<SuperStruct> getSuperStructs() {
         return superStructs;
     }
 
@@ -39,12 +39,12 @@ public class SuperstructConvertorVisitor extends ConvertorVisitor {
         }
 
         // Save to record
-        final SuperStructRepre repr = new SuperStructRepre(thisSSName, memberList);
-        if (!superStructs.add(repr)) {
-            throw new SSCSyntaxException("Superstruct with name " + repr.name() + " already exists", ctx, tokens);
+        final SuperStruct superStruct = new SuperStruct(thisSSName, memberList);
+        if (!superStructs.add(superStruct)) {
+            throw new SSCSyntaxException("Superstruct with name " + superStruct.name() + " already exists", ctx, tokens);
         }
 
-        return repr.convert();
+        return superStruct.convert();
     }
 
     private void processMemberCtx(final SSCParser.SuperStructMemberContext memberCtx,

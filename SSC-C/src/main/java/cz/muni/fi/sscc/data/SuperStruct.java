@@ -2,10 +2,9 @@ package cz.muni.fi.sscc.data;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
-public record SuperStructRepre(String name, List<SSMember> members) {
-    public SuperStructRepre(String name, List<SSMember> members) {
+public record SuperStruct(String name, List<SSMember> members) {
+    public SuperStruct(String name, List<SSMember> members) {
         this.name = Objects.requireNonNull(name);
         this.members = Objects.requireNonNull(members);
     }
@@ -46,7 +45,7 @@ public record SuperStructRepre(String name, List<SSMember> members) {
         if (o == null || getClass() != o.getClass())
             return false;
 
-        SuperStructRepre that = (SuperStructRepre) o;
+        SuperStruct that = (SuperStruct) o;
         return Objects.equals(name, that.name);
     }
 
