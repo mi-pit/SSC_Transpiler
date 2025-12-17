@@ -539,7 +539,12 @@ translationUnit
 externalDeclaration
     : functionDefinition
     | declaration
+    | directive
     | ';' // stray ;
+    ;
+
+directive
+    : Directive
     ;
 
 functionDefinition
@@ -1138,7 +1143,7 @@ fragment SChar
  */
 
 Directive
-    : '#' (~[\r\n\\] | '\\' [\r\n])* -> channel(HIDDEN)
+    : '#' (~[\r\n\\] | '\\' [\r\n])*
     ;
 
 AsmBlock

@@ -8,7 +8,6 @@ ANTLR_OUT_BASE="$BASE_DIR/SSC-C/src/main/java/antlr/"
 # Grammars to process (without .g4)
 GRAMMARS=(
     "SSC"
-    "SSCPP"
 )
 
 prepend() {

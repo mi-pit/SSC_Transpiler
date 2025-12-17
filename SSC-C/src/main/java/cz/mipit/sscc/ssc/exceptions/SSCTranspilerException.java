@@ -23,12 +23,12 @@ public abstract class SSCTranspilerException extends RuntimeException {
     public static final String COLOR_LOCATOR =
             UnixTerminalColors.create(UnixTerminalColors.Ground.FORE, UnixTerminalColors.Color.CYAN);
 
-    private SSCTranspilerException(Type type, String message, String context) {
+    protected SSCTranspilerException(Type type, String message, String context) {
         super(COLOR_MESSAGE + "SSC Transpiler: " +
                 Objects.requireNonNull(type, "Exception type") +
                 " exception: " +
                 Objects.requireNonNull(message, "Message") + UnixTerminalColors.COLOR_RESET + "\n" +
-                Objects.requireNonNull(context, "Internal, how is this possible?"));
+                Objects.requireNonNull(context, "Context string"));
     }
 
     protected SSCTranspilerException(Type type, String message,
@@ -74,7 +74,7 @@ public abstract class SSCTranspilerException extends RuntimeException {
 
 
     protected enum Type {
-        Syntax, Antlr_parser, Other;
+        Syntax, Antlr_parser, Preprocessor, Other;
 
         @Override
         public String toString() {

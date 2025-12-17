@@ -34,6 +34,10 @@ public final class Logger {
     }
 
     public void printVerbose(String string) {
-        printVerbose("%s", string);
+        printVerbose("%s", (Object) string);
+    }
+
+    public void printVerbose(String a, String b) {
+        printVerbose("%s'" + UnixTerminalColors.COLOR_RESET + "%s" + VERBOSE_COLOR + "'", a, b);
     }
 }

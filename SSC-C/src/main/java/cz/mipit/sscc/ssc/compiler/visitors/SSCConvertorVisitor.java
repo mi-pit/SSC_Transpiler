@@ -5,6 +5,7 @@ import antlr.ssc.SSCParser;
 import cz.mipit.sscc.ssc.exceptions.AntlrException;
 import cz.mipit.sscc.ssc.exceptions.SSCSyntaxException;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
+import cz.mipit.sscc.util.ContextText;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ErrorNode;
@@ -42,6 +43,12 @@ public abstract class SSCConvertorVisitor extends SSCBaseVisitor<String> {
         }
 
         return node.getText() + " ";
+    }
+
+    @Override
+    public String visitDirective(SSCParser.DirectiveContext ctx) {
+        final String text = "\n" + ContextText.getLiteral(ctx, tokens) + "\n";
+        return text;
     }
 
     @Override

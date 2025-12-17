@@ -16,7 +16,6 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
 
@@ -27,8 +26,6 @@ import static cz.mipit.sscc.VisitorData.getSSCVisitorData;
 public final class Main {
     private Main() {
     }
-
-    private static final String SSC_DEF_MACRO_STRING = "__SSC_LANGUAGE__";
 
     private static Collection<SuperStruct> sss;
     private static CommandLineArguments parsedArgs;
@@ -132,12 +129,13 @@ public final class Main {
 
     private static Optional<Path> processFile(final InputFile inputFile)
             throws IOException, InterruptedException {
-        logger.printVerbose("Processing file: '" + inputFile.absolutePathString() + "'");
+        logger.printVerbose("Processing file: ", inputFile.absolutePathString());
 
         final Path workingFileAbsolutePath = inputFile.getChangedSuffix("c").toAbsolutePath();
 
         logger.printVerbose("Preprocessing file...");
         if (!Preprocessor.preprocessSSC(inputFile, workingFileAbsolutePath)) {
+            logger.printVerbose("Preprocessing failed.");
             return Optional.empty();
         }
 
@@ -205,39 +203,9 @@ public final class Main {
         return visitor.hasNoErrors();
     }
 
-    private static int doProcess(String... args)
-            throws IOException, InterruptedException {
-        return doProcess(Arrays.asList(args));
-    }
-
     private static int doProcess(final List<String> args)
             throws IOException, InterruptedException {
         return new ProcessBuilder(args).inheritIO().start().waitFor();
-    }
-
-    private static boolean preprocessSSCCode(final InputFile inFile,
-                                             final Path outFile)
-            throws IOException, InterruptedException {
-        final Path tempOut = Files.createTempFile(inFile.dir(), inFile.getFullName(), ".i");
-
-        /* cc -E -P -x c ‹file.ssc› -o tmp.i */
-        final int exitCode = doProcess(
-                "cc",
-                "-E",                               // Preprocess
-                "-P",                               // Do not output `#line` directives
-                "-D" + SSC_DEF_MACRO_STRING + "=1", // Define a way for C/SSC code to know which it is
-                "-x", "c",                          // Treat the .ssc file as C
-                inFile.toAbsolutePath().toString(), // Input file
-                "-o", tempOut.toString()            // Output file
-        );
-
-        if (exitCode != 0) {
-            tempOut.toFile().deleteOnExit();
-            return false;
-        }
-
-        Files.move(tempOut, outFile, StandardCopyOption.REPLACE_EXISTING);
-        return true;
     }
 
     private static int verifyCCode(final Path file) throws IOException, InterruptedException {
