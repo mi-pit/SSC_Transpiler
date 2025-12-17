@@ -2,6 +2,7 @@ package cz.muni.fi.sscc.data;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 public record SuperStructRepre(String name, List<SSMember> members) {
     public SuperStructRepre(String name, List<SSMember> members) {
@@ -14,35 +15,30 @@ public record SuperStructRepre(String name, List<SSMember> members) {
 
         result.append(String.format("superstruct %s {\n", name));
         for (SSMember member : members) {
-            if (member.data().getLeft().isEmpty()) {
-                continue;
-            }
-
-            result
+            member.data().getLeft().ifPresent(field -> result
                     /* do a little bit of formatting for mid-compilation error messages */
                     .append("    ")
-                    .append(member.data().getLeft().get().getData())
-                    .append("\n");
+                    .append(field.getData())
+                    .append("\n"));
+
         }
-        result.append("}\n");
+        result.append("};\n");
+
+        getForwardDeclarations(result);
 
         for (SSMember member : members) {
-            if (member.data().getRight().isEmpty()) {
-                continue;
-            }
-
-            result
-                    /* :( ts is really horrible
-                     * basically -- superstruct can not have a semicolon after itself
-                     * because it would mess up `typedef`s
-                     * therefore append one BEFORE each method
-                     * warnings against extra semicolons are turned off anyway ;)
-                     */
-                    .append(";")
-                    .append(member.data().getRight().get().getText());
+            member.data().getRight().ifPresent(functionDefinition ->
+                    result.append(functionDefinition.getDefinition()));
         }
 
         return result.toString();
+    }
+
+    private void getForwardDeclarations(final StringBuilder result) {
+        for (SSMember member : members) {
+            member.data().getRight().ifPresent(fnDef ->
+                    result.append(fnDef.getDeclaration()));
+        }
     }
 
     @Override

@@ -126,7 +126,7 @@ public class FunctionDefinition {
         return args;
     }
 
-    public static List<String> parseFunctionBody(SSCParser.CompoundStatementContext ctx, CommonTokenStream tokens) {
+    private static List<String> parseFunctionBody(SSCParser.CompoundStatementContext ctx, CommonTokenStream tokens) {
         List<String> statements = new ArrayList<>();
         for (var statement : ctx.blockItemList().blockItem()) {
             statements.add(Strings.getContextText(statement, tokens));
@@ -134,7 +134,15 @@ public class FunctionDefinition {
         return statements;
     }
 
-    public String getText() {
+    public String getDeclaration() {
+        return getDeclaration(false) + ";\n";
+    }
+
+    public String getDefinition() {
+        return getDeclaration(true) + " " + getBody();
+    }
+
+    private String getDeclaration(boolean willHaveBody) {
         assert !isStatic || !isPure;
 
         if (!isStatic && args.size() == 1 && args.get(0).equals("void")) {
@@ -149,7 +157,12 @@ public class FunctionDefinition {
             selfRef
                     .append("superstruct ")
                     .append(superstructMemberOfName)
-                    .append(" *const this");
+                    .append(" *");
+
+            if (willHaveBody) {
+                selfRef.append("const ");
+            }
+            selfRef.append("this");
 
             if (!args.isEmpty()) {
                 selfRef.append(", ");
@@ -161,9 +174,15 @@ public class FunctionDefinition {
         return specsString
                 + " " + type
                 + " " + superstructMemberOfName + "__" + name
-                + "(" + selfRef + String.join(", ", args) + ")"
-                + " {\n    " + String.join("\n    ", statements) + "\n}\n";
+                + "(" + selfRef + String.join(", ", args) + ")";
     }
+
+    private String getBody() {
+        return "{\n" +
+                "    " + String.join("\n    ", statements) + "\n" +
+                "}\n";
+    }
+
 
     public String getName() {
         return name;
