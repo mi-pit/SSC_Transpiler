@@ -225,7 +225,7 @@ public class PostfixExpressionConvertorVisitor extends ConvertorVisitor {
 
         final String namespacedMethodName = className + "__" + methodName;
 
-        final boolean noCall = ctx.LeftParen() == null;
+        final boolean noCall = ctx.LeftParen().isEmpty();
         if (noCall) {
             return namespacedMethodName;
         }
