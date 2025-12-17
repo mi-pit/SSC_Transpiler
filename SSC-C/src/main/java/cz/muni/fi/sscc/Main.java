@@ -9,7 +9,7 @@ import cz.muni.fi.sscc.exceptions.*;
 import cz.muni.fi.sscc.util.ListBuilder;
 import cz.muni.fi.sscc.visitors.ConvertorVisitor;
 import cz.muni.fi.sscc.visitors.PostfixExpressionConvertorVisitor;
-import cz.muni.fi.sscc.visitors.SSVisitor;
+import cz.muni.fi.sscc.visitors.SuperstructConvertorVisitor;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -192,7 +192,7 @@ public final class Main {
                                                      final ParseTree tree,
                                                      final Path outputFile)
             throws IOException {
-        final SSVisitor visitor = new SSVisitor(tokens);
+        final SuperstructConvertorVisitor visitor = new SuperstructConvertorVisitor(tokens);
         final String result = visitor.visit(tree);
         sss = visitor.getSuperStructs();
 

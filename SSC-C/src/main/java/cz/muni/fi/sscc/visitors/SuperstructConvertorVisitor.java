@@ -13,10 +13,10 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 
-public class SSVisitor extends ConvertorVisitor {
+public class SuperstructConvertorVisitor extends ConvertorVisitor {
     private final Set<SuperStructRepre> superStructs = new HashSet<>();
 
-    public SSVisitor(CommonTokenStream tokens) {
+    public SuperstructConvertorVisitor(CommonTokenStream tokens) {
         super(tokens);
     }
 
