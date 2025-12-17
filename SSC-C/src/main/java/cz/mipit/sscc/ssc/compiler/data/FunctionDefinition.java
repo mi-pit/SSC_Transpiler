@@ -1,6 +1,6 @@
 package cz.mipit.sscc.ssc.compiler.data;
 
-import antlr.SSCParser;
+import antlr.ssc.SSCParser;
 import cz.mipit.sscc.ssc.compiler.exceptions.SSCSyntaxException;
 import cz.mipit.sscc.ssc.compiler.exceptions.UnknownTranspilationException;
 import cz.mipit.sscc.util.ContextText;

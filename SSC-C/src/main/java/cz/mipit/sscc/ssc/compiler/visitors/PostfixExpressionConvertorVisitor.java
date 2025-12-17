@@ -1,6 +1,6 @@
 package cz.mipit.sscc.ssc.compiler.visitors;
 
-import antlr.SSCParser;
+import antlr.ssc.SSCParser;
 import cz.mipit.sscc.Main;
 import cz.mipit.sscc.ssc.compiler.data.Field;
 import cz.mipit.sscc.ssc.compiler.data.FunctionDefinition;

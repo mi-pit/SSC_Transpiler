@@ -1,7 +1,7 @@
 package cz.mipit.sscc;
 
-import antlr.SSCLexer;
-import antlr.SSCParser;
+import antlr.ssc.SSCLexer;
+import antlr.ssc.SSCParser;
 import cz.mipit.sscc.args.CommandLineArguments;
 import cz.mipit.sscc.ssc.compiler.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.ssc.compiler.exceptions.UnknownTranspilationException;

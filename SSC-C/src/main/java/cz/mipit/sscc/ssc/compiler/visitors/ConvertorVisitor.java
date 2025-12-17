@@ -1,7 +1,7 @@
 package cz.mipit.sscc.ssc.compiler.visitors;
 
-import antlr.SSCBaseVisitor;
-import antlr.SSCParser;
+import antlr.ssc.SSCBaseVisitor;
+import antlr.ssc.SSCParser;
 import cz.mipit.sscc.ssc.compiler.exceptions.AntlrException;
 import cz.mipit.sscc.ssc.compiler.exceptions.SSCSyntaxException;
 import cz.mipit.sscc.ssc.compiler.exceptions.SSCTranspilerException;
