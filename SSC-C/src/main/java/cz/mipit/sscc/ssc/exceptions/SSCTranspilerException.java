@@ -1,4 +1,4 @@
-package cz.mipit.sscc.ssc.compiler.exceptions;
+package cz.mipit.sscc.ssc.exceptions;
 
 import cz.mipit.sscc.util.ContextText;
 import cz.mipit.sscc.util.UnixTerminalColors;
@@ -40,10 +40,14 @@ public abstract class SSCTranspilerException extends RuntimeException {
     }
 
     protected SSCTranspilerException(Type type, Token tok, CommonTokenStream tokens) {
-        this(type, "Could not parse token", getFormattedMessage(
-                Objects.requireNonNull(tok, "Token"),
-                Objects.requireNonNull(tokens, "Token stream")
-        ));
+        this(
+                type,
+                "Could not parse token '" + tok.getText() + "'",
+                getFormattedMessage(
+                        Objects.requireNonNull(tok, "Token"),
+                        Objects.requireNonNull(tokens, "Token stream")
+                )
+        );
     }
 
 

@@ -5,7 +5,7 @@ import cz.mipit.sscc.ssc.compiler.data.Field;
 import cz.mipit.sscc.ssc.compiler.data.FunctionDefinition;
 import cz.mipit.sscc.ssc.compiler.data.SSMember;
 import cz.mipit.sscc.ssc.compiler.data.SuperStruct;
-import cz.mipit.sscc.ssc.compiler.exceptions.SSCSyntaxException;
+import cz.mipit.sscc.ssc.exceptions.SSCSyntaxException;
 import cz.mipit.sscc.util.ContextText;
 import org.antlr.v4.runtime.CommonTokenStream;
 
@@ -13,7 +13,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 
-public class SuperstructConvertorVisitor extends ConvertorVisitor {
+public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
     private final Set<SuperStruct> superStructs = new HashSet<>();
 
     public SuperstructConvertorVisitor(CommonTokenStream tokens) {

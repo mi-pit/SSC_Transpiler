@@ -1,17 +1,15 @@
 package cz.mipit.sscc;
 
-import antlr.ssc.SSCLexer;
-import antlr.ssc.SSCParser;
 import cz.mipit.sscc.args.CommandLineArguments;
-import cz.mipit.sscc.ssc.compiler.exceptions.SSCTranspilerException;
-import cz.mipit.sscc.ssc.compiler.exceptions.UnknownTranspilationException;
+import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
+import cz.mipit.sscc.ssc.exceptions.UnknownTranspilationException;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.compiler.data.SuperStruct;
+import cz.mipit.sscc.ssc.preprocessor.Preprocessor;
 import cz.mipit.sscc.util.ListBuilder;
-import cz.mipit.sscc.ssc.compiler.visitors.ConvertorVisitor;
+import cz.mipit.sscc.ssc.compiler.visitors.SSCConvertorVisitor;
 import cz.mipit.sscc.ssc.compiler.visitors.PostfixExpressionConvertorVisitor;
 import cz.mipit.sscc.ssc.compiler.visitors.SuperstructConvertorVisitor;
-import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 
@@ -24,6 +22,7 @@ import java.util.*;
 
 import static cz.mipit.sscc.ExitValue.err;
 import static cz.mipit.sscc.ExitValue.warn;
+import static cz.mipit.sscc.VisitorData.getSSCVisitorData;
 
 public final class Main {
     private Main() {
@@ -138,12 +137,12 @@ public final class Main {
         final Path workingFileAbsolutePath = inputFile.getChangedSuffix("c").toAbsolutePath();
 
         logger.printVerbose("Preprocessing file...");
-        if (!preprocessSSCCode(inputFile, workingFileAbsolutePath)) {
+        if (!Preprocessor.preprocessSSC(inputFile, workingFileAbsolutePath)) {
             return Optional.empty();
         }
 
         {
-            final VisitorData data = getVisitorData(workingFileAbsolutePath);
+            final VisitorData data = getSSCVisitorData(workingFileAbsolutePath);
 
             logger.printVerbose("Extracting superstructs...");
             if (!extractSuperstructMembers(data.tokens(), data.tree(), workingFileAbsolutePath)) {
@@ -152,7 +151,7 @@ public final class Main {
             }
         }
         {
-            final VisitorData data = getVisitorData(workingFileAbsolutePath);
+            final VisitorData data = getSSCVisitorData(workingFileAbsolutePath);
 
             logger.printVerbose("Replacing superstruct references...");
             if (!replaceSuperstructCalls(data.tokens(), data.tree(), workingFileAbsolutePath)) {
@@ -178,17 +177,6 @@ public final class Main {
         return Optional.of(workingFileAbsolutePath);
     }
 
-    private static VisitorData getVisitorData(final Path file) throws IOException {
-        final SSCLexer lexer = new SSCLexer(CharStreams.fromString(Files.readString(file)));
-        final CommonTokenStream tokens = new CommonTokenStream(lexer);
-        final SSCParser parser = new SSCParser(tokens);
-
-        parser.removeErrorListeners();
-
-        final ParseTree tree = parser.compilationUnit();
-        return new VisitorData(tokens, tree);
-    }
-
     private static boolean extractSuperstructMembers(final CommonTokenStream tokens,
                                                      final ParseTree tree,
                                                      final Path outputFile)
@@ -206,7 +194,7 @@ public final class Main {
                                                    final ParseTree tree,
                                                    final Path outputFile)
             throws IOException {
-        final ConvertorVisitor visitor = new PostfixExpressionConvertorVisitor(tokens, sss);
+        final SSCConvertorVisitor visitor = new PostfixExpressionConvertorVisitor(tokens, sss);
         final String result = visitor.visit(tree) + "\n";
 
         Files.writeString(outputFile, result,

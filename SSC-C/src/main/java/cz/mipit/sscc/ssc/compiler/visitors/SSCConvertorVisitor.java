@@ -2,9 +2,9 @@ package cz.mipit.sscc.ssc.compiler.visitors;
 
 import antlr.ssc.SSCBaseVisitor;
 import antlr.ssc.SSCParser;
-import cz.mipit.sscc.ssc.compiler.exceptions.AntlrException;
-import cz.mipit.sscc.ssc.compiler.exceptions.SSCSyntaxException;
-import cz.mipit.sscc.ssc.compiler.exceptions.SSCTranspilerException;
+import cz.mipit.sscc.ssc.exceptions.AntlrException;
+import cz.mipit.sscc.ssc.exceptions.SSCSyntaxException;
+import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ErrorNode;
@@ -13,11 +13,11 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.function.Supplier;
 
-public abstract class ConvertorVisitor extends SSCBaseVisitor<String> {
+public abstract class SSCConvertorVisitor extends SSCBaseVisitor<String> {
     protected final CommonTokenStream tokens;
     private boolean hasErrors = false;
 
-    protected ConvertorVisitor(CommonTokenStream tokens) {
+    protected SSCConvertorVisitor(CommonTokenStream tokens) {
         this.tokens = tokens;
     }
 
@@ -41,14 +41,7 @@ public abstract class ConvertorVisitor extends SSCBaseVisitor<String> {
             return "";
         }
 
-        // For better error messages between Extracting SSs & Replacing refs
-        return switch (node.getSymbol().getType()) {
-            case SSCParser.LeftBrace -> "{\n";
-            case SSCParser.RightBrace -> "}\n";
-            case SSCParser.Semi -> ";\n";
-
-            default -> node.getText() + " ";
-        };
+        return node.getText() + " ";
     }
 
     @Override

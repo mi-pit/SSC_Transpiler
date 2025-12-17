@@ -1,4 +1,4 @@
-package cz.mipit.sscc.ssc.compiler.exceptions;
+package cz.mipit.sscc.ssc.exceptions;
 
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
