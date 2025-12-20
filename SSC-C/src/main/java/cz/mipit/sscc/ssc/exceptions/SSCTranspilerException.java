@@ -24,10 +24,13 @@ public abstract class SSCTranspilerException extends RuntimeException {
             UnixTerminalColors.create(UnixTerminalColors.Ground.FORE, UnixTerminalColors.Color.CYAN);
 
     protected SSCTranspilerException(Type type, String message, String context) {
-        super(COLOR_MESSAGE + "SSC Transpiler: " +
+        super(COLOR_MESSAGE +
+                "SSC Transpiler: " +
                 Objects.requireNonNull(type, "Exception type") +
                 " exception: " +
-                Objects.requireNonNull(message, "Message") + UnixTerminalColors.COLOR_RESET + "\n" +
+                Objects.requireNonNull(message, "Message") +
+                UnixTerminalColors.COLOR_RESET +
+                "\n" +
                 Objects.requireNonNull(context, "Context string"));
     }
 

@@ -3,6 +3,7 @@ package cz.mipit.sscc.ssc.preprocessor;
 import cz.mipit.sscc.Main;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.exceptions.PreprocessorException;
+import org.antlr.v4.runtime.misc.Pair;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -18,7 +19,7 @@ public final class Preprocessor {
 
     private static final Set<String> alreadyIncludedFiles = new HashSet<>();
 
-    private static String currentLine;
+    private static final Queue<Pair<Integer, String>> currentLineQueue = new ArrayDeque<>();
 
     public static boolean preprocessSSC(final InputFile inputFile,
                                         final Path outputFileAbsolutePath)
@@ -45,9 +46,15 @@ public final class Preprocessor {
                                             final Path dir) throws IOException {
         final List<String> outputLines = new ArrayList<>(lines.size());
 
-        for (String line : lines) {
-            currentLine = line;
-            processLine(outputLines, dir);
+        for (int i = 0; i < lines.size(); i++) {
+            final String line = lines.get(i);
+
+            currentLineQueue.add(new Pair<>(++i, line));
+            expandSSCHeaders(line, outputLines, dir);
+
+            if (i > 3) {
+                currentLineQueue.remove();
+            }
         }
 
         return outputLines;
@@ -62,15 +69,20 @@ public final class Preprocessor {
         return line;
     }
 
-    private static void processLine(final List<String> outputLines,
-                                    final Path baseDir)
+    private static void expandSSCHeaders(final String line,
+                                         final List<String> outputLines,
+                                         final Path baseDir)
             throws IOException {
-        final Optional<String> maybeFilePath = getFilePathString(removeComments(currentLine));
+        final Optional<String> maybeFilePath = getFilePathString(removeComments(line));
         if (maybeFilePath.isEmpty()) {
-            outputLines.add(currentLine);
+            outputLines.add(line);
             return;
         }
         final String filePathString = maybeFilePath.get();
+
+        if (filePathString.isBlank()) {
+            throw new PreprocessorException("Empty file path string");
+        }
 
         final Path resolvedNormalized = tryGetPathFromString(filePathString, baseDir)
                 .toAbsolutePath()
@@ -109,6 +121,9 @@ public final class Preprocessor {
 
     private static Optional<String> getFilePathString(final String withoutComments) {
         final String trimmed = withoutComments.trim();
+        if (trimmed.isEmpty()) {
+            return Optional.empty();
+        }
 
         if (!trimmed.startsWith("#")) {
             Main.logger.printDebug("\tNot a directive");
@@ -120,14 +135,19 @@ public final class Preprocessor {
 
         if (!withoutHash.startsWith(INCLUDE_DIRECTIVE_NAME)) {
             Main.logger.printDebug("\tNot an include");
-            // TODO: define, ...
             return Optional.empty();
         }
 
-        final String withoutInclude = withoutHash
-                .substring(INCLUDE_DIRECTIVE_NAME.length())
-                .trim();
+        final String withoutInclude = withoutHash.substring(INCLUDE_DIRECTIVE_NAME.length()).trim();
         Main.logger.printDebug("\tWithout include: '" + withoutInclude + "'");
+
+        if (withoutInclude.isEmpty()) {
+            throw new PreprocessorException("Empty include directive");
+        }
+
+        if (withoutInclude.length() == 1) {
+            throw new PreprocessorException("Include directive argument is missing a closing '>' or '\"'");
+        }
 
         final char firstChar = withoutInclude.charAt(0);
         final char lastChar = withoutInclude.charAt(withoutInclude.length() - 1);
@@ -137,7 +157,7 @@ public final class Preprocessor {
         }
 
         if (firstChar != lastChar) {
-            throw new PreprocessorException("Invalid include string `" + trimmed + "`");
+            throw new PreprocessorException("Invalid include directive argument `" + withoutInclude + "`");
         }
 
         final String filePathString = withoutInclude
@@ -156,7 +176,7 @@ public final class Preprocessor {
         }
     }
 
-    public static String getCurrentLine() {
-        return currentLine;
+    public static Queue<Pair<Integer, String>> getCurrentLineQueue() {
+        return currentLineQueue;
     }
 }
