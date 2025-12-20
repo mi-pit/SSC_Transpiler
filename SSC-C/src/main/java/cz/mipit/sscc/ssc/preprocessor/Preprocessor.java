@@ -72,6 +72,10 @@ public final class Preprocessor {
         }
         final String filePathString = maybeFilePath.get();
 
+        if (filePathString.isBlank()) {
+            throw new PreprocessorException("Empty file path string");
+        }
+
         final Path resolvedNormalized = tryGetPathFromString(filePathString, baseDir)
                 .toAbsolutePath()
                 .normalize();
@@ -109,6 +113,9 @@ public final class Preprocessor {
 
     private static Optional<String> getFilePathString(final String withoutComments) {
         final String trimmed = withoutComments.trim();
+        if (trimmed.isEmpty()) {
+            return Optional.empty();
+        }
 
         if (!trimmed.startsWith("#")) {
             Main.logger.printDebug("\tNot a directive");
@@ -120,14 +127,19 @@ public final class Preprocessor {
 
         if (!withoutHash.startsWith(INCLUDE_DIRECTIVE_NAME)) {
             Main.logger.printDebug("\tNot an include");
-            // TODO: define, ...
             return Optional.empty();
         }
 
-        final String withoutInclude = withoutHash
-                .substring(INCLUDE_DIRECTIVE_NAME.length())
-                .trim();
+        final String withoutInclude = withoutHash.substring(INCLUDE_DIRECTIVE_NAME.length()).trim();
         Main.logger.printDebug("\tWithout include: '" + withoutInclude + "'");
+
+        if (withoutInclude.isEmpty()) {
+            throw new PreprocessorException("Empty include directive");
+        }
+
+        if (withoutInclude.length() == 1) {
+            throw new PreprocessorException("Include directive argument is missing a closing '>' or '\"'");
+        }
 
         final char firstChar = withoutInclude.charAt(0);
         final char lastChar = withoutInclude.charAt(withoutInclude.length() - 1);
@@ -137,7 +149,7 @@ public final class Preprocessor {
         }
 
         if (firstChar != lastChar) {
-            throw new PreprocessorException("Invalid include string `" + trimmed + "`");
+            throw new PreprocessorException("Invalid include directive argument `" + withoutInclude + "`");
         }
 
         final String filePathString = withoutInclude
