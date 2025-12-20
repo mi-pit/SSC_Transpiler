@@ -18,7 +18,7 @@ public final class Preprocessor {
 
     private static final Set<String> alreadyIncludedFiles = new HashSet<>();
 
-    private static String currentLine;
+    private static final Queue<String> LINES = new LinkedList<>();
 
     public static boolean preprocessSSC(final InputFile inputFile,
                                         final Path outputFileAbsolutePath)
@@ -45,9 +45,14 @@ public final class Preprocessor {
                                             final Path dir) throws IOException {
         final List<String> outputLines = new ArrayList<>(lines.size());
 
-        for (String line : lines) {
-            currentLine = line;
-            processLine(outputLines, dir);
+        for (final String line : lines) {
+            LINES.add(line);
+
+            processLine(line, outputLines, dir);
+
+            if (LINES.size() > 3) {
+                LINES.remove();
+            }
         }
 
         return outputLines;
@@ -62,7 +67,8 @@ public final class Preprocessor {
         return line;
     }
 
-    private static void processLine(final List<String> outputLines,
+    private static void processLine(final String currentLine,
+                                    final List<String> outputLines,
                                     final Path baseDir)
             throws IOException {
         final Optional<String> maybeFilePath = getFilePathString(removeComments(currentLine));
@@ -168,7 +174,7 @@ public final class Preprocessor {
         }
     }
 
-    public static String getCurrentLine() {
-        return currentLine;
+    public static List<String> getLines() {
+        return new LinkedList<>(LINES);
     }
 }
