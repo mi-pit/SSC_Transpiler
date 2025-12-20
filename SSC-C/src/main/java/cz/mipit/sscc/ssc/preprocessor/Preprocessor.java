@@ -18,6 +18,7 @@ public final class Preprocessor {
 
     private static final Set<String> alreadyIncludedFiles = new HashSet<>();
 
+    private static String currentLine;
 
     public static boolean preprocessSSC(final InputFile inputFile,
                                         final Path outputFileAbsolutePath)
@@ -45,7 +46,8 @@ public final class Preprocessor {
         final List<String> outputLines = new ArrayList<>(lines.size());
 
         for (String line : lines) {
-            processLine(line, outputLines, dir);
+            currentLine = line;
+            processLine(outputLines, dir);
         }
 
         return outputLines;
@@ -54,34 +56,30 @@ public final class Preprocessor {
     private static String removeComments(String line) {
         line = line
                 .replaceAll("//.*", "")
-                .replaceAll("/\\*.*?\\*/", "")
-                .trim( /* todo: keep whitespace */);
+                .replaceAll("/\\*.*?\\*/", "");
 
         Main.logger.printDebug("\tWithout comment: '" + line + "'");
         return line;
     }
 
-    private static void processLine(final String originalLine,
-                                    final List<String> outputLines,
+    private static void processLine(final List<String> outputLines,
                                     final Path baseDir)
             throws IOException {
-        final Optional<String> maybeFilePath = getFilePathString(
-                removeComments(originalLine),
-                outputLines
-        );
+        final Optional<String> maybeFilePath = getFilePathString(removeComments(currentLine));
         if (maybeFilePath.isEmpty()) {
+            outputLines.add(currentLine);
             return;
         }
-        final String filePath = maybeFilePath.get();
+        final String filePathString = maybeFilePath.get();
 
-        final Path resolvedNormalized = tryGetPathFromString(originalLine, filePath, baseDir)
+        final Path resolvedNormalized = tryGetPathFromString(filePathString, baseDir)
                 .toAbsolutePath()
                 .normalize();
 
-        final boolean isSSCH = "ssch".equals(InputFile.fromAbsolutePath(resolvedNormalized).suffix());
-        if (!isSSCH) {
+        final boolean isSscHeader = "ssch".equals(InputFile.fromAbsolutePath(resolvedNormalized).suffix());
+        if (!isSscHeader) {
             final String newIncludeLine =
-                    "#include \"" + resolvedNormalized + "\" /* resolved from " + filePath + " */";
+                    "#include \"" + resolvedNormalized + "\" /* resolved from " + filePathString + " */";
             outputLines.add(newIncludeLine);
             return;
         }
@@ -97,7 +95,7 @@ public final class Preprocessor {
         Main.logger.printDebug("\tFile path:       '" + resolvedNormalized + "'");
 
         if (!Files.exists(resolvedNormalized)) {
-            throw new PreprocessorException("Included file '" + resolvedNormalized + "' does not exist", originalLine);
+            throw new PreprocessorException("Included file '" + resolvedNormalized + "' does not exist");
         }
 
         /* Literal */
@@ -109,21 +107,20 @@ public final class Preprocessor {
         outputLines.addAll(subfileOutputLines);
     }
 
-    private static Optional<String> getFilePathString(final String originalLine,
-                                                      final List<String> outputLines) {
-        if (!originalLine.startsWith("#")) {
+    private static Optional<String> getFilePathString(final String withoutComments) {
+        final String trimmed = withoutComments.trim();
+
+        if (!trimmed.startsWith("#")) {
             Main.logger.printDebug("\tNot a directive");
-            outputLines.add(originalLine);
             return Optional.empty();
         }
 
-        final String withoutHash = originalLine.substring(1).trim();
+        final String withoutHash = trimmed.substring(1).trim();
         Main.logger.printDebug("\tWithout hash:    '" + withoutHash + "'");
 
         if (!withoutHash.startsWith(INCLUDE_DIRECTIVE_NAME)) {
             Main.logger.printDebug("\tNot an include");
             // TODO: define, ...
-            outputLines.add(originalLine);
             return Optional.empty();
         }
 
@@ -136,12 +133,11 @@ public final class Preprocessor {
         final char lastChar = withoutInclude.charAt(withoutInclude.length() - 1);
         if (firstChar == '<') {
             Main.logger.printDebug("\tNot quoted include");
-            outputLines.add(originalLine);
             return Optional.empty();
         }
 
         if (firstChar != lastChar) {
-            throw new PreprocessorException("Invalid include string", originalLine);
+            throw new PreprocessorException("Invalid include string `" + trimmed + "`");
         }
 
         final String filePathString = withoutInclude
@@ -151,14 +147,16 @@ public final class Preprocessor {
         return Optional.of(filePathString);
     }
 
-    private static Path tryGetPathFromString(final String errmsg,
-                                             final String filePathString,
+    private static Path tryGetPathFromString(final String filePathString,
                                              final Path baseDir) {
         try {
             return baseDir.resolve(filePathString);
         } catch (InvalidPathException e) {
-            throw new PreprocessorException("Invalid file path: '" + filePathString + "'", errmsg);
+            throw new PreprocessorException("Invalid file path: '" + filePathString + "'");
         }
     }
 
+    public static String getCurrentLine() {
+        return currentLine;
+    }
 }

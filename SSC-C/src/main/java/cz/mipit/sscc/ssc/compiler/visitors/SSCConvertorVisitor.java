@@ -42,13 +42,14 @@ public abstract class SSCConvertorVisitor extends SSCBaseVisitor<String> {
             return "";
         }
 
-        return node.getText() + " ";
-    }
+        return switch (node.getSymbol().getType()) {
+            case SSCParser.Semi,
+                 SSCParser.Directive,
+                 SSCParser.LeftBrace,
+                 SSCParser.RightBrace -> node.getText() + "\n";
 
-    @Override
-    public String visitDirective(SSCParser.DirectiveContext ctx) {
-        final String text = "\n" + ContextText.getLiteral(ctx, tokens) + "\n";
-        return text;
+            default -> node.getText() + " ";
+        };
     }
 
     @Override

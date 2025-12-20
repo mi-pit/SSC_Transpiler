@@ -172,7 +172,8 @@ public class FunctionDefinition {
         final String specsString = String.join(" ", specs);
 
         return specsString
-                + " " + type
+                + (specsString.isBlank() ? "" : " ")
+                + type
                 + " " + superstructMemberOfName + "__" + name
                 + "(" + selfRef + String.join(", ", args) + ")";
     }

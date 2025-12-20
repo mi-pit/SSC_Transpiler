@@ -71,7 +71,7 @@ public final class ContextText {
     }
 
 
-    private static final int MAX_LINE_LEN = 150;
+    private static final int MAX_LINE_LEN = Integer.MAX_VALUE;
 
     public static String getLinesAroundToken(final Token token,
                                              final CommonTokenStream tokens,
@@ -95,7 +95,7 @@ public final class ContextText {
 
 
     public static String getLocalizationMessage(Token token, String color) {
-        final int offset = Math.min(token.getCharPositionInLine(), MAX_LINE_LEN);
+        final int offset = token.getCharPositionInLine();
         final int desiredLen = token.getStopIndex() - token.getStartIndex() + 1;
         final int len = Math.min(desiredLen, MAX_LINE_LEN - offset);
         return " ".repeat(offset) + color + "^".repeat(len) + (desiredLen > len ? " there ->" : " here") + COLOR_RESET;
