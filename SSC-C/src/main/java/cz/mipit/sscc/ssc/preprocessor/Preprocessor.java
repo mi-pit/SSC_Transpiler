@@ -174,7 +174,7 @@ public final class Preprocessor {
         }
     }
 
-    public static List<String> getLines() {
+    public static List<String> getLast3Lines() {
         return new LinkedList<>(LINES);
     }
 }

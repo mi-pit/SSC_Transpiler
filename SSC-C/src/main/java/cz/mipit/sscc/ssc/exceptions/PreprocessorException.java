@@ -1,7 +1,6 @@
 package cz.mipit.sscc.ssc.exceptions;
 
 import cz.mipit.sscc.ssc.preprocessor.Preprocessor;
-import org.antlr.v4.runtime.misc.Pair;
 
 import static cz.mipit.sscc.util.UnixTerminalColors.COLOR_RESET;
 
@@ -19,7 +18,7 @@ public class PreprocessorException extends SSCTranspilerException {
         final StringBuilder sb = new StringBuilder();
 
         String lastLine = null;
-        for (final String line : Preprocessor.getLines()) {
+        for (final String line : Preprocessor.getLast3Lines()) {
             sb
                     .append(line)
                     .append("\n");
