@@ -1,4 +1,4 @@
-package cz.mipit.sscc;
+package cz.mipit.sscc.util;
 
 import antlr.ssc.SSCLexer;
 import antlr.ssc.SSCParser;
@@ -11,7 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public record VisitorData(CommonTokenStream tokens, ParseTree tree) {
-    public static VisitorData getSSCVisitorData(final Path file) throws IOException {
+    public static VisitorData fromFile(final Path file) throws IOException {
         final SSCLexer lexer = new SSCLexer(CharStreams.fromString(Files.readString(file)));
         final CommonTokenStream tokens = new CommonTokenStream(lexer);
         final SSCParser parser = new SSCParser(tokens);

@@ -26,8 +26,12 @@ public record InputFile(Path dir, String name, String suffix) {
         );
     }
 
-    public Path toAbsolutePath() {
+    public Path toPath() {
         return Path.of(dir.toString(), getFullName());
+    }
+
+    public Path toAbsolutePath() {
+        return toPath().toAbsolutePath();
     }
 
     public String getFullName() {

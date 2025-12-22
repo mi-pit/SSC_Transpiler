@@ -50,14 +50,14 @@ public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
         currentFunctionName = FunctionDefinition.parseName(ctx.declarator(), tokens);
         functionVariables.put(currentFunctionName, new HashSet<>());
 
-        getSuperstructArgs(ctx);
+        getFunctionSuperstructArgs(ctx);
 
         final String ret = super.visitFunctionDefinition(ctx);
         currentFunctionName = null;
         return ret;
     }
 
-    private void getSuperstructArgs(final SSCParser.FunctionDefinitionContext ctx) {
+    private void getFunctionSuperstructArgs(final SSCParser.FunctionDefinitionContext ctx) {
         final SSCParser.ParameterTypeListContext paramTypeList =
                 ctx.declarator().directDeclarator().parameterTypeList();
         if (paramTypeList == null) {
@@ -69,7 +69,6 @@ public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
 
         for (final SSCParser.ParameterDeclarationContext paramDecl : paramList) {
             if (paramDecl.declarationSpecifiers2() != null) {
-                assert paramDecl.abstractDeclarator() != null;
                 continue;
             }
             final var declarator = paramDecl.declarator();
