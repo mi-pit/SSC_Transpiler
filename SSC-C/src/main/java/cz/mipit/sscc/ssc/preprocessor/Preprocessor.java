@@ -89,7 +89,8 @@ public final class Preprocessor {
         final boolean isSscHeader = "ssch".equals(InputFile.fromAbsolutePath(resolvedNormalized).suffix());
         if (!isSscHeader) {
             final String newIncludeLine =
-                    "#include \"" + resolvedNormalized + "\" /* resolved from " + filePathString + " */";
+                    "#" + INCLUDE_DIRECTIVE_NAME + " \"" + resolvedNormalized + "\"" +
+                            " /* resolved from " + filePathString + " */";
             outputLines.add(newIncludeLine);
             return;
         }
