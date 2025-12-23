@@ -149,13 +149,18 @@ public final class Preprocessor {
 
         final char firstChar = withoutInclude.charAt(0);
         final char lastChar = withoutInclude.charAt(withoutInclude.length() - 1);
+
+        if ((firstChar != '"' || lastChar != '"') && (firstChar != '<' || lastChar != '>')) {
+            throw new PreprocessorException(String.format(
+                    "Include argument `%s` is not terminated properly (`%c...%c`)",
+                    withoutInclude,
+                    firstChar, lastChar
+            ));
+        }
+
         if (firstChar == '<') {
             Main.logger.printDebug("\tNot quoted include");
             return Optional.empty();
-        }
-
-        if (firstChar != lastChar) {
-            throw new PreprocessorException("Invalid include directive argument `" + withoutInclude + "`");
         }
 
         final String filePathString = withoutInclude

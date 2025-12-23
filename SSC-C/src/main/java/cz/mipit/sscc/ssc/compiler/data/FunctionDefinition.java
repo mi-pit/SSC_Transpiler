@@ -94,7 +94,7 @@ public class FunctionDefinition {
         }
 
         if (directDecl.LeftParen() == null) {
-            // How could this be parsed as a function definition?
+            /* How could this be parsed as a function definition? */
             throw new UnknownTranspilationException("Parser \"found\" function definition without parentheses", ctx, tokens);
         }
 

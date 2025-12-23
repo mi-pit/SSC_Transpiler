@@ -1,11 +1,10 @@
 package cz.mipit.sscc.ssc.exceptions;
 
-import cz.mipit.sscc.util.ContextText;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 
-public class UnknownTranspilationException extends RuntimeException {
+public class UnknownTranspilationException extends SSCTranspilerException {
     public UnknownTranspilationException(String message, ParserRuleContext ctx, CommonTokenStream tokens) {
-        super(message + " | " + ContextText.getLiteral(ctx, tokens));
+        super(Type.Other, message, ctx, tokens);
     }
 }
