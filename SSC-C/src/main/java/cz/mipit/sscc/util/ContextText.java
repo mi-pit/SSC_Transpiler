@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static cz.mipit.sscc.util.UnixTerminalColors.COLOR_RESET;
+import static java.lang.System.lineSeparator;
 
 public final class ContextText {
     private ContextText() {
@@ -78,7 +79,7 @@ public final class ContextText {
                                              final int before,
                                              final int after) {
         String fullText = tokens.getTokenSource().getInputStream().toString();
-        String[] lines = fullText.split("\n", -1);
+        String[] lines = fullText.split(lineSeparator(), -1);
 
         int lineIndex = token.getLine() - 1;
         int start = Math.max(0, lineIndex - before);
@@ -90,7 +91,7 @@ public final class ContextText {
                         ? line
                         : line.substring(0, MAX_LINE_LEN - 2) + "...")
                 .toList();
-        return String.join("\n", ls);
+        return String.join(lineSeparator(), ls);
     }
 
 

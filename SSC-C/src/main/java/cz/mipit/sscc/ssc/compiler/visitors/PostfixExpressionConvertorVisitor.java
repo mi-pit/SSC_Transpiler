@@ -22,6 +22,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static cz.mipit.sscc.util.ContextText.getLiteral;
+import static java.lang.System.lineSeparator;
 
 public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
     private final Collection<SuperStruct> superstructs;
@@ -199,8 +200,9 @@ public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
             if (ss != null) {
                 final String res = getLiteral(ctx, tokens)
                         .replaceFirst("\\(\\s*superstruct\\s+", "( struct ");
-                Main.logger.printDebug("superStructSpecifier in: " + getLiteral(ctx, tokens).replace("\n", " ")
-                        + "\n\t\tReturning: " + res.replace("\n", " "));
+                Main.logger.printDebug("superStructSpecifier in: "
+                        + getLiteral(ctx, tokens).replace(lineSeparator(), " ")
+                        + lineSeparator() + "\t\tReturning: " + res.replace(lineSeparator(), " "));
                 return Optional.of(res);
             }
         } catch (NullPointerException ignored) {
@@ -210,7 +212,7 @@ public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
 
     public String convertStaticFunctionCall(final SSCParser.PostfixExpressionContext ctx,
                                             final String ctxFunctionName) {
-        Main.logger.printDebug("Double colon in: %s\n", getLiteral(ctx, tokens));
+        Main.logger.printDebug("Double colon in: %s", getLiteral(ctx, tokens));
 
         if (ctx.primaryExpression() == null)
             throw new SSCSyntaxException("Double colon expression has no left side (Superstruct name) expression", ctx, tokens);

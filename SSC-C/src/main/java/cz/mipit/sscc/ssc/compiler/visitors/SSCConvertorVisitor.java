@@ -5,7 +5,6 @@ import antlr.ssc.SSCParser;
 import cz.mipit.sscc.ssc.exceptions.AntlrException;
 import cz.mipit.sscc.ssc.exceptions.SSCSyntaxException;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
-import cz.mipit.sscc.util.ContextText;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ErrorNode;
@@ -13,6 +12,8 @@ import org.antlr.v4.runtime.tree.RuleNode;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.function.Supplier;
+
+import static java.lang.System.lineSeparator;
 
 public abstract class SSCConvertorVisitor extends SSCBaseVisitor<String> {
     protected final CommonTokenStream tokens;
@@ -46,7 +47,7 @@ public abstract class SSCConvertorVisitor extends SSCBaseVisitor<String> {
             case SSCParser.Semi,
                  SSCParser.Directive,
                  SSCParser.LeftBrace,
-                 SSCParser.RightBrace -> node.getText() + "\n";
+                 SSCParser.RightBrace -> node.getText() + lineSeparator();
 
             default -> node.getText() + " ";
         };
