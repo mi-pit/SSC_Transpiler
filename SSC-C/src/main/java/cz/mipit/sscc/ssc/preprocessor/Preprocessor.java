@@ -13,7 +13,7 @@ import java.util.*;
 public final class Preprocessor {
     public static final String INCLUDE_DIRECTIVE_NAME = "include";
 
-    private final Set<Path> alreadyIncludedFiles;
+    private final InputFile inputFile;
 
     private int currentLineNumber;
     private String currentLine;
@@ -21,20 +21,19 @@ public final class Preprocessor {
     private final LinkedList<EnumeratedLine> lastLines;
     private static final int nLines = 4;
 
-    public Preprocessor() {
+    private Preprocessor(final InputFile inputFile) {
         currentLineNumber = 1;
         lastLines = new LinkedList<>();
-        alreadyIncludedFiles = new HashSet<>();
+
+        this.inputFile = inputFile;
     }
 
     public static boolean preprocessSSC(final InputFile inputFile,
                                         final Path outputFileAbsolutePath) throws IOException {
-        final Preprocessor preprocessor = new Preprocessor();
-        return preprocessor.preprocessSSC_(inputFile, outputFileAbsolutePath);
+        return new Preprocessor(inputFile).writeToOutput(outputFileAbsolutePath);
     }
 
-    private boolean preprocessSSC_(final InputFile inputFile,
-                                   final Path outputFileAbsolutePath)
+    private boolean writeToOutput(final Path outputFileAbsolutePath)
             throws IOException {
         if (!outputFileAbsolutePath.isAbsolute()) {
             throw new IllegalArgumentException("Output file path must be absolute");
@@ -50,8 +49,6 @@ public final class Preprocessor {
         }
 
         Files.write(outputFileAbsolutePath.toAbsolutePath(), preprocessedLines);
-
-        alreadyIncludedFiles.clear();
         return true;
     }
 
@@ -106,12 +103,6 @@ public final class Preprocessor {
             return;
         }
 
-        if (alreadyIncludedFiles.contains(resolvedNormalized.getFileName())) {
-            return;
-        }
-
-        alreadyIncludedFiles.add(resolvedNormalized.getFileName());
-
         final Path fileDir = resolvedNormalized.getParent();
 
         Main.logger.printDebug("\tFile path:       '" + resolvedNormalized + "'");
@@ -123,13 +114,13 @@ public final class Preprocessor {
             );
         }
 
-        /* Literal */
-        final List<String> lines = Files.readAllLines(resolvedNormalized);
+        final List<String> linesLiteral = Files.readAllLines(resolvedNormalized);
 
-        /* Converted */
-        final List<String> subfileOutputLines = processFile(lines, fileDir);
+        final InputFile subFile = InputFile.fromAbsolutePath(resolvedNormalized);
+        final Preprocessor subFilePreprocessor = new Preprocessor(subFile);
 
-        outputLines.addAll(subfileOutputLines);
+        final List<String> linesConverted = subFilePreprocessor.processFile(linesLiteral, fileDir);
+        outputLines.addAll(linesConverted);
     }
 
     private Optional<String> getFilePathString(final String withoutComments) {
