@@ -21,7 +21,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import static cz.mipit.sscc.util.ContextText.getLiteral;
+import static cz.mipit.sscc.util.SSCCUtil.Text.getLiteral;
 import static java.lang.System.lineSeparator;
 
 public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {

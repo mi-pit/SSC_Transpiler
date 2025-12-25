@@ -1,37 +1,32 @@
 package cz.mipit.sscc.ssc.exceptions;
 
-import cz.mipit.sscc.ssc.preprocessor.Preprocessor;
+import cz.mipit.sscc.ssc.preprocessor.EnumeratedLine;
+import cz.mipit.sscc.util.SSCCUtil;
 
-import static cz.mipit.sscc.util.UnixTerminalColors.COLOR_RESET;
+import java.util.List;
 
 public class PreprocessorException extends SSCTranspilerException {
+    private PreprocessorException(String message, List<EnumeratedLine> lines, String locator) {
+        super(Type.Preprocessor, message, lines, locator);
+    }
+
     public PreprocessorException(String message,
-                                 String context) {
-        super(Type.Preprocessor, message, context);
+                                 List<EnumeratedLine> lines) {
+        this(message, lines, getLocator(getLast(lines)));
     }
 
-    public PreprocessorException(String message) {
-        this(message, format());
+    public PreprocessorException(String message,
+                                 List<EnumeratedLine> lines,
+                                 int[] errorNodes) {
+        this(message, lines, getLocator(getLast(lines), errorNodes));
     }
 
-    private static String format() {
-        final StringBuilder sb = new StringBuilder();
+    public PreprocessorException(String message, List<EnumeratedLine> enumeratedLines, int start, int end) {
+        this(message, enumeratedLines, SSCCUtil.Maths.getRange(start, end));
+    }
 
-        String lastLine = null;
-        for (final String line : Preprocessor.getLast3Lines()) {
-            sb
-                    .append(line)
-                    .append("\n");
 
-            lastLine = line;
-        }
-        assert lastLine != null;
-        sb
-                .append(COLOR_LOCATOR)
-                .append("^".repeat(lastLine.length()))
-                .append(" here")
-                .append(COLOR_RESET);
-
-        return sb.toString();
+    private static EnumeratedLine getLast(List<EnumeratedLine> enumeratedLines) {
+        return enumeratedLines.get(enumeratedLines.size() - 1);
     }
 }

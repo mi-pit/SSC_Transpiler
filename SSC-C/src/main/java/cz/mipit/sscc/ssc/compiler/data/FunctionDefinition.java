@@ -3,7 +3,7 @@ package cz.mipit.sscc.ssc.compiler.data;
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.ssc.exceptions.SSCSyntaxException;
 import cz.mipit.sscc.ssc.exceptions.UnknownTranspilationException;
-import cz.mipit.sscc.util.ContextText;
+import cz.mipit.sscc.util.SSCCUtil;
 import org.antlr.v4.runtime.CommonTokenStream;
 
 import java.util.ArrayList;
@@ -68,12 +68,12 @@ public class FunctionDefinition {
 
         for (var spec : declSpecs.declarationSpecifier()) {
             if (spec.typeSpecifier() != null) {
-                builder.add(ContextText.getLiteral(spec.typeSpecifier(), tokens));
+                builder.add(SSCCUtil.Text.getLiteral(spec.typeSpecifier(), tokens));
             }
         }
 
         if (decl.pointer() != null) {
-            builder.add(ContextText.getLiteral(decl.pointer(), tokens));
+            builder.add(SSCCUtil.Text.getLiteral(decl.pointer(), tokens));
         }
 
         return String.join(" ", builder);
@@ -86,7 +86,7 @@ public class FunctionDefinition {
         }
 
         if (directDecl.Identifier() == null && (directDecl.LeftParen() == null || directDecl.RightParen() == null)) {
-            return ContextText.getLiteral(ctx, tokens);
+            return SSCCUtil.Text.getLiteral(ctx, tokens);
         }
 
         if (directDecl.Identifier() != null) {
@@ -105,7 +105,7 @@ public class FunctionDefinition {
             throw new SSCSyntaxException("Missing direct declarator (perhaps missing a variable name?)", directDecl, tokens);
         }
 
-        return ContextText.getLiteral(directDecl.directDeclarator(), tokens);
+        return SSCCUtil.Text.getLiteral(directDecl.directDeclarator(), tokens);
     }
 
     private static List<String> parseFunctionArgs(final SSCParser.DeclaratorContext ctx,
@@ -116,7 +116,7 @@ public class FunctionDefinition {
             return args;
         }
         for (var param : ctx.directDeclarator().parameterTypeList().parameterList().parameterDeclaration()) {
-            args.add(ContextText.getLiteral(param, tokens));
+            args.add(SSCCUtil.Text.getLiteral(param, tokens));
         }
 
         if (ctx.directDeclarator().parameterTypeList().Ellipsis() != null) {
@@ -129,7 +129,7 @@ public class FunctionDefinition {
     private static List<String> parseFunctionBody(SSCParser.CompoundStatementContext ctx, CommonTokenStream tokens) {
         List<String> statements = new ArrayList<>();
         for (var statement : ctx.blockItemList().blockItem()) {
-            statements.add(ContextText.getLiteral(statement, tokens));
+            statements.add(SSCCUtil.Text.getLiteral(statement, tokens));
         }
         return statements;
     }

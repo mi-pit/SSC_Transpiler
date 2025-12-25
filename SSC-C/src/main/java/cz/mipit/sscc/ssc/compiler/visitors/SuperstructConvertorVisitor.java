@@ -6,7 +6,7 @@ import cz.mipit.sscc.ssc.compiler.data.FunctionDefinition;
 import cz.mipit.sscc.ssc.compiler.data.SSMember;
 import cz.mipit.sscc.ssc.compiler.data.SuperStruct;
 import cz.mipit.sscc.ssc.exceptions.SSCSyntaxException;
-import cz.mipit.sscc.util.ContextText;
+import cz.mipit.sscc.util.SSCCUtil;
 import org.antlr.v4.runtime.CommonTokenStream;
 
 import java.util.*;
@@ -70,12 +70,12 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
 
             final String noPrivateSpecsString = noPrivateSpecs
                     .stream()
-                    .map(s -> ContextText.getLiteral(s, tokens))
+                    .map(s -> SSCCUtil.Text.getLiteral(s, tokens))
                     .collect(Collectors.joining(" "));
             final String fieldData = noPrivateSpecsString +
                     (declList == null
                             ? ""
-                            : " " + ContextText.getLiteral(declList, tokens)) +
+                            : " " + SSCCUtil.Text.getLiteral(declList, tokens)) +
                     ";";
 
             final Field field = new Field(isPrivate, fieldData);
@@ -124,7 +124,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
                     || declSpec.functionSpecifier().Pure() == null)
                     && (declSpec.storageClassSpecifier() == null
                     || declSpec.storageClassSpecifier().Static() == null)) {
-                String contextText = ContextText.getLiteral(declSpec, tokens);
+                String contextText = SSCCUtil.Text.getLiteral(declSpec, tokens);
                 withoutCustom.add(contextText);
             }
         }

@@ -1,12 +1,18 @@
 package cz.mipit.sscc.ssc.exceptions;
 
-import cz.mipit.sscc.util.ContextText;
+import cz.mipit.sscc.ssc.preprocessor.EnumeratedLine;
+import cz.mipit.sscc.util.SSCCUtil;
 import cz.mipit.sscc.util.UnixTerminalColors;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 
-import java.util.Objects;
+import java.util.Arrays;
+import java.util.List;
+
+import static cz.mipit.sscc.util.UnixTerminalColors.COLOR_RESET;
+import static java.lang.System.lineSeparator;
+import static java.util.Objects.requireNonNull;
 
 public abstract class SSCTranspilerException extends RuntimeException {
     private static final int LINES_BEFORE = 4;
@@ -14,64 +20,109 @@ public abstract class SSCTranspilerException extends RuntimeException {
 
     private static final String BOLD = "\u001B[1m";
 
-    public static final String COLOR_MESSAGE =
+    public static final String COLOR_ERR_MESSAGE =
             UnixTerminalColors.create(UnixTerminalColors.Ground.FORE, UnixTerminalColors.Color.RED);
-    public static final String COLOR_CODE =
-            UnixTerminalColors.create(UnixTerminalColors.Ground.FORE, UnixTerminalColors.Color.WHITE);
     public static final String COLOR_CODE_BOLD =
             BOLD + UnixTerminalColors.create(UnixTerminalColors.Ground.FORE, UnixTerminalColors.Color.WHITE);
     public static final String COLOR_LOCATOR =
             UnixTerminalColors.create(UnixTerminalColors.Ground.FORE, UnixTerminalColors.Color.CYAN);
+    public static final String LINENO_SEPARATOR = " | ";
 
-    protected SSCTranspilerException(Type type, String message, String context) {
-        super(COLOR_MESSAGE + "SSC Transpiler: " +
-                Objects.requireNonNull(type, "Exception type") +
-                " exception: " +
-                Objects.requireNonNull(message, "Message") + UnixTerminalColors.COLOR_RESET + "\n" +
-                Objects.requireNonNull(context, "Context string"));
+    protected SSCTranspilerException(Type type, String message,
+                                     List<EnumeratedLine> lines, String locator) {
+        super(COLOR_ERR_MESSAGE +
+                "SSC Transpiler: " + requireNonNull(type, "Type") + " exception: " +
+                requireNonNull(message, "Message") + COLOR_RESET + lineSeparator() +
+                COLOR_CODE_BOLD + formatLines(requireNonNull(lines, "Lines")) + COLOR_RESET + lineSeparator() +
+                (locator != null ? (COLOR_LOCATOR + locator + COLOR_RESET) : "")
+        );
     }
 
     protected SSCTranspilerException(Type type, String message,
                                      ParserRuleContext ctx, CommonTokenStream tokens) {
-        this(type, message, getFormattedMessage(
-                Objects.requireNonNull(ctx, "Context"),
-                Objects.requireNonNull(tokens, "Token stream")
-        ));
+        this(type, message, getLinesFromCtx(
+                requireNonNull(ctx, "Context"),
+                requireNonNull(tokens, "Token stream")
+        ), getLocator(ctx));
     }
 
     protected SSCTranspilerException(Type type, Token tok, CommonTokenStream tokens) {
-        this(
-                type,
-                "Could not parse token '" + tok.getText() + "'",
-                getFormattedMessage(
-                        Objects.requireNonNull(tok, "Token"),
-                        Objects.requireNonNull(tokens, "Token stream")
-                )
-        );
+        this(type, "Could not parse token '" + tok.getText() + "'", getLinesFromToken(
+                requireNonNull(tok, "Token"),
+                requireNonNull(tokens, "Token stream")
+        ), getLocator(tok));
     }
 
+    protected static String formatLines(final List<EnumeratedLine> lines) {
+        final StringBuilder sBuilder = new StringBuilder();
 
-    public static String getFormattedMessage(Token token, CommonTokenStream tokens) {
-        return COLOR_MESSAGE +
-                "    at line: " + token.getLine() + "\n" +
-                "    in the middle of: `" +
-                COLOR_CODE +
-                ContextText.getContextAroundToken(token, tokens, 2, 2)
-                        .replaceAll("\\s+", " ") +
-                COLOR_MESSAGE +
-                "`\n" +
-                "    in:\n" +
-                COLOR_CODE_BOLD +
-                ContextText.getLinesAroundToken(token, tokens, LINES_BEFORE, LINES_AFTER) +
-                UnixTerminalColors.COLOR_RESET +
-                "\n" +
-                ContextText.getLocalizationMessage(token, COLOR_LOCATOR);
+        for (int i = 0; i < lines.size(); i++) {
+            final EnumeratedLine line = lines.get(i);
+
+            sBuilder.append(line.lineNumber())
+                    .append(LINENO_SEPARATOR)
+                    .append(line.line());
+
+            if (i < lines.size() - 1) {
+                sBuilder.append(lineSeparator());
+            }
+        }
+
+        return sBuilder.toString();
     }
 
-    public static String getFormattedMessage(ParserRuleContext ctx, CommonTokenStream tokens) {
-        return getFormattedMessage(ctx.getStart(), tokens);
+    protected static List<EnumeratedLine> getLinesFromToken(Token token, CommonTokenStream tokens) {
+        return SSCCUtil.Text.getLinesAroundToken(token, tokens, LINES_BEFORE, LINES_AFTER);
     }
 
+    protected static List<EnumeratedLine> getLinesFromCtx(ParserRuleContext ctx, CommonTokenStream tokens) {
+        return getLinesFromToken(ctx.getStart(), tokens);
+    }
+
+    /// Error nodes must be sorted.
+    protected static String getLocator(EnumeratedLine enumeratedLine, int[] errorNodes) {
+        final int offset = getLineNumberOffset(enumeratedLine.lineNumber());
+
+        final StringBuilder sb = new StringBuilder(" ".repeat(offset));
+
+        for (int i = 0; i < enumeratedLine.line().length(); i++) {
+            if (Arrays.binarySearch(errorNodes, i) >= 0) {
+                sb.append("^");
+            } else {
+                sb.append(" ");
+            }
+        }
+
+        return sb + " here";
+    }
+
+    /// Creates a locator for the whole line
+    protected static String getLocator(EnumeratedLine line) {
+        return getLocator(line, 0, line.line().length());
+    }
+
+    /// Creates a locator for a given range of columns
+    protected static String getLocator(EnumeratedLine line, int from, int to) {
+        return getLocator(line, SSCCUtil.Maths.getRange(from, to));
+    }
+
+    /// Creates a locator highlighting a single token
+    protected static String getLocator(Token token) {
+        final int offset = getLineNumberOffset(token.getLine());
+        final int posInLine = token.getCharPositionInLine();
+        final int len = token.getStopIndex() - token.getStartIndex() + 1;
+
+        return " ".repeat(offset + posInLine) + "^".repeat(len) + " here";
+    }
+
+    /// Creates a locator highlighting a context
+    protected static String getLocator(ParserRuleContext ctx) {
+        return getLocator(ctx.getStart());
+    }
+
+    private static int getLineNumberOffset(final int lineNumber) {
+        return SSCCUtil.Maths.digitsof(lineNumber) + LINENO_SEPARATOR.length();
+    }
 
     protected enum Type {
         Syntax, Antlr_parser, Preprocessor, Other;

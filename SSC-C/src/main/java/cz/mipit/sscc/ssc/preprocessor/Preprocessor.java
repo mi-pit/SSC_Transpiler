@@ -11,25 +11,39 @@ import java.nio.file.Path;
 import java.util.*;
 
 public final class Preprocessor {
-    private Preprocessor() {
-    }
-
     public static final String INCLUDE_DIRECTIVE_NAME = "include";
 
-    private static final Set<String> alreadyIncludedFiles = new HashSet<>();
+    private final Set<Path> alreadyIncludedFiles;
 
-    private static final Queue<String> LINES = new LinkedList<>();
+    private int currentLineNumber;
+    private String currentLine;
+
+    private final LinkedList<EnumeratedLine> lastLines;
+    private static final int nLines = 4;
+
+    public Preprocessor() {
+        currentLineNumber = 1;
+        lastLines = new LinkedList<>();
+        alreadyIncludedFiles = new HashSet<>();
+    }
 
     public static boolean preprocessSSC(final InputFile inputFile,
-                                        final Path outputFileAbsolutePath)
+                                        final Path outputFileAbsolutePath) throws IOException {
+        final Preprocessor preprocessor = new Preprocessor();
+        return preprocessor.preprocessSSC_(inputFile, outputFileAbsolutePath);
+    }
+
+    private boolean preprocessSSC_(final InputFile inputFile,
+                                   final Path outputFileAbsolutePath)
             throws IOException {
         if (!outputFileAbsolutePath.isAbsolute()) {
             throw new IllegalArgumentException("Output file path must be absolute");
         }
 
-        final Path input = inputFile.toAbsolutePath();
-        final List<String> lines = Files.readAllLines(input);
-        final List<String> preprocessedLines = processFile(lines, inputFile.dir());
+        final List<String> preprocessedLines = processFile(
+                Files.readAllLines(inputFile.toAbsolutePath()),
+                inputFile.dir()
+        );
 
         if (!Files.exists(outputFileAbsolutePath)) {
             Files.createFile(outputFileAbsolutePath);
@@ -41,18 +55,19 @@ public final class Preprocessor {
         return true;
     }
 
-    private static List<String> processFile(final List<String> lines,
-                                            final Path dir) throws IOException {
+    private List<String> processFile(final List<String> lines,
+                                     final Path dir) throws IOException {
         final List<String> outputLines = new ArrayList<>(lines.size());
 
         for (final String line : lines) {
-            LINES.add(line);
+            currentLine = line;
+
+            lastLines.add(new EnumeratedLine(currentLineNumber++, line));
+            if (lastLines.size() > nLines) {
+                lastLines.remove();
+            }
 
             processLine(line, outputLines, dir);
-
-            if (LINES.size() > 3) {
-                LINES.remove();
-            }
         }
 
         return outputLines;
@@ -67,9 +82,9 @@ public final class Preprocessor {
         return line;
     }
 
-    private static void processLine(final String currentLine,
-                                    final List<String> outputLines,
-                                    final Path baseDir)
+    private void processLine(final String currentLine,
+                             final List<String> outputLines,
+                             final Path baseDir)
             throws IOException {
         final Optional<String> maybeFilePath = getFilePathString(removeComments(currentLine));
         if (maybeFilePath.isEmpty()) {
@@ -77,10 +92,6 @@ public final class Preprocessor {
             return;
         }
         final String filePathString = maybeFilePath.get();
-
-        if (filePathString.isBlank()) {
-            throw new PreprocessorException("Empty file path string");
-        }
 
         final Path resolvedNormalized = tryGetPathFromString(filePathString, baseDir)
                 .toAbsolutePath()
@@ -95,18 +106,21 @@ public final class Preprocessor {
             return;
         }
 
-        if (alreadyIncludedFiles.contains(resolvedNormalized.getFileName().toString())) {
+        if (alreadyIncludedFiles.contains(resolvedNormalized.getFileName())) {
             return;
         }
 
-        alreadyIncludedFiles.add(resolvedNormalized.getFileName().toString());
+        alreadyIncludedFiles.add(resolvedNormalized.getFileName());
 
         final Path fileDir = resolvedNormalized.getParent();
 
         Main.logger.printDebug("\tFile path:       '" + resolvedNormalized + "'");
 
         if (!Files.exists(resolvedNormalized)) {
-            throw new PreprocessorException("Included file '" + resolvedNormalized + "' does not exist");
+            throw new PreprocessorException(
+                    "Included file '" + resolvedNormalized + "' does not exist",
+                    lastLines
+            );
         }
 
         /* Literal */
@@ -118,7 +132,7 @@ public final class Preprocessor {
         outputLines.addAll(subfileOutputLines);
     }
 
-    private static Optional<String> getFilePathString(final String withoutComments) {
+    private Optional<String> getFilePathString(final String withoutComments) {
         final String trimmed = withoutComments.trim();
         if (trimmed.isEmpty()) {
             return Optional.empty();
@@ -141,22 +155,36 @@ public final class Preprocessor {
         Main.logger.printDebug("\tWithout include: '" + withoutInclude + "'");
 
         if (withoutInclude.isEmpty()) {
-            throw new PreprocessorException("Empty include directive");
+            throw new PreprocessorException(
+                    "Empty include directive",
+                    lastLines
+            );
         }
 
         if (withoutInclude.length() == 1) {
-            throw new PreprocessorException("Include directive argument is missing a closing '>' or '\"'");
+            final int index = currentLine.lastIndexOf(withoutInclude);
+            throw new PreprocessorException(
+                    "Include directive argument is missing a closing '>' or '\"'",
+                    lastLines,
+                    new int[]{
+                            index,
+                            index + 1
+                    }
+            );
         }
 
         final char firstChar = withoutInclude.charAt(0);
         final char lastChar = withoutInclude.charAt(withoutInclude.length() - 1);
 
         if ((firstChar != '"' || lastChar != '"') && (firstChar != '<' || lastChar != '>')) {
-            throw new PreprocessorException(String.format(
-                    "Include argument `%s` is not terminated properly (`%c...%c`)",
-                    withoutInclude,
-                    firstChar, lastChar
-            ));
+            throw new PreprocessorException(
+                    String.format("Include argument `%s` is not terminated properly", withoutInclude),
+                    lastLines,
+                    new int[]{
+                            currentLine.lastIndexOf(firstChar),
+                            currentLine.lastIndexOf(lastChar)
+                    }
+            );
         }
 
         if (firstChar == '<') {
@@ -168,19 +196,27 @@ public final class Preprocessor {
                 .substring(1, withoutInclude.length() - 1)
                 .trim();
 
+        if (filePathString.isBlank()) {
+            throw new PreprocessorException(
+                    "Empty file path string",
+                    lastLines,
+                    currentLine.lastIndexOf(withoutInclude) + 1,
+                    withoutInclude.length() - 2
+            );
+        }
+
         return Optional.of(filePathString);
     }
 
-    private static Path tryGetPathFromString(final String filePathString,
-                                             final Path baseDir) {
+    private Path tryGetPathFromString(final String filePathString,
+                                      final Path baseDir) {
         try {
             return baseDir.resolve(filePathString);
         } catch (InvalidPathException e) {
-            throw new PreprocessorException("Invalid file path: '" + filePathString + "'");
+            throw new PreprocessorException(
+                    "Could not resolve path '" + baseDir + " + " + filePathString + "'",
+                    lastLines
+            );
         }
-    }
-
-    public static List<String> getLast3Lines() {
-        return new LinkedList<>(LINES);
     }
 }
