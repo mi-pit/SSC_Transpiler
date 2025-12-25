@@ -46,6 +46,7 @@ primaryExpression
     | '__builtin_va_arg' '(' unaryExpression ',' typeName ')'
     | '__builtin_offsetof' '(' typeName ',' unaryExpression ')'
     | VersionNumber // For attributes only (dirty hack)
+    | directive
     ;
 
 genericSelection
@@ -467,6 +468,7 @@ statement
     | ('__asm' | '__asm__') ('volatile' | '__volatile__') '(' (
         logicalOrExpression (',' logicalOrExpression)*
     )? (':' (logicalOrExpression (',' logicalOrExpression)*)?)* ')' ';'
+    | directive
     ;
 
 labeledStatement
