@@ -9,20 +9,26 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public final class Preprocessor {
-    public static final String INCLUDE_DIRECTIVE_NAME = "include";
+    private static final String INCLUDE_DIRECTIVE_NAME = "include";
+    private static final int N_LINES = 4;
 
     private final InputFile inputFile;
 
+    private final LinkedList<EnumeratedLine> lastLines;
+
     private int currentLineNumber;
     private String currentLine;
-
-    private final LinkedList<EnumeratedLine> lastLines;
-    private static final int nLines = 4;
+    private boolean comment;
 
     private Preprocessor(final InputFile inputFile) {
         currentLineNumber = 1;
+        currentLine = null;
+        comment = false;
+
         lastLines = new LinkedList<>();
 
         this.inputFile = inputFile;
@@ -60,7 +66,7 @@ public final class Preprocessor {
             currentLine = line;
 
             lastLines.add(new EnumeratedLine(currentLineNumber++, line));
-            if (lastLines.size() > nLines) {
+            if (lastLines.size() > N_LINES) {
                 lastLines.remove();
             }
 
@@ -70,22 +76,43 @@ public final class Preprocessor {
         return outputLines;
     }
 
-    private static String removeComments(String line) {
-        line = line
+    private static final Pattern BLOCK_COMMENT_START = Pattern.compile("/\\*.*");
+    private static final Pattern BLOCK_COMMENT_END = Pattern.compile(".*?\\*/");
+
+    private String removeComments(final String line) {
+        final Matcher endMatcher = BLOCK_COMMENT_END.matcher(line);
+        if (comment && !endMatcher.find()) {
+            Main.logger.printDebug("\tOnly comment");
+            return "";
+        }
+
+        String replaced = comment
+                ? line.replaceAll(".*?\\*/", "")
+                : line;
+        comment = false;
+
+        replaced = replaced
                 .replaceAll("//.*", "")
                 .replaceAll("/\\*.*?\\*/", "");
 
-        Main.logger.printDebug("\tWithout comment: '" + line + "'");
-        return line;
+        final Matcher matcher = BLOCK_COMMENT_START.matcher(replaced);
+        if (matcher.find()) {
+            comment = true;
+            replaced = matcher.replaceAll("");
+        }
+
+        Main.logger.printDebug("\tWithout comment: '" + replaced + "'");
+        return replaced;
     }
 
     private void processLine(final String currentLine,
                              final List<String> outputLines,
                              final Path baseDir)
             throws IOException {
-        final Optional<String> maybeFilePath = getFilePathString(removeComments(currentLine));
+        final String commentsRemoved = removeComments(currentLine);
+        final Optional<String> maybeFilePath = getFilePathString(commentsRemoved);
         if (maybeFilePath.isEmpty()) {
-            outputLines.add(currentLine);
+            outputLines.add(commentsRemoved);
             return;
         }
         final String filePathString = maybeFilePath.get();
@@ -119,8 +146,15 @@ public final class Preprocessor {
         final InputFile subFile = InputFile.fromAbsolutePath(resolvedNormalized);
         final Preprocessor subFilePreprocessor = new Preprocessor(subFile);
 
-        final List<String> linesConverted = subFilePreprocessor.processFile(linesLiteral, fileDir);
-        outputLines.addAll(linesConverted);
+        /* TODO: Add preprocessor 'stack trace'? */
+        try {
+            final List<String> linesConverted = subFilePreprocessor.processFile(linesLiteral, fileDir);
+            outputLines.addAll(linesConverted);
+        } catch (PreprocessorException e) {
+            throw new PreprocessorException(
+                    "In the expansion of file '" + inputFile.getFullName() + "'", e
+            );
+        }
     }
 
     private Optional<String> getFilePathString(final String withoutComments) {

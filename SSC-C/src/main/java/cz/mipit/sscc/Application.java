@@ -8,7 +8,6 @@ import cz.mipit.sscc.ssc.compiler.visitors.PostfixExpressionConvertorVisitor;
 import cz.mipit.sscc.ssc.compiler.visitors.SSCConvertorVisitor;
 import cz.mipit.sscc.ssc.compiler.visitors.SuperstructConvertorVisitor;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
-import cz.mipit.sscc.ssc.exceptions.UnknownTranspilationException;
 import cz.mipit.sscc.ssc.preprocessor.Preprocessor;
 import cz.mipit.sscc.util.ListBuilder;
 import cz.mipit.sscc.util.VisitorData;
@@ -37,7 +36,7 @@ public final class Application {
             "-Werror",
             "-Wall",
             "-Wextra",
-            "-Wno-extra-semi",      /* transpiler creates extra semicolons */
+            "-Wno-extra-semi", /* transpiler creates extra semicolons */
 
             "--std=c2x" // todo: add option
     );
@@ -107,7 +106,7 @@ public final class Application {
                     filesToCompile.add(file);
                 }
             } catch (RuntimeException e) {
-                handleKnownExceptionsOrRethrow(fileArg, e);
+                handleKnownExceptionsOrRethrow(e);
 
                 totalFailed++;
                 if (options.stopOnError()) {
@@ -130,13 +129,8 @@ public final class Application {
         filesToCompile.add(fileArg.toAbsolutePath());
     }
 
-    private void handleKnownExceptionsOrRethrow(final InputFile fileArg,
-                                                final RuntimeException exception) throws RuntimeException {
-        if (exception instanceof UnknownTranspilationException) {
-            System.err.println("Caught unknown exception while processing '" + fileArg.absolutePathString() + "'");
-            //noinspection CallToPrintStackTrace
-            exception.printStackTrace();
-        } else if (exception instanceof SSCTranspilerException) {
+    private void handleKnownExceptionsOrRethrow(final RuntimeException exception) throws RuntimeException {
+        if (exception instanceof SSCTranspilerException) {
             System.err.println(exception.getMessage());
         } else {
             throw exception; /* doesn't get caught again */

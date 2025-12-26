@@ -6,6 +6,10 @@ import cz.mipit.sscc.util.SSCCUtil;
 import java.util.List;
 
 public class PreprocessorException extends SSCTranspilerException {
+    public PreprocessorException(final String message, final SSCTranspilerException e) {
+        super(Type.Preprocessor, message, e);
+    }
+
     private PreprocessorException(String message, List<EnumeratedLine> lines, String locator) {
         super(Type.Preprocessor, message, lines, locator);
     }

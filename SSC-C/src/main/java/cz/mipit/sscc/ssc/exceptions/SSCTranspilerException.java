@@ -10,6 +10,7 @@ import org.antlr.v4.runtime.Token;
 import java.util.Arrays;
 import java.util.List;
 
+import static cz.mipit.sscc.util.SSCCUtil.Maths.digitsof;
 import static cz.mipit.sscc.util.UnixTerminalColors.COLOR_RESET;
 import static java.lang.System.lineSeparator;
 import static java.util.Objects.requireNonNull;
@@ -28,14 +29,27 @@ public abstract class SSCTranspilerException extends RuntimeException {
             UnixTerminalColors.create(UnixTerminalColors.Ground.FORE, UnixTerminalColors.Color.CYAN);
     public static final String LINENO_SEPARATOR = " | ";
 
-    protected SSCTranspilerException(Type type, String message,
-                                     List<EnumeratedLine> lines, String locator) {
+    private SSCTranspilerException(Type type, String message,
+                                   String context, String locator) {
         super(COLOR_ERR_MESSAGE +
                 "SSC Transpiler: " + requireNonNull(type, "Type") + " exception: " +
                 requireNonNull(message, "Message") + COLOR_RESET + lineSeparator() +
-                COLOR_CODE_BOLD + formatLines(requireNonNull(lines, "Lines")) + COLOR_RESET + lineSeparator() +
-                (locator != null ? (COLOR_LOCATOR + locator + COLOR_RESET) : "")
+                context +
+                (locator != null ? (lineSeparator() + COLOR_LOCATOR + locator + COLOR_RESET) : "")
         );
+    }
+
+    protected SSCTranspilerException(Type type, String message,
+                                     List<EnumeratedLine> lines, String locator) {
+        this(type, message, formatLines(lines), locator);
+    }
+
+    protected SSCTranspilerException(
+            final Type type,
+            final String message,
+            final SSCTranspilerException e
+    ) {
+        this(type, message, e.getMessage(), null);
     }
 
     protected SSCTranspilerException(Type type, String message,
@@ -54,12 +68,17 @@ public abstract class SSCTranspilerException extends RuntimeException {
     }
 
     protected static String formatLines(final List<EnumeratedLine> lines) {
-        final StringBuilder sBuilder = new StringBuilder();
+        final StringBuilder sBuilder = new StringBuilder(COLOR_CODE_BOLD);
+
+        final int fst = lines.get(0).lineNumber();
+        final int last = lines.get(lines.size() - 1).lineNumber();
+        final String fmtstr = "%" + getLineNumberLength(fst, last) + "d";
 
         for (int i = 0; i < lines.size(); i++) {
             final EnumeratedLine line = lines.get(i);
 
-            sBuilder.append(line.lineNumber())
+            final String formatted = String.format(fmtstr, line.lineNumber());
+            sBuilder.append(formatted)
                     .append(LINENO_SEPARATOR)
                     .append(line.line());
 
@@ -68,7 +87,7 @@ public abstract class SSCTranspilerException extends RuntimeException {
             }
         }
 
-        return sBuilder.toString();
+        return sBuilder + COLOR_RESET;
     }
 
     protected static List<EnumeratedLine> getLinesFromToken(Token token, CommonTokenStream tokens) {
@@ -121,7 +140,12 @@ public abstract class SSCTranspilerException extends RuntimeException {
     }
 
     private static int getLineNumberOffset(final int lineNumber) {
-        return SSCCUtil.Maths.digitsof(lineNumber) + LINENO_SEPARATOR.length();
+        return getLineNumberLength(lineNumber, lineNumber - (LINES_BEFORE + LINES_AFTER))
+                + LINENO_SEPARATOR.length();
+    }
+
+    private static int getLineNumberLength(final int min, final int max) {
+        return Math.max(digitsof(min), digitsof(max));
     }
 
     protected enum Type {

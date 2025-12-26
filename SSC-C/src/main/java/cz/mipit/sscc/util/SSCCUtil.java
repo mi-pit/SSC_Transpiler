@@ -53,7 +53,6 @@ public final class SSCCUtil {
     }
 
     public static class Maths {
-
         public static int digitsof(int num) {
             int ndigs = 0;
             while (num > 0) {
