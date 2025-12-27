@@ -1,8 +1,8 @@
 package cz.mipit.sscc.ssc.compiler.data;
 
 import antlr.ssc.SSCParser;
-import cz.mipit.sscc.ssc.exceptions.SSCSyntaxException;
-import cz.mipit.sscc.ssc.exceptions.UnknownTranspilationException;
+import cz.mipit.sscc.ssc.exceptions.children.SSCSyntaxException;
+import cz.mipit.sscc.ssc.exceptions.children.UnknownTranspilationException;
 import cz.mipit.sscc.util.SSCCUtil;
 import org.antlr.v4.runtime.CommonTokenStream;
 

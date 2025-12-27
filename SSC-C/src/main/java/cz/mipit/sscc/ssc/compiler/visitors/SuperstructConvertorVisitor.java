@@ -5,7 +5,7 @@ import cz.mipit.sscc.ssc.compiler.data.Field;
 import cz.mipit.sscc.ssc.compiler.data.FunctionDefinition;
 import cz.mipit.sscc.ssc.compiler.data.SSMember;
 import cz.mipit.sscc.ssc.compiler.data.SuperStruct;
-import cz.mipit.sscc.ssc.exceptions.SSCSyntaxException;
+import cz.mipit.sscc.ssc.exceptions.children.SSCSyntaxException;
 import cz.mipit.sscc.util.SSCCUtil;
 import org.antlr.v4.runtime.CommonTokenStream;
 

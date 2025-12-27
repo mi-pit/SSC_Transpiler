@@ -7,7 +7,7 @@ import cz.mipit.sscc.ssc.compiler.data.FunctionDefinition;
 import cz.mipit.sscc.ssc.compiler.data.SSMember;
 import cz.mipit.sscc.ssc.compiler.data.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.SuperstructVariable;
-import cz.mipit.sscc.ssc.exceptions.SSCSyntaxException;
+import cz.mipit.sscc.ssc.exceptions.children.SSCSyntaxException;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.TerminalNode;

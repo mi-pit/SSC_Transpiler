@@ -23,16 +23,22 @@ public abstract class SSCTranspilerException extends RuntimeException {
 
     public static final String COLOR_ERR_MESSAGE =
             UnixTerminalColors.create(UnixTerminalColors.Ground.FORE, UnixTerminalColors.Color.RED);
+    public static final String COLOR_WARNING =
+            UnixTerminalColors.create(UnixTerminalColors.Ground.FORE, UnixTerminalColors.Color.YELLOW);
+    public static final String COLOR_OTHER =
+            UnixTerminalColors.create(UnixTerminalColors.Ground.BACK, UnixTerminalColors.Color.YELLOW);
+
     public static final String COLOR_CODE_BOLD =
             BOLD + UnixTerminalColors.create(UnixTerminalColors.Ground.FORE, UnixTerminalColors.Color.WHITE);
     public static final String COLOR_LOCATOR =
             UnixTerminalColors.create(UnixTerminalColors.Ground.FORE, UnixTerminalColors.Color.CYAN);
+
     public static final String LINENO_SEPARATOR = " | ";
 
     private SSCTranspilerException(Type type, String message,
                                    String context, String locator) {
-        super(COLOR_ERR_MESSAGE +
-                "SSC Transpiler: " + requireNonNull(type, "Type") + " exception: " +
+        super(requireNonNull(type).toColor() +
+                "SSC Transpiler: " + type + " exception: " +
                 requireNonNull(message, "Message") + COLOR_RESET + lineSeparator() +
                 context +
                 (locator != null ? (lineSeparator() + COLOR_LOCATOR + locator + COLOR_RESET) : "")
@@ -148,12 +154,23 @@ public abstract class SSCTranspilerException extends RuntimeException {
         return Math.max(digitsof(min), digitsof(max));
     }
 
+
     protected enum Type {
         Syntax, Antlr_parser, Preprocessor, Other;
 
         @Override
-        public String toString() {
+        public final String toString() {
             return name().replace('_', ' ');
+        }
+
+        public final String toColor() {
+            return switch (this) {
+                case Syntax, Preprocessor -> COLOR_ERR_MESSAGE;
+
+                case Antlr_parser -> COLOR_WARNING;
+
+                case Other -> COLOR_OTHER;
+            };
         }
     }
 }

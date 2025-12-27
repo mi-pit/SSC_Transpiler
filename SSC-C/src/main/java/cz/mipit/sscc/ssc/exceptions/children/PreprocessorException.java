@@ -1,5 +1,6 @@
-package cz.mipit.sscc.ssc.exceptions;
+package cz.mipit.sscc.ssc.exceptions.children;
 
+import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.ssc.preprocessor.EnumeratedLine;
 import cz.mipit.sscc.util.SSCCUtil;
 

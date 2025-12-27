@@ -2,8 +2,8 @@ package cz.mipit.sscc.ssc.compiler.visitors;
 
 import antlr.ssc.SSCBaseVisitor;
 import antlr.ssc.SSCParser;
-import cz.mipit.sscc.ssc.exceptions.AntlrException;
-import cz.mipit.sscc.ssc.exceptions.SSCSyntaxException;
+import cz.mipit.sscc.ssc.exceptions.children.AntlrException;
+import cz.mipit.sscc.ssc.exceptions.children.SSCSyntaxException;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.Token;
@@ -11,16 +11,15 @@ import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.RuleNode;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
-import java.util.function.Supplier;
-
 import static java.lang.System.lineSeparator;
 
 public abstract class SSCConvertorVisitor extends SSCBaseVisitor<String> {
     protected final CommonTokenStream tokens;
-    private boolean hasErrors = false;
+    private boolean hasErrors;
 
     protected SSCConvertorVisitor(CommonTokenStream tokens) {
         this.tokens = tokens;
+        hasErrors = false;
     }
 
     @Override
@@ -31,7 +30,8 @@ public abstract class SSCConvertorVisitor extends SSCBaseVisitor<String> {
             try {
                 sb.append(node.getChild(i).accept(this));
             } catch (SSCSyntaxException e) {
-                printErrorMessage(() -> e);
+                printErrorMessage(e);
+                hasErrors = true;
             }
         }
         return sb.toString();
@@ -60,16 +60,17 @@ public abstract class SSCConvertorVisitor extends SSCBaseVisitor<String> {
 
     @Override
     public String visitErrorNode(ErrorNode node) {
-        hasErrors = true;
+        //if (opts.escalateAntlrExceptions) {
+        //    hasErrors = true;
+        //}
 
         // Don't throw! Let the user see the rest of the error nodes!
-        printErrorMessage(() -> new AntlrException(node.getSymbol(), tokens));
+        printErrorMessage(new AntlrException(node.getSymbol(), tokens));
 
         return super.visitErrorNode(node);
     }
 
-    private static void printErrorMessage(final Supplier<SSCTranspilerException> supplier) {
-        final SSCTranspilerException e = supplier.get();
+    private static void printErrorMessage(final SSCTranspilerException e) {
         System.err.println(e.getMessage());
     }
 

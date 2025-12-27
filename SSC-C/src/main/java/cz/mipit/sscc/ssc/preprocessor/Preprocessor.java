@@ -2,7 +2,7 @@ package cz.mipit.sscc.ssc.preprocessor;
 
 import cz.mipit.sscc.Main;
 import cz.mipit.sscc.file.InputFile;
-import cz.mipit.sscc.ssc.exceptions.PreprocessorException;
+import cz.mipit.sscc.ssc.exceptions.children.PreprocessorException;
 
 import java.io.IOException;
 import java.nio.file.Files;
