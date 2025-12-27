@@ -3,11 +3,13 @@ package cz.mipit.sscc.ssc.preprocessor;
 import cz.mipit.sscc.Main;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.exceptions.children.PreprocessorException;
+import cz.mipit.sscc.util.SSCCUtil;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -35,9 +37,32 @@ public final class Preprocessor {
         this.inputFile = inputFile;
     }
 
+    /* TODO */
+    public static void main(String[] args) throws IOException {
+        final List<InputFile> files = new ArrayList<>();
+        for (String arg : args) {
+            final Path path = Paths.get(arg);
+            final InputFile inFile = InputFile.fromAbsolutePath(path.toAbsolutePath());
+            files.add(inFile);
+        }
+
+        for (InputFile file : files) {
+            preprocessSSC(file, file.getChangedSuffix("preprocessed").toAbsolutePath());
+        }
+    }
+
     public static boolean preprocessSSC(final InputFile inputFile,
                                         final Path outputFileAbsolutePath) throws IOException {
-        return new Preprocessor(inputFile).writeToOutput(outputFileAbsolutePath);
+        if (!new Preprocessor(inputFile).writeToOutput(outputFileAbsolutePath))
+            return false;
+
+        Main.logger.printDebug("Preprocessing success");
+        return true;
+    }
+
+    private static List<String> getLines(final Path path) throws IOException {
+        final String read = Files.readString(path);
+        return SSCCUtil.Text.splitLogicalLines(read);
     }
 
     private boolean writeToOutput(final Path outputFileAbsolutePath)
@@ -47,7 +72,7 @@ public final class Preprocessor {
         }
 
         final List<String> preprocessedLines = processFile(
-                Files.readAllLines(inputFile.toAbsolutePath()),
+                getLines(inputFile.toAbsolutePath()),
                 inputFile.dir()
         );
 
