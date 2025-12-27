@@ -8,7 +8,6 @@ import org.antlr.v4.runtime.misc.Interval;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.lang.Math;
 
 import static java.lang.System.lineSeparator;
 

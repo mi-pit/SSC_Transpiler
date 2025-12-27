@@ -1,6 +1,5 @@
 package cz.mipit.sscc.app;
 
-import cz.mipit.sscc.util.ExitValue;
 import cz.mipit.sscc.args.ArgumentParser;
 import cz.mipit.sscc.args.Options;
 import cz.mipit.sscc.file.InputFile;
@@ -10,6 +9,7 @@ import cz.mipit.sscc.ssc.compiler.visitors.SSCConvertorVisitor;
 import cz.mipit.sscc.ssc.compiler.visitors.SuperstructConvertorVisitor;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.ssc.preprocessor.Preprocessor;
+import cz.mipit.sscc.util.ExitValue;
 import cz.mipit.sscc.util.ListBuilder;
 import cz.mipit.sscc.util.VisitorData;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -21,9 +21,9 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
 
+import static cz.mipit.sscc.Main.logger;
 import static cz.mipit.sscc.util.ExitValue.err;
 import static cz.mipit.sscc.util.ExitValue.warn;
-import static cz.mipit.sscc.Main.logger;
 
 public final class Application {
     private final Set<SuperStruct> sss = new HashSet<>();

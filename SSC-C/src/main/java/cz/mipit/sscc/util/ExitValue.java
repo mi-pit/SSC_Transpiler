@@ -1,8 +1,7 @@
 package cz.mipit.sscc.util;
 
 import cz.mipit.sscc.util.UnixTerminalColors.Ground;
-
-import static cz.mipit.sscc.util.UnixTerminalColors.*;
+import cz.mipit.sscc.util.UnixTerminalColors.Color;
 
 public enum ExitValue {
     SUCCESS /* = 0 */,
@@ -14,8 +13,8 @@ public enum ExitValue {
     IO_EXCEPTION,
     ;
 
-    private static final String COLOR_WARN = create(Ground.BACK, Color.YELLOW);
-    private static final String COLOR_ERROR = create(Ground.FORE, Color.RED);
+    private static final String COLOR_WARN = UnixTerminalColors.create(Ground.BACK, Color.YELLOW);
+    private static final String COLOR_ERROR = UnixTerminalColors.create(Ground.FORE, Color.RED);
 
 
     /* TODO: replace with formatted exceptions */
@@ -40,6 +39,6 @@ public enum ExitValue {
         System.err.print("SSC Transpiler: " + warningString + ": ");
         System.out.printf("%s", String.format(fmtstr, args));
 
-        System.err.println(COLOR_RESET);
+        System.err.println(UnixTerminalColors.COLOR_RESET);
     }
 }
