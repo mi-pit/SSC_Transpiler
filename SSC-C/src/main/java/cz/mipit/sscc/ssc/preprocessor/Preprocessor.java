@@ -13,6 +13,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class Preprocessor {
+    private static final String SSCH_FILE_SUFFIX = "ssch";
     private static final String INCLUDE_DIRECTIVE_NAME = "include";
     private static final int N_LINES = 4;
 
@@ -121,7 +122,7 @@ public final class Preprocessor {
                 .toAbsolutePath()
                 .normalize();
 
-        final boolean isSscHeader = "ssch".equals(InputFile.fromAbsolutePath(resolvedNormalized).suffix());
+        final boolean isSscHeader = SSCH_FILE_SUFFIX.equals(InputFile.fromAbsolutePath(resolvedNormalized).suffix());
         if (!isSscHeader) {
             final String newIncludeLine =
                     "#" + INCLUDE_DIRECTIVE_NAME + " \"" + resolvedNormalized + "\"" +
