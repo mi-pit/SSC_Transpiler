@@ -37,20 +37,6 @@ public final class Preprocessor {
         this.inputFile = inputFile;
     }
 
-    /* TODO */
-    public static void main(String[] args) throws IOException {
-        final List<InputFile> files = new ArrayList<>();
-        for (String arg : args) {
-            final Path path = Paths.get(arg);
-            final InputFile inFile = InputFile.fromAbsolutePath(path.toAbsolutePath());
-            files.add(inFile);
-        }
-
-        for (InputFile file : files) {
-            preprocessSSC(file, file.getChangedSuffix("preprocessed").toAbsolutePath());
-        }
-    }
-
     public static boolean preprocessSSC(final InputFile inputFile,
                                         final Path outputFileAbsolutePath) throws IOException {
         if (!new Preprocessor(inputFile).writeToOutput(outputFileAbsolutePath))

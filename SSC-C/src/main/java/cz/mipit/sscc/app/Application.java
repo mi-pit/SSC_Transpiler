@@ -1,5 +1,6 @@
-package cz.mipit.sscc;
+package cz.mipit.sscc.app;
 
+import cz.mipit.sscc.util.ExitValue;
 import cz.mipit.sscc.args.ArgumentParser;
 import cz.mipit.sscc.args.Options;
 import cz.mipit.sscc.file.InputFile;
@@ -20,8 +21,8 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
 
-import static cz.mipit.sscc.ExitValue.err;
-import static cz.mipit.sscc.ExitValue.warn;
+import static cz.mipit.sscc.util.ExitValue.err;
+import static cz.mipit.sscc.util.ExitValue.warn;
 import static cz.mipit.sscc.Main.logger;
 
 public final class Application {
@@ -64,9 +65,9 @@ public final class Application {
             return;
         }
 
-        if (options.compileTargetFilename() != null) {
+        if (options.compileTargetFilename().isPresent()) {
             logger.printVerbose("Compiling...");
-            compileCBatch(options.compileTargetFilename(), filesToCompile);
+            compileCBatch(options.compileTargetFilename().get(), filesToCompile);
 
             outputtedFiles.forEach(path -> {
                 logger.printVerbose("Trying to delete output file '" + path + "'...");
@@ -168,10 +169,9 @@ public final class Application {
             }
         }
 
-        if (options.compileTargetFilename() != null) {
+        if (options.compileTargetFilename().isPresent()) {
             /* don't format if you're going to delete the files anyway;
-             * don't verify if you're going to compile the files anyway
-             */
+             * don't verify if you're going to compile the files anyway */
             return Optional.of(workingFileAbsolutePath);
         }
 

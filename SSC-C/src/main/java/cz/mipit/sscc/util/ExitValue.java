@@ -1,4 +1,4 @@
-package cz.mipit.sscc;
+package cz.mipit.sscc.util;
 
 import cz.mipit.sscc.util.UnixTerminalColors.Ground;
 

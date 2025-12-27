@@ -1,5 +1,7 @@
 package cz.mipit.sscc;
 
+import cz.mipit.sscc.app.Application;
+
 import java.io.IOException;
 
 public final class Main {

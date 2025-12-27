@@ -1,6 +1,6 @@
 package cz.mipit.sscc.args;
 
-import cz.mipit.sscc.ExitValue;
+import cz.mipit.sscc.util.ExitValue;
 import cz.mipit.sscc.file.DirectoryTreeParser;
 import cz.mipit.sscc.file.InputFile;
 
@@ -9,8 +9,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
-import static cz.mipit.sscc.ExitValue.err;
-import static cz.mipit.sscc.ExitValue.warn;
+import static cz.mipit.sscc.util.ExitValue.err;
+import static cz.mipit.sscc.util.ExitValue.warn;
 
 public final class ArgumentParser {
     private ArgumentParser() {
