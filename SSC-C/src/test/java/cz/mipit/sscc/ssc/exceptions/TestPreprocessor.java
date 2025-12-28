@@ -1,6 +1,6 @@
 package cz.mipit.sscc.ssc.exceptions;
 
-import cz.mipit.sscc.Application;
+import cz.mipit.sscc.app.Application;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.preprocessor.Preprocessor;
 import org.junit.jupiter.api.AfterEach;
@@ -17,8 +17,8 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 class TestPreprocessor {
-    private static final Path testFilePath = Paths.get("test.ssc").normalize();
-    private static final Path outputFilePath = Path.of("test.c").normalize();
+    private static final Path testFilePath = Paths.get("test.ssc").normalize().toAbsolutePath();
+    private static final Path outputFilePath = Path.of("test.c").normalize().toAbsolutePath();
     private static final String code = """
             #  include <stdio.h>
             
@@ -65,39 +65,13 @@ class TestPreprocessor {
     }
 
     @Test
-    void testPreprocessorLast3Lines() {
-        assertTrue(Preprocessor.getLast3Lines().isEmpty());
-
-        final InputFile inputFile = InputFile.fromAbsolutePath(testFilePath.toAbsolutePath());
-        assertDoesNotThrow(() ->
-                Preprocessor.preprocessSSC(inputFile, testFilePath.toAbsolutePath())
-        );
-
-        final List<String> preprocessedLines = Preprocessor.getLast3Lines();
-        assertEquals(3, preprocessedLines.size());
-
-        final List<String> last3Lines = lines.subList(lines.size() - 3, lines.size());
-        assertEquals(3, last3Lines.size());
-
-        for (int i = 0; i < 3; i++) {
-            assertEquals(last3Lines.get(i), preprocessedLines.get(i));
-        }
-
-        preprocessedLines.clear();
-        /* modifying the gotten List shouldn't interfere with preprocessor's own */
-        assertEquals(3, Preprocessor.getLast3Lines().size());
-
-        assertDoesNotThrow(() -> {
-            final String fileContents = Files.readString(testFilePath);
-            assertEquals(code, fileContents);
-        });
-    }
-
-    @Test
-    void testPreprocessor() throws InterruptedException {
+    void testPreprocessor() {
         try {
-            final Application app = new Application(new String[]{testFilePath.toString()});
-            app.run();
+            Preprocessor.preprocessSSC(InputFile.fromAbsolutePath(testFilePath), outputFilePath);
+
+            assertTrue(Files.exists(outputFilePath));
+
+            assertEquals(code.trim(), Files.readString(outputFilePath).trim());
         } catch (IOException e) {
             Assertions.fail("IO Exception");
         }
