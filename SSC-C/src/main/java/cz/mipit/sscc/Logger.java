@@ -1,7 +1,12 @@
 package cz.mipit.sscc;
 
 import cz.mipit.sscc.args.Options;
-import cz.mipit.sscc.util.UnixTerminalColors;
+import cz.mipit.sscc.util.color.ConsoleColor;
+
+import static cz.mipit.sscc.util.color.ConsoleColorFactory.COLOR_DEFAULT;
+import static cz.mipit.sscc.util.color.ConsoleColorFactory.Color;
+import static cz.mipit.sscc.util.color.ConsoleColorFactory.Ground;
+import static cz.mipit.sscc.util.color.ConsoleColorFactory.create;
 
 public final class Logger {
     private Options options;
@@ -22,13 +27,13 @@ public final class Logger {
         printDebug("%s", string);
     }
 
-    private static final String DEBUG_COLOR = UnixTerminalColors.create(
-            UnixTerminalColors.Ground.FORE,
-            UnixTerminalColors.Color.MAGENTA
+    private static final ConsoleColor DEBUG_COLOR = create(
+            Ground.FORE,
+            Color.MAGENTA
     );
-    private static final String VERBOSE_COLOR = UnixTerminalColors.create(
-            UnixTerminalColors.Ground.FORE,
-            UnixTerminalColors.Color.YELLOW
+    private static final ConsoleColor VERBOSE_COLOR = create(
+            Ground.FORE,
+            Color.YELLOW
     );
 
     public void printDebug(String fmt, Object... objects) {
@@ -37,7 +42,7 @@ public final class Logger {
         }
         System.out.print(DEBUG_COLOR + "[DEBUG] ");
         System.out.printf(fmt, objects);
-        System.out.println(UnixTerminalColors.COLOR_RESET);
+        System.out.println(COLOR_DEFAULT);
     }
 
     public void printVerbose(String fmt, Object... objects) {
@@ -46,7 +51,7 @@ public final class Logger {
         }
         System.out.print(VERBOSE_COLOR);
         System.out.printf(fmt, objects);
-        System.out.println(UnixTerminalColors.COLOR_RESET);
+        System.out.println(COLOR_DEFAULT);
     }
 
     public void printVerbose(String string) {
@@ -54,6 +59,6 @@ public final class Logger {
     }
 
     public void printVerbose(String a, String b) {
-        printVerbose("%s'" + UnixTerminalColors.COLOR_RESET + "%s" + VERBOSE_COLOR + "'", a, b);
+        printVerbose("%s'" + COLOR_DEFAULT + "%s" + VERBOSE_COLOR + "'", a, b);
     }
 }

@@ -31,7 +31,7 @@ public class PreprocessorException extends SSCTranspilerException {
     }
 
 
-    private static EnumeratedLine getLast(List<EnumeratedLine> enumeratedLines) {
-        return enumeratedLines.get(enumeratedLines.size() - 1);
+    private static <T> T getLast(List<T> ls) {
+        return ls.get(ls.size() - 1);
     }
 }

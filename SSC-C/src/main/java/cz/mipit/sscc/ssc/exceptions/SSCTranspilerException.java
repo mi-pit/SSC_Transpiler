@@ -2,7 +2,7 @@ package cz.mipit.sscc.ssc.exceptions;
 
 import cz.mipit.sscc.ssc.preprocessor.EnumeratedLine;
 import cz.mipit.sscc.util.SSCCUtil;
-import cz.mipit.sscc.util.UnixTerminalColors;
+import cz.mipit.sscc.util.color.ConsoleColor;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
@@ -11,7 +11,10 @@ import java.util.Arrays;
 import java.util.List;
 
 import static cz.mipit.sscc.util.SSCCUtil.Maths.digitsof;
-import static cz.mipit.sscc.util.UnixTerminalColors.COLOR_RESET;
+import static cz.mipit.sscc.util.color.ConsoleColorFactory.COLOR_DEFAULT;
+import static cz.mipit.sscc.util.color.ConsoleColorFactory.Color;
+import static cz.mipit.sscc.util.color.ConsoleColorFactory.Ground;
+import static cz.mipit.sscc.util.color.ConsoleColorFactory.create;
 import static java.lang.System.lineSeparator;
 import static java.util.Objects.requireNonNull;
 
@@ -19,19 +22,25 @@ public abstract class SSCTranspilerException extends RuntimeException {
     private static final int LINES_BEFORE = 4;
     private static final int LINES_AFTER = 0;
 
-    private static final String BOLD = "\u001B[1m";
+    protected static final ConsoleColor COLOR_ERR_MESSAGE = create(Ground.FORE, Color.RED);
+    protected static final ConsoleColor COLOR_WARNING = create(Ground.FORE, Color.YELLOW);
+    protected static final ConsoleColor COLOR_OTHER = create(Ground.BACK, Color.YELLOW);
 
-    public static final String COLOR_ERR_MESSAGE =
-            UnixTerminalColors.create(UnixTerminalColors.Ground.FORE, UnixTerminalColors.Color.RED);
-    public static final String COLOR_WARNING =
-            UnixTerminalColors.create(UnixTerminalColors.Ground.FORE, UnixTerminalColors.Color.YELLOW);
-    public static final String COLOR_OTHER =
-            UnixTerminalColors.create(UnixTerminalColors.Ground.BACK, UnixTerminalColors.Color.YELLOW);
+    protected static final ConsoleColor COLOR_CODE = create(Ground.FORE, Color.WHITE);
+    protected static final ConsoleColor COLOR_LOCATOR = create(Ground.FORE, Color.CYAN);
 
-    public static final String COLOR_CODE_BOLD =
-            BOLD + UnixTerminalColors.create(UnixTerminalColors.Ground.FORE, UnixTerminalColors.Color.WHITE);
-    public static final String COLOR_LOCATOR =
-            UnixTerminalColors.create(UnixTerminalColors.Ground.FORE, UnixTerminalColors.Color.CYAN);
+    private static final ConsoleColor COLOR_CODE_BOLD = new ConsoleColor() {
+        @Override
+        public void setConsoleColor() {
+            System.out.print(this);
+        }
+
+        @Override
+        public String toString() {
+            return "\u001B[1m" + COLOR_CODE;
+        }
+    };
+
 
     public static final String LINENO_SEPARATOR = " | ";
 
@@ -39,9 +48,9 @@ public abstract class SSCTranspilerException extends RuntimeException {
                                    String context, String locator) {
         super(requireNonNull(type).toColor() +
                 "SSC Transpiler: " + type + " exception: " +
-                requireNonNull(message, "Message") + COLOR_RESET + lineSeparator() +
+                requireNonNull(message, "Message") + COLOR_DEFAULT + lineSeparator() +
                 context +
-                (locator != null ? (lineSeparator() + COLOR_LOCATOR + locator + COLOR_RESET) : "")
+                (locator != null ? (lineSeparator() + COLOR_LOCATOR + locator + COLOR_DEFAULT) : "")
         );
     }
 
@@ -74,7 +83,8 @@ public abstract class SSCTranspilerException extends RuntimeException {
     }
 
     protected static String formatLines(final List<EnumeratedLine> lines) {
-        final StringBuilder sBuilder = new StringBuilder(COLOR_CODE_BOLD);
+        final StringBuilder sBuilder = new StringBuilder(256)
+                .append(COLOR_CODE_BOLD);
 
         final int fst = lines.get(0).lineNumber();
         final int last = lines.get(lines.size() - 1).lineNumber();
@@ -93,7 +103,7 @@ public abstract class SSCTranspilerException extends RuntimeException {
             }
         }
 
-        return sBuilder + COLOR_RESET;
+        return "" + sBuilder + COLOR_DEFAULT;
     }
 
     protected static List<EnumeratedLine> getLinesFromToken(Token token, CommonTokenStream tokens) {
@@ -163,7 +173,7 @@ public abstract class SSCTranspilerException extends RuntimeException {
             return name().replace('_', ' ');
         }
 
-        public final String toColor() {
+        public final ConsoleColor toColor() {
             return switch (this) {
                 case Syntax, Preprocessor -> COLOR_ERR_MESSAGE;
 

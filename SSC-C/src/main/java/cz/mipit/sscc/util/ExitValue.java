@@ -1,7 +1,11 @@
 package cz.mipit.sscc.util;
 
-import cz.mipit.sscc.util.UnixTerminalColors.Ground;
-import cz.mipit.sscc.util.UnixTerminalColors.Color;
+import cz.mipit.sscc.util.color.ConsoleColor;
+
+import static cz.mipit.sscc.util.color.ConsoleColorFactory.COLOR_DEFAULT;
+import static cz.mipit.sscc.util.color.ConsoleColorFactory.Color;
+import static cz.mipit.sscc.util.color.ConsoleColorFactory.Ground;
+import static cz.mipit.sscc.util.color.ConsoleColorFactory.create;
 
 public enum ExitValue {
     SUCCESS /* = 0 */,
@@ -13,8 +17,9 @@ public enum ExitValue {
     IO_EXCEPTION,
     ;
 
-    private static final String COLOR_WARN = UnixTerminalColors.create(Ground.BACK, Color.YELLOW);
-    private static final String COLOR_ERROR = UnixTerminalColors.create(Ground.FORE, Color.RED);
+
+    private static final ConsoleColor COLOR_WARN = create(Ground.BACK, Color.YELLOW);
+    private static final ConsoleColor COLOR_ERROR = create(Ground.FORE, Color.RED);
 
 
     /* TODO: replace with formatted exceptions */
@@ -33,12 +38,18 @@ public enum ExitValue {
     }
 
     private static void warnInternalFmt(final boolean isError, final String fmtstr, Object... args) {
-        System.err.print(isError ? COLOR_ERROR : COLOR_WARN);
+        final ConsoleColor color = isError ? COLOR_ERROR : COLOR_WARN;
+        color.setConsoleColor();
 
         final String warningString = isError ? "error" : "warning";
         System.err.print("SSC Transpiler: " + warningString + ": ");
         System.out.printf("%s", String.format(fmtstr, args));
 
-        System.err.println(UnixTerminalColors.COLOR_RESET);
+        COLOR_DEFAULT.setConsoleColor();
+    }
+
+    @Override
+    public String toString() {
+        return super.toString().replaceAll("_", " ");
     }
 }
