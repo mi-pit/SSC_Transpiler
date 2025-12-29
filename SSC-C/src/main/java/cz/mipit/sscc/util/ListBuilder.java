@@ -12,14 +12,20 @@ import java.util.function.Function;
  * @param <T> element type
  */
 public final class ListBuilder<T> {
+    public static final int DEFAULT_CAPACITY = 16;
+
     private final List<T> ls;
 
+    private ListBuilder(int capacity) {
+        ls = new ArrayList<>(capacity);
+    }
+
     private ListBuilder() {
-        ls = new ArrayList<>();
+        this(DEFAULT_CAPACITY);
     }
 
     public static <T> ListBuilder<T> from(Collection<T> copyOf) {
-        return new ListBuilder<T>().addAll(copyOf);
+        return new ListBuilder<T>(Math.max(copyOf.size(), DEFAULT_CAPACITY)).addAll(copyOf);
     }
 
     public static <T> ListBuilder<T> from(T item) {
@@ -28,6 +34,10 @@ public final class ListBuilder<T> {
 
     public static <T> ListBuilder<T> empty() {
         return new ListBuilder<>();
+    }
+
+    public static <T> ListBuilder<T> withCapacity(int capacity) {
+        return new ListBuilder<T>(capacity);
     }
 
     /**

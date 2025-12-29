@@ -46,6 +46,7 @@ public enum ExitValue {
         System.out.printf("%s", String.format(fmtstr, args));
 
         COLOR_DEFAULT.setConsoleColor();
+        System.out.println();
     }
 
     @Override
