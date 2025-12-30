@@ -1,6 +1,5 @@
 package cz.mipit.sscc.ssc.exceptions;
 
-import cz.mipit.sscc.app.Application;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.preprocessor.Preprocessor;
 import org.junit.jupiter.api.AfterEach;

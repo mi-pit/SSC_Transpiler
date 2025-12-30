@@ -1,6 +1,6 @@
 package cz.mipit.sscc;
 
-import cz.mipit.sscc.app.Application;
+import cz.mipit.sscc.ssc.compiler.Application;
 
 import java.io.IOException;
 

@@ -8,13 +8,13 @@ import cz.mipit.sscc.ssc.compiler.data.SuperStruct;
 import cz.mipit.sscc.ssc.exceptions.children.SSCSyntaxException;
 import cz.mipit.sscc.util.SSCCUtil;
 import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.RuleContext;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 
 public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
@@ -70,21 +70,55 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
                 .toList();
 
         if (memberCtx.declaration() != null) {
-            final var declList = memberCtx.declaration().initDeclaratorList();
+            final SSCParser.InitDeclaratorListContext initDeclaratorList =
+                    memberCtx.declaration().initDeclaratorList();
 
-            final String noPrivateSpecsString = noPrivateSpecs
+            final List<String> type = noPrivateSpecs
                     .stream()
                     .map(s -> SSCCUtil.Text.getLiteral(s, tokens))
-                    .collect(Collectors.joining(" "));
-            final String fieldData = noPrivateSpecsString +
-                    (declList == null
-                            ? ""
-                            : " " + SSCCUtil.Text.getLiteral(declList, tokens)) +
-                    ";";
+                    .toList();
 
-            final Field field = new Field(isPrivate, fieldData);
-            memberList.add(SSMember.field(field));
+            if (initDeclaratorList == null) {
+                memberList.add(
+                        SSMember.field(
+                                new Field(isPrivate,
+                                        /* assume last "spec" is variable name
+                                         * (parser doesn't know the difference between `typedef`ed name and Identifier) */
+                                        noPrivateSpecs.subList(0, noPrivateSpecs.size() - 1)
+                                                .stream().map(RuleContext::getText).toList(),
+                                        false,
+                                        noPrivateSpecs.get(noPrivateSpecs.size() - 1).getText())
+                        )
+                );
+                return;
+            }
 
+            if (initDeclaratorList.initDeclarator().isEmpty()) {
+                throw new SSCSyntaxException(
+                        "Init declarator empty `" + SSCCUtil.Text.getLiteral(memberCtx, tokens) + "`",
+                        initDeclaratorList, tokens
+                );
+            }
+            for (SSCParser.InitDeclaratorContext initDecl : initDeclaratorList.initDeclarator()) {
+                if (initDecl.initializer() != null) {
+                    throw new SSCSyntaxException(
+                            "Cannot initialize superstruct field (must use a constructor)",
+                            initDecl.initializer(), tokens
+                    );
+                }
+                final SSCParser.DeclaratorContext declarator = initDecl.declarator();
+                final boolean ptr = declarator.pointer() != null;
+                if (declarator.directDeclarator().Identifier() == null) {
+                    throw new SSCSyntaxException(
+                            "Field has no identifier",
+                            declarator.directDeclarator(), tokens
+                    );
+                }
+                final String name = declarator.directDeclarator().Identifier().getText();
+
+                final Field field = new Field(isPrivate, type, ptr, name);
+                memberList.add(SSMember.field(field));
+            }
         } else if (memberCtx.functionDefinition() != null) {
             final boolean isStatic = hasStaticDeclSpec(declSpecs);
             final boolean isPure = hasPureDeclSpec(declSpecs);

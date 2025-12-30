@@ -1,18 +1,32 @@
 package cz.mipit.sscc.ssc.compiler.data;
 
+import java.util.List;
 import java.util.Objects;
 
 public class Field {
     private final boolean isPrivate;
-    private final String data;
 
-    public Field(boolean isPrivate, String data) {
+    private final List<String> type;
+    private final boolean ptr;
+    private final String name;
+
+    public Field(boolean isPrivate, List<String> type, boolean ptr, String name) {
         this.isPrivate = isPrivate;
-        this.data = Objects.requireNonNull(data);
+        this.type = Objects.requireNonNull(type);
+        this.ptr = ptr;
+        this.name = Objects.requireNonNull(name);
     }
 
-    public String getData() {
-        return data;
+    public String getWhole() {
+        return String.join(" ", type) + " " + (ptr ? "*" : "") + name;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public List<String> getType() {
+        return type;
     }
 
     public boolean isPrivate() {

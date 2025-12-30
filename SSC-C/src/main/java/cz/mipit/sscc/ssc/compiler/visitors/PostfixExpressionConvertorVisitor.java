@@ -335,7 +335,7 @@ public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
                     .stream()
                     .filter(mem -> mem.data().getLeft().isPresent())
                     .map(mem -> mem.data().getLeft().get())
-                    .noneMatch(decl -> decl.getData().contains(methodName))) {
+                    .noneMatch(decl -> decl.getName().equals(methodName))) {
                 throw new SSCSyntaxException(
                         "superstruct '" + superstruct.name() + "' has no members called `" + methodName + "`",
                         ctx, tokens);
@@ -442,7 +442,7 @@ public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
                 .map(SSMember::data)
                 .filter(either -> either.getLeft().isPresent())
                 .map(either -> either.getLeft().get())
-                .filter(field -> field.getData().matches(".*?" + fieldName + "\\s*;"))
+                .filter(field -> field.getName().equals(fieldName))
                 .toList();
         if (allMatching.size() > 1) {
             throw new SSCSyntaxException(

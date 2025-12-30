@@ -1,4 +1,4 @@
-package cz.mipit.sscc.app;
+package cz.mipit.sscc.ssc.compiler;
 
 import cz.mipit.sscc.args.ArgumentParser;
 import cz.mipit.sscc.args.Options;
@@ -43,7 +43,7 @@ public final class Application {
             "-Wextra",
             "-Wno-extra-semi", /* transpiler creates extra semicolons */
 
-            "--std=c2x" // todo: add option
+            "--std=c2x" /* todo: add option */
     );
 
     public Application(final String[] args) throws IOException {

@@ -17,9 +17,8 @@ public record SuperStruct(String name, List<SSMember> members) {
             member.data().getLeft().ifPresent(field -> result
                     /* do a little bit of formatting for mid-compilation error messages */
                     .append("    ")
-                    .append(field.getData())
-                    .append("\n"));
-
+                    .append(field.getWhole())
+                    .append(";\n"));
         }
         result.append("};\n");
 
