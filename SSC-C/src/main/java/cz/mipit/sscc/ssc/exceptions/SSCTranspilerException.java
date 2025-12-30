@@ -10,7 +10,7 @@ import org.antlr.v4.runtime.Token;
 import java.util.Arrays;
 import java.util.List;
 
-import static cz.mipit.sscc.util.SSCCUtil.Maths.digitsof;
+import static cz.mipit.sscc.util.SSCCUtil.Maths.digitsOf;
 import static cz.mipit.sscc.util.color.ConsoleColorFactory.COLOR_DEFAULT;
 import static cz.mipit.sscc.util.color.ConsoleColorFactory.Color;
 import static cz.mipit.sscc.util.color.ConsoleColorFactory.Ground;
@@ -47,7 +47,7 @@ public abstract class SSCTranspilerException extends RuntimeException {
     private SSCTranspilerException(Type type, String message,
                                    String context, String locator) {
         super(requireNonNull(type).toColor() +
-                "SSC Transpiler: " + type + " exception: " +
+                "SSC Transpiler: " + type.humanReadableName() + " exception: " +
                 requireNonNull(message, "Message") + COLOR_DEFAULT + lineSeparator() +
                 context +
                 (locator != null ? (lineSeparator() + COLOR_LOCATOR + locator + COLOR_DEFAULT) : "")
@@ -161,17 +161,12 @@ public abstract class SSCTranspilerException extends RuntimeException {
     }
 
     private static int getLineNumberLength(final int min, final int max) {
-        return Math.max(digitsof(min), digitsof(max));
+        return Math.max(digitsOf(min), digitsOf(max));
     }
 
 
     protected enum Type {
         Syntax, Antlr_parser, Preprocessor, Other;
-
-        @Override
-        public final String toString() {
-            return name().replace('_', ' ');
-        }
 
         public final ConsoleColor toColor() {
             return switch (this) {
@@ -181,6 +176,15 @@ public abstract class SSCTranspilerException extends RuntimeException {
 
                 case Other -> COLOR_OTHER;
             };
+        }
+
+        public final String humanReadableName() {
+            return name().replace('_', ' ');
+        }
+
+        @Override
+        public String toString() {
+            return "enum Type{ " + name() + " }";
         }
     }
 }

@@ -76,7 +76,7 @@ public final class SSCCUtil {
     }
 
     public static class Maths {
-        public static int digitsof(int num) {
+        public static int digitsOf(int num) {
             int ndigs = 0;
             while (num > 0) {
                 num /= 10;

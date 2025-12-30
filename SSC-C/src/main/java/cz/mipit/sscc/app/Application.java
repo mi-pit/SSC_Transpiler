@@ -223,26 +223,27 @@ public final class Application {
     }
 
     private static int verifyCCode(final Path file) throws IOException, InterruptedException {
-        final List<String> cmd = ListBuilder.from("cc")
+        return doProcess(ListBuilder
+                .from("cc")
                 .addAll(CC_OPTIONS)
                 .add("-fsyntax-only")
                 .add(file.toString())
-                .build();
-
-        return doProcess(cmd);
+                .build()
+        );
     }
 
     private static void compileCBatch(String binaryName, Collection<Path> files)
             throws IOException, InterruptedException {
         /* cc -Werror -Wall -Wextra -pedantic -fsyntax-only "$file" */
-        final List<String> cmd = ListBuilder.from("cc")
+
+        final int exitCode = doProcess(ListBuilder
+                .from("cc")
                 .addAll(CC_OPTIONS)
                 .add("-o")
                 .add(binaryName)
                 .addMapped(files, Path::toString)
-                .build();
-
-        final int exitCode = doProcess(cmd);
+                .build()
+        );
         if (exitCode != 0) {
             err(ExitValue.C_COMPILATION_FAIL, "Compilation failed with exit code: " + exitCode);
         }
