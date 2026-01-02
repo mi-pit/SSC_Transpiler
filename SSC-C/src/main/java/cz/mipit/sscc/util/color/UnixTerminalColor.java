@@ -1,5 +1,7 @@
 package cz.mipit.sscc.util.color;
 
+import java.io.PrintStream;
+
 import static cz.mipit.sscc.util.color.ConsoleColorFactory.Color;
 import static cz.mipit.sscc.util.color.ConsoleColorFactory.Ground;
 
@@ -27,8 +29,8 @@ public class UnixTerminalColor extends ConsoleColor {
     }
 
     @Override
-    public void setConsoleColor() {
-        System.out.print(repre);
+    public void setConsoleColor(PrintStream stream) {
+        stream.print(repre);
     }
 
     private static String code(Ground ground) {

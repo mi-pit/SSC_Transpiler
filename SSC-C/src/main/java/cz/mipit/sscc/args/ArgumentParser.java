@@ -10,8 +10,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import static cz.mipit.sscc.util.ExitValue.err;
-import static cz.mipit.sscc.util.ExitValue.warn;
+import static cz.mipit.sscc.Logger.err;
+import static cz.mipit.sscc.Logger.warn;
 
 public final class ArgumentParser {
     private ArgumentParser() {

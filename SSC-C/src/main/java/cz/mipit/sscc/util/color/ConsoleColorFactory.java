@@ -1,9 +1,10 @@
 package cz.mipit.sscc.util.color;
 
+import java.io.PrintStream;
 import java.util.function.BiFunction;
 
-public enum ConsoleColorFactory {
-    UNIX {
+public abstract class ConsoleColorFactory {
+    public static final ConsoleColorFactory UNIX = new ConsoleColorFactory() {
         @Override
         protected BiFunction<Ground, Color, ConsoleColor> getFactory() {
             return UnixTerminalColor::new;
@@ -13,8 +14,9 @@ public enum ConsoleColorFactory {
         public ConsoleColor defaultColor() {
             return UnixTerminalColor.DEFAULT;
         }
-    },
-    WINDOWS {
+    };
+
+    public static final ConsoleColorFactory OTHER = new ConsoleColorFactory() {
         @Override
         protected BiFunction<Ground, Color, ConsoleColor> getFactory() {
             return UnsupportedConsoleColor::create;
@@ -26,16 +28,16 @@ public enum ConsoleColorFactory {
         }
     };
 
+    /// TODO?
+    public static final ConsoleColorFactory WINDOWS = OTHER;
+
 
     protected abstract BiFunction<Ground, Color, ConsoleColor> getFactory();
 
     public abstract ConsoleColor defaultColor();
 
-    public static ConsoleColor getDefault(final ConsoleColorFactory factory) {
-        return factory.defaultColor();
-    }
 
-    public static final ConsoleColor COLOR_DEFAULT = getDefault(fromOS());
+    public static final ConsoleColor COLOR_DEFAULT = fromOS().defaultColor();
 
     public static ConsoleColor create(final ConsoleColorFactory factory,
                                       final Ground ground,
@@ -57,15 +59,27 @@ public enum ConsoleColorFactory {
         }
     }
 
-    public enum Ground {FORE, BACK}
+    public enum Ground {
+        FORE,
+        BACK,
+    }
 
-    public enum Color {BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE}
+    public enum Color {
+        BLACK,
+        RED,
+        GREEN,
+        YELLOW,
+        BLUE,
+        MAGENTA,
+        CYAN,
+        WHITE,
+    }
 
 
     /**
      * Does jack
      */
-    private static class UnsupportedConsoleColor extends ConsoleColor {
+    private static final class UnsupportedConsoleColor extends ConsoleColor {
         /**
          * Only one object, since it doesn't do anything
          */
@@ -74,11 +88,8 @@ public enum ConsoleColorFactory {
         private UnsupportedConsoleColor() {
         }
 
-        /**
-         * Does nothing
-         */
         @Override
-        public void setConsoleColor() {
+        public void setConsoleColor(PrintStream stream) {
         }
 
         /**

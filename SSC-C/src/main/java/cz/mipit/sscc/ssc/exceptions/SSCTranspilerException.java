@@ -7,6 +7,7 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 
+import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.List;
 
@@ -31,8 +32,8 @@ public abstract class SSCTranspilerException extends RuntimeException {
 
     private static final ConsoleColor COLOR_CODE_BOLD = new ConsoleColor() {
         @Override
-        public void setConsoleColor() {
-            System.out.print(this);
+        public void setConsoleColor(PrintStream stream) {
+            stream.print(this);
         }
 
         @Override

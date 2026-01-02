@@ -26,8 +26,8 @@ import java.util.Optional;
 import java.util.Set;
 
 import static cz.mipit.sscc.Main.logger;
-import static cz.mipit.sscc.util.ExitValue.err;
-import static cz.mipit.sscc.util.ExitValue.warn;
+import static cz.mipit.sscc.Logger.err;
+import static cz.mipit.sscc.Logger.warn;
 
 public final class Application {
     private final Set<SuperStruct> sss = new HashSet<>();
