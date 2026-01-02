@@ -18,6 +18,7 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.HashSet;
@@ -158,7 +159,7 @@ public final class Application {
         final Path workingFileAbsolutePath = inputFile.getChangedSuffix("c").toAbsolutePath();
 
         logger.printVerbose("Preprocessing file...");
-        if (!Preprocessor.preprocessSSC(inputFile, workingFileAbsolutePath)) {
+        if (!preprocessSSCCode(inputFile, workingFileAbsolutePath)) {
             logger.printVerbose("Preprocessing failed.");
             return Optional.empty();
         }
@@ -231,7 +232,42 @@ public final class Application {
         return new ProcessBuilder(args).inheritIO().start().waitFor();
     }
 
-    private static int verifyCCode(final Path file) throws IOException, InterruptedException {
+    private static final String SSC_DEF_MACRO_STRING_NAME = "__SSC_SOURCE__";
+
+    @Deprecated(since = "preprocessor impl", forRemoval = true)
+    private boolean preprocessSSCCode(final InputFile inFile,
+                                      final Path outFileAbsolute)
+            throws IOException, InterruptedException {
+        if (!Preprocessor.preprocessSSC(inFile, outFileAbsolute)) {
+            return false;
+        }
+
+        final Path tempOut = Files.createTempFile(inFile.dir(), inFile.getFullName(), ".i");
+
+        final int exitCode = doProcess(ListBuilder
+                .from(ccProcessArgBase)
+                .add(
+                        "-E",
+                        "-P",
+                        "-D" + SSC_DEF_MACRO_STRING_NAME,
+                        "-D__attribute__(...)=", /* fixme */
+                        "-x", "c",
+                        inFile.absolutePathString(),
+                        "-o", tempOut.toString()
+                )
+                .build()
+        );
+
+        if (exitCode != 0) {
+            tempOut.toFile().deleteOnExit();
+            return false;
+        }
+
+        Files.move(tempOut, outFileAbsolute, StandardCopyOption.REPLACE_EXISTING);
+        return true;
+    }
+
+    private int verifyCCode(final Path file) throws IOException, InterruptedException {
         return doProcess(ListBuilder
                 .from(ccProcessArgBase)
                 .add("-fsyntax-only")
