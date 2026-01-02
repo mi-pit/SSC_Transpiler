@@ -518,7 +518,7 @@ public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
 
     @Override
     public String visitTerminal(TerminalNode node) {
-        if (node.getText().equals("superstruct")) {
+        if (node.getSymbol().getType() == SSCParser.Superstruct) {
             return "struct ";
         }
         return super.visitTerminal(node);

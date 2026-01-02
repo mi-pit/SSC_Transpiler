@@ -234,7 +234,7 @@ typeSpecifier
     | superStructSpecifier
     | enumSpecifier
     | typedefName
-    | '__typeof__' '(' constantExpression ')' // GCC extension
+    | Typeof '(' constantExpression ')' // c23
     ;
 
 /* my stuff */
@@ -663,6 +663,11 @@ Signed
 
 Sizeof
     : 'sizeof'
+    ;
+
+Typeof
+    : 'typeof'
+    | '__typeof__'
     ;
 
 Static

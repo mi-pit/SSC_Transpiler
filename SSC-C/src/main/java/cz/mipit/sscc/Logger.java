@@ -12,7 +12,7 @@ import static cz.mipit.sscc.util.color.ConsoleColorFactory.Ground;
 import static cz.mipit.sscc.util.color.ConsoleColorFactory.create;
 
 public final class Logger {
-    public static final ConsoleColor COLOR_WARN = create(Ground.BACK, Color.YELLOW);
+    public static final ConsoleColor COLOR_WARN = create(Ground.FORE, Color.YELLOW);
     public static final ConsoleColor COLOR_ERROR = create(Ground.FORE, Color.RED);
 
     public static void err(final ExitValue exitCode, String fmt, Object... args) {
@@ -48,6 +48,7 @@ public final class Logger {
                             final String fmtstr,
                             Object... args) {
         color.printf(stream, "SSC Transpiler: " + typeString + ": " + fmtstr, args);
+        stream.println();
     }
 
 
@@ -82,7 +83,9 @@ public final class Logger {
         if (!options.debug()) {
             return;
         }
+        DEBUG_COLOR.print("[DEBUG] ");
         DEBUG_COLOR.printf(fmt, objects);
+        System.out.println();
     }
 
     public void printVerbose(String fmt, Object... objects) {
@@ -90,6 +93,7 @@ public final class Logger {
             return;
         }
         VERBOSE_COLOR.printf(fmt, objects);
+        System.out.println();
     }
 
     public void printVerbose(String string) {
