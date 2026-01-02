@@ -2,6 +2,7 @@ package cz.mipit.sscc.args;
 
 import cz.mipit.sscc.file.DirectoryTreeParser;
 import cz.mipit.sscc.file.InputFile;
+import cz.mipit.sscc.ssc.compiler.cc.CCStandard;
 import cz.mipit.sscc.util.ExitValue;
 
 import java.io.IOException;
@@ -14,18 +15,50 @@ import static cz.mipit.sscc.Logger.err;
 import static cz.mipit.sscc.Logger.warn;
 
 public final class ArgumentParser {
-    private ArgumentParser() {
+    public static final String OPTSTR_STD_C = "--std=";
+    public static final String OPTSTR_VERBOSE = "-v";
+    public static final String OPTSTR_STOP_ON_ERROR = "-s";
+    public static final String OPTSTR_DEBUG = "--debug";
+    public static final String OPTSTR_HELP = "--help";
+    public static final String OPTSTR_COMPILE = "--compile";
+    public static final String OPTSTR_LIB = "--lib";
+
+    private static final String HELP_STRING = """
+            Usage: sscc [options|files]
+            Options:
+            """;
+
+    private static final List<Option> OPTIONS = List.of(
+            Option.of(OPTSTR_HELP, "Help", "Display this message", null),
+            Option.of(OPTSTR_VERBOSE, "Verbose", "Print information about current stage", null),
+            Option.of(OPTSTR_DEBUG, "Debug mode", "Print debug information (unstable)", null),
+            Option.of(OPTSTR_STOP_ON_ERROR, "Stop on error", "Stops processing after encountering an error", null),
+            Option.of(OPTSTR_STD_C, "Set C standard", "Sets the C standard for compilation/preprocessing", "c standard string (same as in cc)"),
+            Option.of(OPTSTR_COMPILE + " ", "Compile", "Compiles the resulting C code into a binary", "name of the resulting binary"),
+            Option.of(OPTSTR_LIB + " ", "Library", "Process all `.c` & `.ssc` files in a directory", "library path")
+    );
+
+    private static void printHelpAndExit() {
+        System.out.print(HELP_STRING);
+        for (Option option : OPTIONS) {
+            option.print();
+        }
+        System.exit(0);
     }
 
     private enum NextOperation {None, CompileTarget, LibPath}
 
     public static Options parse(String[] args) throws IOException {
-        final List<InputFile> filesToProcess = new ArrayList<>();
+        if (args.length == 0) {
+            printHelpAndExit();
+        }
 
+        final List<InputFile> filesToProcess = new ArrayList<>();
         String compileTarget = null;
         boolean verbose = false;
         boolean printDebug = false;
         boolean stopOnError = true;
+        CCStandard standard = Options.DEF_C_STANDARD;
 
         NextOperation nextOperation = NextOperation.None;
         for (String arg : args) {
@@ -61,20 +94,24 @@ public final class ArgumentParser {
                     }
 
                     yield switch (arg) {
-                        case "-v" -> {
+                        case OPTSTR_HELP -> {
+                            printHelpAndExit();
+                            throw new RuntimeException("Unreachable");
+                        }
+                        case OPTSTR_VERBOSE -> {
                             verbose = true;
                             yield NextOperation.None;
                         }
-                        case "-s" -> {
+                        case OPTSTR_STOP_ON_ERROR -> {
                             stopOnError = false;
                             yield NextOperation.None;
                         }
-                        case "--debug" -> {
+                        case OPTSTR_DEBUG -> {
                             printDebug = true;
                             yield NextOperation.None;
                         }
 
-                        case "--compile" -> {
+                        case OPTSTR_COMPILE -> {
                             if (compileTarget != null) {
                                 err(ExitValue.INVALID_ARGUMENTS, "Compile target already specified");
                             }
@@ -84,6 +121,11 @@ public final class ArgumentParser {
                         case "--lib" -> NextOperation.LibPath;
 
                         default -> {
+                            if (arg.startsWith(OPTSTR_STD_C)) {
+                                standard = CCStandard.fromString(arg.substring(OPTSTR_STD_C.length()));
+                                yield NextOperation.None;
+                            }
+
                             err(ExitValue.INVALID_ARGUMENTS, "Unknown option: " + arg);
                             throw new RuntimeException("Unreachable");
                         }
@@ -96,7 +138,7 @@ public final class ArgumentParser {
             err(ExitValue.INVALID_ARGUMENTS, "Missing argument for option '" + nextOperation + "'");
         }
 
-        return new Options(verbose, printDebug, stopOnError, compileTarget, filesToProcess);
+        return new Options(verbose, printDebug, stopOnError, compileTarget, filesToProcess, standard);
     }
 
     private static InputFile verifyInputFilePath(final Path path) {
@@ -114,5 +156,9 @@ public final class ArgumentParser {
         }
 
         return inputFile;
+    }
+
+
+    private ArgumentParser() {
     }
 }

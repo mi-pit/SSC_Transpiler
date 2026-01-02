@@ -33,21 +33,30 @@ public final class Application {
     private final Set<SuperStruct> sss = new HashSet<>();
     private final Options options;
 
+    private static final List<String> CC_OPTIONS = List.of(
+            "-Wall",
+            "-Wextra",
+
+            "-Wno-extra-semi",  /* transpiler creates extra semicolons */
+            "-Wno-unused",      /* Fixme: remove after implementing preprocessor */
+
+            "-Werror"
+    );
+
+    private final List<String> ccProcessArgBase;
+
     public Options getOptions() {
         return options;
     }
 
-    private static final List<String> CC_OPTIONS = List.of(
-            "-Werror",
-            "-Wall",
-            "-Wextra",
-            "-Wno-extra-semi", /* transpiler creates extra semicolons */
-
-            "--std=c2x" /* todo: add option */
-    );
-
     public Application(final String[] args) throws IOException {
         options = ArgumentParser.parse(args);
+
+        ccProcessArgBase = ListBuilder
+                .from("cc")
+                .addAll(CC_OPTIONS)
+                .add(options.cStandard().ccOptionString())
+                .build();
     }
 
     public void run() throws IOException, InterruptedException {
@@ -224,24 +233,21 @@ public final class Application {
 
     private static int verifyCCode(final Path file) throws IOException, InterruptedException {
         return doProcess(ListBuilder
-                .from("cc")
-                .addAll(CC_OPTIONS)
+                .from(ccProcessArgBase)
                 .add("-fsyntax-only")
                 .add(file.toString())
                 .build()
         );
     }
 
-    private static void compileCBatch(String binaryName, Collection<Path> files)
+    private void compileCBatch(String binaryName, Collection<Path> files)
             throws IOException, InterruptedException {
         /* cc -Werror -Wall -Wextra -pedantic -fsyntax-only "$file" */
-
         final int exitCode = doProcess(ListBuilder
-                .from("cc")
-                .addAll(CC_OPTIONS)
+                .from(ccProcessArgBase)
+                .addMapped(files, Path::toString)
                 .add("-o")
                 .add(binaryName)
-                .addMapped(files, Path::toString)
                 .build()
         );
         if (exitCode != 0) {
