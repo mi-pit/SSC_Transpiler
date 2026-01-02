@@ -395,6 +395,12 @@ public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
                 return Optional.of(var);
             }
         }
+        /* check global variables too */
+        for (SuperstructVariable var : functionVariables.get(null)) {
+            if (var.getName().equals(objectName)) {
+                return Optional.of(var);
+            }
+        }
         return Optional.empty();
     }
 
