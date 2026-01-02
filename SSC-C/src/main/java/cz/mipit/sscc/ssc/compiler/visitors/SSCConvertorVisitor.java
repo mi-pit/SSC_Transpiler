@@ -13,7 +13,6 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 
 import static java.lang.System.lineSeparator;
 
-/* todo?: SSCBaseVisitor< Pair<LineNumber, Line> > */
 public abstract class SSCConvertorVisitor extends SSCBaseVisitor<String> {
     protected final CommonTokenStream tokens;
     private boolean hasErrors;

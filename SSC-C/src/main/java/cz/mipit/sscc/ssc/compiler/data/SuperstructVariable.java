@@ -38,5 +38,4 @@ public class SuperstructVariable extends Variable {
                 "pointer=" + pointer + ", " +
                 "name=" + name + ']';
     }
-
 }

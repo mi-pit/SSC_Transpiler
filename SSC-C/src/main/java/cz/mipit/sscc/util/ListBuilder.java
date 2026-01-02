@@ -37,7 +37,7 @@ public final class ListBuilder<T> {
     }
 
     public static <T> ListBuilder<T> withCapacity(int capacity) {
-        return new ListBuilder<T>(capacity);
+        return new ListBuilder<>(capacity);
     }
 
     /**

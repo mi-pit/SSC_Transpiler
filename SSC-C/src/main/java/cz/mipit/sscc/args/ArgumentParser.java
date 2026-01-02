@@ -50,6 +50,7 @@ public final class ArgumentParser {
                     filesToProcess.addAll(parser.getFiles());
                     yield NextOperation.None;
                 }
+
                 case None -> {
                     if (!arg.startsWith("-")) {
                         final Path path = Path.of(arg);
@@ -87,7 +88,6 @@ public final class ArgumentParser {
                             throw new RuntimeException("Unreachable");
                         }
                     };
-
                 }
             };
         }
