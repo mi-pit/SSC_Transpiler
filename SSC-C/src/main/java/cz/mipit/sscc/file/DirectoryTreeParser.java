@@ -3,18 +3,11 @@ package cz.mipit.sscc.file;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
 public final class DirectoryTreeParser {
-    private final List<InputFile> files = new ArrayList<>();
-
-    public DirectoryTreeParser(final Path root) throws IOException {
-        getPaths(root);
-    }
-
-    private void getPaths(final Path root) throws IOException {
+    public static void getPathsInDirectory(final Path root, final List<InputFile> files) throws IOException {
         try (Stream<Path> entries = Files.walk(root)) {
             entries.forEach(path -> {
                 if (!Files.isRegularFile(path)) {
@@ -31,9 +24,5 @@ public final class DirectoryTreeParser {
                 files.add(inputFile);
             });
         }
-    }
-
-    public List<InputFile> getFiles() {
-        return files;
     }
 }

@@ -79,8 +79,7 @@ public final class ArgumentParser {
                 }
 
                 case LibPath -> {
-                    final DirectoryTreeParser parser = new DirectoryTreeParser(Path.of(arg));
-                    filesToProcess.addAll(parser.getFiles());
+                    DirectoryTreeParser.getPathsInDirectory(Path.of(arg), filesToProcess);
                     yield NextOperation.None;
                 }
 
