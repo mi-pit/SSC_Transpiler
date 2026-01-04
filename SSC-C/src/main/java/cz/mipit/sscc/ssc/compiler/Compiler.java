@@ -30,7 +30,7 @@ import static cz.mipit.sscc.Main.logger;
 import static cz.mipit.sscc.Logger.err;
 import static cz.mipit.sscc.Logger.warn;
 
-public final class Application {
+public final class Compiler {
     private final Set<SuperStruct> sss = new HashSet<>();
     private final Options options;
 
@@ -50,7 +50,7 @@ public final class Application {
         return options;
     }
 
-    public Application(final String[] args) throws IOException {
+    public Compiler(final String[] args) throws IOException {
         options = ArgumentParser.parse(args);
 
         ccProcessArgBase = ListBuilder
