@@ -2,6 +2,7 @@ package cz.mipit.sscc.ssc.compiler.visitors;
 
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.Main;
+import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.compiler.data.Field;
 import cz.mipit.sscc.ssc.compiler.data.FunctionDefinition;
 import cz.mipit.sscc.ssc.compiler.data.SSMember;
@@ -27,13 +28,15 @@ import static java.lang.System.lineSeparator;
 public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
     private final Collection<SuperStruct> superstructs;
 
-    public final Map<String /* Function name */, Set<SuperstructVariable>> functionVariables = new HashMap<>();
+    public final Map<String /* Function name */, Set<SuperstructVariable>> functionVariables;
 
     public PostfixExpressionConvertorVisitor(CommonTokenStream tokens,
-                                             Collection<SuperStruct> sss) {
-        super(tokens);
+                                             Collection<SuperStruct> sss,
+                                             final InputFile currentFile) {
+        super(tokens, currentFile);
         this.superstructs = sss;
 
+        functionVariables = new HashMap<>();
         functionVariables.put(null /* Global variables */, new HashSet<>());
     }
 
@@ -45,10 +48,10 @@ public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
         assert ctx.compoundStatement() != null;
 
         if (ctx.declarationList() != null) {
-            throw new SSCSyntaxException("K&R C-style declarations are invalid in SSC", ctx, tokens);
+            throw getSSCSyntaxException("K&R C-style declarations are invalid in SSC", ctx);
         }
 
-        currentFunctionName = FunctionDefinition.parseName(ctx.declarator(), tokens);
+        currentFunctionName = FunctionDefinition.parseName(ctx.declarator(), tokens, currentFile);
         functionVariables.put(currentFunctionName, new HashSet<>());
 
         getFunctionSuperstructArgs(ctx);
@@ -62,7 +65,7 @@ public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
         final SSCParser.ParameterTypeListContext paramTypeList =
                 ctx.declarator().directDeclarator().parameterTypeList();
         if (paramTypeList == null) {
-            throw new SSCSyntaxException("Invalid function definition", ctx, tokens);
+            throw getSSCSyntaxException("Invalid function definition", ctx);
         }
 
         final List<SSCParser.ParameterDeclarationContext> paramList =
@@ -175,7 +178,7 @@ public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
             return super.visitPostfixExpression(ctx);
         }
         final SSCParser.FunctionDefinitionContext funcCtx = (SSCParser.FunctionDefinitionContext) parent.get();
-        final String functionName = FunctionDefinition.parseName(funcCtx.declarator(), tokens);
+        final String functionName = FunctionDefinition.parseName(funcCtx.declarator(), tokens, currentFile);
 
         if (!ctx.Arrow().isEmpty() || !ctx.Dot().isEmpty()) {
             return convertMethodCall(ctx, functionName);
@@ -214,12 +217,14 @@ public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
                                             final String ctxFunctionName) {
         Main.logger.printDebug("Double colon in: %s", getLiteral(ctx, tokens));
 
-        if (ctx.primaryExpression() == null)
-            throw new SSCSyntaxException("Double colon expression has no left side (Superstruct name) expression", ctx, tokens);
+        if (ctx.primaryExpression() == null) {
+            throw getSSCSyntaxException("Double colon expression has no left side (Superstruct name) expression", ctx);
+        }
         final String className = getLiteral(ctx.primaryExpression(), tokens);
 
-        if (ctx.Identifier().isEmpty())
-            throw new SSCSyntaxException("Double colon expression has no right side (function) expression", ctx, tokens);
+        if (ctx.Identifier().isEmpty()) {
+            throw getSSCSyntaxException("Double colon expression has no right side (function) expression", ctx);
+        }
         final String methodName = ctx.Identifier().get(0).toString();
 
         verifyStaticCall(ctx, ctxFunctionName, className, methodName);
@@ -249,24 +254,24 @@ public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
                                   final String methodName) {
         final Optional<SuperStruct> maybeSS = findSuperstructByName(className);
         if (maybeSS.isEmpty()) {
-            throw new SSCSyntaxException("Could not find superstruct with name `" + className + "`", ctx, tokens);
+            throw getSSCSyntaxException("Could not find superstruct with name `" + className + "`", ctx);
         }
         final SuperStruct superstruct = maybeSS.get();
 
         final Optional<FunctionDefinition> maybeMethod = findSuperstructMethod(methodName, superstruct);
         if (maybeMethod.isEmpty()) {
-            throw new SSCSyntaxException(
+            throw getSSCSyntaxException(
                     "Superstruct with name `" + className
                             + "` has no method called `" + methodName
-                            + "`", ctx, tokens);
+                            + "`", ctx);
         }
         final FunctionDefinition method = maybeMethod.get();
 
         if (method.isPrivate()) {
             Main.logger.printDebug("Method '" + methodName + "' is private. Going to check if it may be used here...");
             if (notInSuperstructMethod(ctxFunctionName)) {
-                throw new SSCSyntaxException(
-                        "Cannot access private static method `" + methodName + "` from outside the superstruct", ctx, tokens
+                throw getSSCSyntaxException(
+                        "Cannot access private static method `" + methodName + "` from outside the superstruct", ctx
                 );
             }
         }
@@ -306,7 +311,7 @@ public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
 
         final String objectName = getLiteral(ctx.primaryExpression(), tokens);
         if (ctx.Identifier().isEmpty())
-            throw new SSCSyntaxException(arrowOrDot + " expression has no right side expression", ctx, tokens);
+            throw getSSCSyntaxException(arrowOrDot + " expression has no right side expression", ctx);
 
         final Optional<SuperstructVariable> maybeVar = findSuperstructVariable(functionName, objectName);
         if (maybeVar.isEmpty()) {
@@ -336,24 +341,23 @@ public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
                     .filter(mem -> mem.data().getLeft().isPresent())
                     .map(mem -> mem.data().getLeft().get())
                     .noneMatch(decl -> decl.getName().equals(methodName))) {
-                throw new SSCSyntaxException(
+                throw getSSCSyntaxException(
                         "superstruct '" + superstruct.name() + "' has no members called `" + methodName + "`",
-                        ctx, tokens);
+                        ctx);
             }
             return getLiteral(ctx, tokens);
         }
         final FunctionDefinition method = maybeMethod.get();
 
         if (var.isPointer() && arrowOrDot == ArrowOrDot.Dot) {
-            throw new SSCSyntaxException("Pointer to superstruct must be accessed with `->`", ctx, tokens);
+            throw getSSCSyntaxException("Pointer to superstruct must be accessed with `->`", ctx);
         }
 
         if (method.isPrivate()) {
             Main.logger.printDebug("Method '" + methodName + "' is private. Going to check if it may be used here...");
             if (notInSuperstructMethod(functionName)) {
-                throw new SSCSyntaxException(
-                        "Cannot access private method `" + methodName + "` from outside the superstruct", ctx, tokens
-                );
+                throw getSSCSyntaxException(
+                        "Cannot access private method `" + methodName + "` from outside the superstruct", ctx);
             }
         }
 
@@ -416,10 +420,10 @@ public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
                                                    final SuperstructVariable var) {
         final Optional<SuperStruct> optSS = findSuperStructFromVariable(var);
         if (optSS.isEmpty()) {
-            throw new SSCSyntaxException(
+            throw getSSCSyntaxException(
                     "`superstruct " + var.ssName() + "` "
                             + "(type of variable \"" + var.getName() + "\") is not properly defined",
-                    ctx, tokens
+                    ctx
             );
         }
         return optSS.get();
@@ -451,13 +455,13 @@ public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
                 .filter(field -> field.getName().equals(fieldName))
                 .toList();
         if (allMatching.size() > 1) {
-            throw new SSCSyntaxException(
-                    "Found more than one matching field in superstruct `" + superstruct.name() + "`", ctx, tokens
+            throw getSSCSyntaxException(
+                    "Found more than one matching field in superstruct `" + superstruct.name() + "`", ctx
             );
         }
         if (allMatching.isEmpty()) {
-            throw new SSCSyntaxException(
-                    "Found no matching field in superstruct `" + superstruct.name() + "`", ctx, tokens
+            throw getSSCSyntaxException(
+                    "Found no matching field in superstruct `" + superstruct.name() + "`", ctx
             );
         }
 
@@ -466,8 +470,8 @@ public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
         if (field.isPrivate()) {
             Main.logger.printDebug("Field `" + fieldName + "` is private. Going to check if it may be used here...");
             if (notInSuperstructMethod(functionName)) {
-                throw new SSCSyntaxException(
-                        "Cannot access private field `" + fieldName + "` from outside the superstruct", ctx, tokens
+                throw getSSCSyntaxException(
+                        "Cannot access private field `" + fieldName + "` from outside the superstruct", ctx
                 );
             }
         }

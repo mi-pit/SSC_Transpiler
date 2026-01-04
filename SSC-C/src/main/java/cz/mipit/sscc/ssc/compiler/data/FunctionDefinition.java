@@ -1,6 +1,7 @@
 package cz.mipit.sscc.ssc.compiler.data;
 
 import antlr.ssc.SSCParser;
+import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.exceptions.children.SSCSyntaxException;
 import cz.mipit.sscc.ssc.exceptions.children.UnknownTranspilationException;
 import cz.mipit.sscc.util.SSCCUtil;
@@ -46,15 +47,16 @@ public class FunctionDefinition {
                                                            final List<String> specsWithoutCustom,
                                                            final SSCParser.FunctionDefinitionContext ctx,
                                                            final CommonTokenStream tokens,
-                                                           final String superstructMemberOfName) {
+                                                           final String superstructMemberOfName,
+                                                           final InputFile currentFile) {
         if (isStatic && isPure) {
-            throw new SSCSyntaxException("Method may not be both `static` and `pure`", ctx, tokens);
+            throw new SSCSyntaxException("Method may not be both `static` and `pure`", ctx, tokens, currentFile);
         }
 
         return new FunctionDefinition(
                 specsWithoutCustom, isStatic, isPure, isPrivate,
                 parseType(ctx.declarationSpecifiers(), ctx.declarator(), tokens),
-                parseName(ctx.declarator(), tokens),
+                parseName(ctx.declarator(), tokens, currentFile),
                 parseFunctionArgs(ctx.declarator(), tokens),
                 parseFunctionBody(ctx.compoundStatement(), tokens),
                 superstructMemberOfName
@@ -79,10 +81,12 @@ public class FunctionDefinition {
         return String.join(" ", builder);
     }
 
-    public static String parseName(SSCParser.DeclaratorContext ctx, CommonTokenStream tokens) {
+    public static String parseName(SSCParser.DeclaratorContext ctx,
+                                   CommonTokenStream tokens,
+                                   InputFile currentFile) {
         var directDecl = ctx.directDeclarator();
         if (directDecl == null) {
-            throw new SSCSyntaxException("Direct declarator is null", ctx, tokens);
+            throw new SSCSyntaxException("Direct declarator is null", ctx, tokens, currentFile);
         }
 
         if (directDecl.Identifier() == null && (directDecl.LeftParen() == null || directDecl.RightParen() == null)) {
@@ -95,14 +99,17 @@ public class FunctionDefinition {
 
         if (directDecl.LeftParen() == null) {
             /* How could this be parsed as a function definition? */
-            throw new UnknownTranspilationException("Parser \"found\" function definition without parentheses", ctx, tokens);
+            throw new UnknownTranspilationException("Parser \"found\" function definition without parentheses",
+                    ctx, tokens, currentFile);
         }
 
         if (directDecl.RightParen() == null) {
-            throw new SSCSyntaxException("Direct declarator has left parenthesis, but not a matching right one", ctx, tokens);
+            throw new SSCSyntaxException("Direct declarator has left parenthesis, but not a matching right one",
+                    ctx, tokens, currentFile);
         }
         if (directDecl.directDeclarator() == null) {
-            throw new SSCSyntaxException("Missing direct declarator (perhaps missing a variable name?)", directDecl, tokens);
+            throw new SSCSyntaxException("Missing direct declarator (perhaps missing a variable name?)",
+                    directDecl, tokens, currentFile);
         }
 
         return SSCCUtil.Text.getLiteral(directDecl.directDeclarator(), tokens);

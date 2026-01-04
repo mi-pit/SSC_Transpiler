@@ -46,6 +46,8 @@ public final class Compiler {
 
     private final List<String> ccProcessArgBase;
 
+    private InputFile currentFile = null;
+
     public Options getOptions() {
         return options;
     }
@@ -108,6 +110,7 @@ public final class Compiler {
             }
 
             try {
+                currentFile = fileArg;
                 final Optional<Path> processed = transpileFile(fileArg);
                 if (processed.isEmpty()) {
                     totalFailed++;
@@ -203,7 +206,7 @@ public final class Compiler {
                                               final ParseTree tree,
                                               final Path outputFile)
             throws IOException {
-        final SuperstructConvertorVisitor visitor = new SuperstructConvertorVisitor(tokens);
+        final SuperstructConvertorVisitor visitor = new SuperstructConvertorVisitor(tokens, currentFile);
         final String result = visitor.visit(tree);
         sss.addAll(visitor.getSuperStructs());
 
@@ -216,7 +219,7 @@ public final class Compiler {
                                             final ParseTree tree,
                                             final Path outputFile)
             throws IOException {
-        final SSCConvertorVisitor visitor = new PostfixExpressionConvertorVisitor(tokens, sss);
+        final SSCConvertorVisitor visitor = new PostfixExpressionConvertorVisitor(tokens, sss, currentFile);
         final String result = visitor.visit(tree) + "\n";
 
         Files.writeString(outputFile, result,

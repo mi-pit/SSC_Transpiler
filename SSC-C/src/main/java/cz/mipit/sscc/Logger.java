@@ -47,7 +47,7 @@ public final class Logger {
                             final PrintStream stream,
                             final String fmtstr,
                             Object... args) {
-        color.printf(stream, "SSC Transpiler: " + typeString + ": " + fmtstr, args);
+        color.printf(stream, Main.SSCC_NAME + ": " + typeString + ": " + fmtstr, args);
         stream.println();
     }
 

@@ -546,7 +546,8 @@ externalDeclaration
     ;
 
 directive
-    : Directive
+    : macroDefinition
+    | GeneralDirective
     ;
 
 functionDefinition
@@ -556,6 +557,27 @@ functionDefinition
 declarationList
     : declaration+
     ;
+
+macroDefinition
+    : MacroDefine Identifier macroBody?
+    | MacroDefine Identifier '(' macroArgs? ')' macroBody?
+    ;
+
+/* externalDeclaration without other directives */
+macroBody
+    : functionDefinition
+    | declaration
+    | ';'
+    ;
+
+macroArgs
+    : Identifier (',' Identifier)*
+    ;
+
+MacroDefine
+    : '#' 'define'
+    ;
+
 
 Auto
     : 'auto'
@@ -1149,7 +1171,7 @@ fragment SChar
     }
  */
 
-Directive
+GeneralDirective
     : '#' (~[\r\n\\] | '\\' [\r\n])*
     ;
 

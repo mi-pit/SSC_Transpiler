@@ -1,6 +1,7 @@
 package cz.mipit.sscc.ssc.compiler.visitors;
 
 import antlr.ssc.SSCParser;
+import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.compiler.data.Field;
 import cz.mipit.sscc.ssc.compiler.data.FunctionDefinition;
 import cz.mipit.sscc.ssc.compiler.data.SSMember;
@@ -20,8 +21,8 @@ import java.util.Set;
 public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
     private final Set<SuperStruct> superStructs = new HashSet<>();
 
-    public SuperstructConvertorVisitor(CommonTokenStream tokens) {
-        super(tokens);
+    public SuperstructConvertorVisitor(CommonTokenStream tokens, InputFile currentFile) {
+        super(tokens, currentFile);
     }
 
     public Set<SuperStruct> getSuperStructs() {
@@ -45,7 +46,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
         // Save to record
         final SuperStruct superStruct = new SuperStruct(thisSSName, memberList);
         if (!superStructs.add(superStruct)) {
-            throw new SSCSyntaxException("Superstruct with name " + superStruct.name() + " already exists", ctx, tokens);
+            throw getSSCSyntaxException("Superstruct with name " + superStruct.name() + " already exists", ctx);
         }
 
         return superStruct.convert();
@@ -94,24 +95,24 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
             }
 
             if (initDeclaratorList.initDeclarator().isEmpty()) {
-                throw new SSCSyntaxException(
+                throw getSSCSyntaxException(
                         "Init declarator empty `" + SSCCUtil.Text.getLiteral(memberCtx, tokens) + "`",
-                        initDeclaratorList, tokens
+                        initDeclaratorList
                 );
             }
             for (SSCParser.InitDeclaratorContext initDecl : initDeclaratorList.initDeclarator()) {
                 if (initDecl.initializer() != null) {
-                    throw new SSCSyntaxException(
+                    throw getSSCSyntaxException(
                             "Cannot initialize superstruct field (must use a constructor)",
-                            initDecl.initializer(), tokens
+                            initDecl.initializer()
                     );
                 }
                 final SSCParser.DeclaratorContext declarator = initDecl.declarator();
                 final boolean ptr = declarator.pointer() != null;
                 if (declarator.directDeclarator().Identifier() == null) {
-                    throw new SSCSyntaxException(
+                    throw getSSCSyntaxException(
                             "Field has no identifier",
-                            declarator.directDeclarator(), tokens
+                            declarator.directDeclarator()
                     );
                 }
                 final String name = declarator.directDeclarator().Identifier().getText();
@@ -132,7 +133,8 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
                     withoutCustom,
                     memberCtx.functionDefinition(),
                     tokens,
-                    thisSSName
+                    thisSSName,
+                    currentFile
             );
 
             memberList.add(SSMember.function(functionDefinition));

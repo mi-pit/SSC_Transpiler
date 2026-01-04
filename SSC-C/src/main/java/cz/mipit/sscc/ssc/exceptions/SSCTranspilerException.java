@@ -1,5 +1,7 @@
 package cz.mipit.sscc.ssc.exceptions;
 
+import cz.mipit.sscc.Main;
+import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.preprocessor.EnumeratedLine;
 import cz.mipit.sscc.util.SSCCUtil;
 import cz.mipit.sscc.util.color.ConsoleColor;
@@ -42,45 +44,89 @@ public abstract class SSCTranspilerException extends RuntimeException {
         }
     };
 
-
     public static final String LINENO_SEPARATOR = " | ";
 
+
+    private final InputFile currentFile;
+    private final Type type;
+    private final String message;
+    private final String context;
+    private final String locator;
+
+
+    private String formattedMessage() {
+        final ConsoleColor color = type.toColor();
+
+        final StringBuilder sBuilder = new StringBuilder(color.toString());
+        sBuilder
+                .append(Main.SSCC_NAME)
+                .append(": ")
+                .append(type.humanReadableName())
+                .append(" exception while processing file '")
+                .append(COLOR_DEFAULT)
+                .append(currentFile.absolutePathString())
+                .append(color)
+                .append("':")
+                .append(lineSeparator())
+                .append("    ")
+                .append(message)
+                .append(COLOR_DEFAULT)
+                .append(lineSeparator())
+                .append(context);
+
+        if (locator != null) {
+            sBuilder.append(lineSeparator())
+                    .append(COLOR_LOCATOR)
+                    .append(locator);
+        }
+
+        sBuilder.append(COLOR_DEFAULT);
+
+        return sBuilder.toString();
+    }
+
     private SSCTranspilerException(Type type, String message,
-                                   String context, String locator) {
-        super(requireNonNull(type).toColor() +
-                "SSC Transpiler: " + type.humanReadableName() + " exception: " +
-                requireNonNull(message, "Message") + COLOR_DEFAULT + lineSeparator() +
-                context +
-                (locator != null ? (lineSeparator() + COLOR_LOCATOR + locator + COLOR_DEFAULT) : "")
-        );
+                                   String context, String locator,
+                                   InputFile currentFile) {
+        this.type = requireNonNull(type);
+        this.message = requireNonNull(message);
+        this.context = requireNonNull(context);
+        this.locator = locator;
+        this.currentFile = requireNonNull(currentFile);
     }
 
     protected SSCTranspilerException(Type type, String message,
-                                     List<EnumeratedLine> lines, String locator) {
-        this(type, message, formatLines(lines), locator);
+                                     List<EnumeratedLine> lines,
+                                     String locator, InputFile currentFile) {
+        this(type, message, formatLines(lines), locator, currentFile);
     }
 
     protected SSCTranspilerException(
             final Type type,
             final String message,
-            final SSCTranspilerException e
+            final SSCTranspilerException e,
+            final InputFile currentFile
     ) {
-        this(type, message, e.getMessage(), null);
+        this(type, message, e.getMessage(), null, currentFile);
     }
 
     protected SSCTranspilerException(Type type, String message,
-                                     ParserRuleContext ctx, CommonTokenStream tokens) {
+                                     ParserRuleContext ctx, CommonTokenStream tokens,
+                                     InputFile currentFile) {
         this(type, message, getLinesFromCtx(
-                requireNonNull(ctx, "Context"),
-                requireNonNull(tokens, "Token stream")
-        ), getLocator(ctx));
+                        requireNonNull(ctx, "Context"),
+                        requireNonNull(tokens, "Token stream")),
+                getLocator(ctx),
+                currentFile);
     }
 
-    protected SSCTranspilerException(Type type, Token tok, CommonTokenStream tokens) {
+    protected SSCTranspilerException(Type type, Token tok, CommonTokenStream tokens,
+                                     InputFile currentFile) {
         this(type, "Could not parse token '" + tok.getText() + "'", getLinesFromToken(
-                requireNonNull(tok, "Token"),
-                requireNonNull(tokens, "Token stream")
-        ), getLocator(tok));
+                        requireNonNull(tok, "Token"),
+                        requireNonNull(tokens, "Token stream")),
+                getLocator(tok),
+                currentFile);
     }
 
     protected static String formatLines(final List<EnumeratedLine> lines) {
@@ -163,6 +209,12 @@ public abstract class SSCTranspilerException extends RuntimeException {
 
     private static int getLineNumberLength(final int min, final int max) {
         return Math.max(digitsOf(min), digitsOf(max));
+    }
+
+
+    @Override
+    public String getMessage() {
+        return formattedMessage();
     }
 
 

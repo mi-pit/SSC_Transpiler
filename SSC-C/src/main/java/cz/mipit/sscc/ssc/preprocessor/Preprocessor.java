@@ -151,7 +151,7 @@ public final class Preprocessor {
         if (!Files.exists(resolvedNormalized)) {
             throw new PreprocessorException(
                     "Included file '" + resolvedNormalized + "' does not exist",
-                    lastLines
+                    lastLines, inputFile
             );
         }
 
@@ -160,13 +160,13 @@ public final class Preprocessor {
         final InputFile subFile = InputFile.fromAbsolutePath(resolvedNormalized);
         final Preprocessor subFilePreprocessor = new Preprocessor(subFile);
 
-        /* TODO: Add preprocessor 'stack trace'? */
         try {
             final List<String> linesConverted = subFilePreprocessor.processFile(linesLiteral, fileDir);
             outputLines.addAll(linesConverted);
         } catch (PreprocessorException e) {
             throw new PreprocessorException(
-                    "In the expansion of file '" + inputFile.getFullName() + "'", e
+                    "In the expansion of file '" + inputFile.getFullName() + "'",
+                    e, inputFile
             );
         }
     }
@@ -196,7 +196,8 @@ public final class Preprocessor {
         if (withoutInclude.isEmpty()) {
             throw new PreprocessorException(
                     "Empty include directive",
-                    lastLines
+                    lastLines,
+                    inputFile
             );
         }
 
@@ -208,7 +209,8 @@ public final class Preprocessor {
                     new int[]{
                             index,
                             index + 1
-                    }
+                    },
+                    inputFile
             );
         }
 
@@ -222,7 +224,8 @@ public final class Preprocessor {
                     new int[]{
                             currentLine.lastIndexOf(firstChar),
                             currentLine.lastIndexOf(lastChar)
-                    }
+                    },
+                    inputFile
             );
         }
 
@@ -240,7 +243,8 @@ public final class Preprocessor {
                     "Empty file path string",
                     lastLines,
                     currentLine.lastIndexOf(withoutInclude) + 1,
-                    withoutInclude.length() - 2
+                    withoutInclude.length() - 2,
+                    inputFile
             );
         }
 
@@ -254,7 +258,8 @@ public final class Preprocessor {
         } catch (InvalidPathException e) {
             throw new PreprocessorException(
                     "Could not resolve path '" + baseDir + " + " + filePathString + "'",
-                    lastLines
+                    lastLines,
+                    inputFile
             );
         }
     }

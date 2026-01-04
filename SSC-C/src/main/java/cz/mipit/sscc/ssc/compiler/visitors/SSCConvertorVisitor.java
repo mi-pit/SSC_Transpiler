@@ -2,10 +2,12 @@ package cz.mipit.sscc.ssc.compiler.visitors;
 
 import antlr.ssc.SSCBaseVisitor;
 import antlr.ssc.SSCParser;
+import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.ssc.exceptions.children.AntlrException;
 import cz.mipit.sscc.ssc.exceptions.children.SSCSyntaxException;
 import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.RuleNode;
@@ -16,16 +18,24 @@ import static java.lang.System.lineSeparator;
 public abstract class SSCConvertorVisitor extends SSCBaseVisitor<String> {
     protected final CommonTokenStream tokens;
     private boolean hasErrors;
+    protected final InputFile currentFile;
 
-    protected SSCConvertorVisitor(CommonTokenStream tokens) {
+    protected SSCConvertorVisitor(CommonTokenStream tokens, InputFile currentFile) {
         this.tokens = tokens;
+        this.currentFile = currentFile;
         hasErrors = false;
     }
 
+
+    protected SSCTranspilerException getSSCSyntaxException(String message, ParserRuleContext ctx) {
+        return new SSCSyntaxException(message, ctx, tokens, currentFile);
+    }
+
+
     @Override
     public String visitChildren(RuleNode node) {
-        StringBuilder sb = new StringBuilder();
-        int n = node.getChildCount();
+        final StringBuilder sb = new StringBuilder();
+        final int n = node.getChildCount();
         for (int i = 0; i < n; i++) {
             try {
                 sb.append(node.getChild(i).accept(this));
@@ -45,7 +55,7 @@ public abstract class SSCConvertorVisitor extends SSCBaseVisitor<String> {
 
         return switch (node.getSymbol().getType()) {
             case SSCParser.Semi,
-                 SSCParser.Directive,
+                 SSCParser.GeneralDirective,
                  SSCParser.LeftBrace,
                  SSCParser.RightBrace -> node.getText() + lineSeparator();
 
@@ -65,7 +75,7 @@ public abstract class SSCConvertorVisitor extends SSCBaseVisitor<String> {
         //}
 
         // Don't throw! Let the user see the rest of the error nodes!
-        printErrorMessage(new AntlrException(node.getSymbol(), tokens));
+        printErrorMessage(new AntlrException(node.getSymbol(), tokens, currentFile));
 
         return super.visitErrorNode(node);
     }
