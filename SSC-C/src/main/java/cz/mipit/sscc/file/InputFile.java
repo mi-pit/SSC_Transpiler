@@ -3,11 +3,29 @@ package cz.mipit.sscc.file;
 import java.nio.file.Path;
 import java.util.Objects;
 
-public record InputFile(Path dir, String name, String suffix) {
+/**
+ * Immutable class.
+ * <p>
+ * Sibling to {@link Path}
+ * </p>
+ */
+public final class InputFile {
+    private final Path dir;
+    private final String name;
+    private final String suffix;
+
+    private final String fullName;
+    private final Path path;
+    private final Path absolutePath;
+
     public InputFile(Path dir, String name, String suffix) {
         this.dir = Objects.requireNonNull(dir, "File must have a directory");
         this.name = Objects.requireNonNull(name, "File must have a name");
         this.suffix = suffix;
+
+        fullName = suffix == null ? name : name + "." + suffix;
+        path = Path.of(dir.toString(), getFullName());
+        absolutePath = path.toAbsolutePath();
     }
 
     public static InputFile fromAbsolutePath(final Path fileAbsolutePath) {
@@ -27,15 +45,15 @@ public record InputFile(Path dir, String name, String suffix) {
     }
 
     public Path toPath() {
-        return Path.of(dir.toString(), getFullName());
+        return path;
     }
 
     public Path toAbsolutePath() {
-        return toPath().toAbsolutePath();
+        return absolutePath;
     }
 
     public String getFullName() {
-        return suffix == null ? name : name + "." + suffix;
+        return fullName;
     }
 
     public InputFile getChangedSuffix(final String newSuffix) {
@@ -43,6 +61,18 @@ public record InputFile(Path dir, String name, String suffix) {
     }
 
     public String absolutePathString() {
-        return String.format("%s/%s", dir, getFullName());
+        return absolutePath.toString();
+    }
+
+    public Path dir() {
+        return dir;
+    }
+
+    public String name() {
+        return name;
+    }
+
+    public String suffix() {
+        return suffix;
     }
 }

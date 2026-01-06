@@ -3,7 +3,7 @@ package cz.mipit.sscc.ssc.compiler;
 import cz.mipit.sscc.args.ArgumentParser;
 import cz.mipit.sscc.args.Options;
 import cz.mipit.sscc.file.InputFile;
-import cz.mipit.sscc.ssc.compiler.data.SuperStruct;
+import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.visitors.PostfixExpressionConvertorVisitor;
 import cz.mipit.sscc.ssc.compiler.visitors.SSCConvertorVisitor;
 import cz.mipit.sscc.ssc.compiler.visitors.SuperstructConvertorVisitor;
@@ -244,6 +244,8 @@ public final class Compiler {
         if (!Preprocessor.preprocessSSC(inFile, outFileAbsolute)) {
             return false;
         }
+        if (true)
+            return true;
 
         final Path tempOut = Files.createTempFile(inFile.dir(), inFile.getFullName(), ".i");
 

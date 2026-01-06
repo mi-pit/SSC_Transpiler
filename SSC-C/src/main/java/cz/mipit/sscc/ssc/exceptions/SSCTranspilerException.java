@@ -64,7 +64,7 @@ public abstract class SSCTranspilerException extends RuntimeException {
                 .append(type.humanReadableName())
                 .append(" exception while processing file '")
                 .append(COLOR_DEFAULT)
-                .append(currentFile.absolutePathString())
+                .append(currentFile.toPath())
                 .append(color)
                 .append("':")
                 .append(lineSeparator())
@@ -85,6 +85,7 @@ public abstract class SSCTranspilerException extends RuntimeException {
         return sBuilder.toString();
     }
 
+    /* Base constructor */
     private SSCTranspilerException(Type type, String message,
                                    String context, String locator,
                                    InputFile currentFile) {
@@ -208,7 +209,7 @@ public abstract class SSCTranspilerException extends RuntimeException {
     }
 
     private static int getLineNumberLength(final int min, final int max) {
-        return Math.max(digitsOf(min), digitsOf(max));
+        return Math.max(1, Math.max(digitsOf(min), digitsOf(max)));
     }
 
 

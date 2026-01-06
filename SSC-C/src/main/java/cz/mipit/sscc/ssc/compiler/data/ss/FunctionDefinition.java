@@ -1,4 +1,4 @@
-package cz.mipit.sscc.ssc.compiler.data;
+package cz.mipit.sscc.ssc.compiler.data.ss;
 
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.file.InputFile;

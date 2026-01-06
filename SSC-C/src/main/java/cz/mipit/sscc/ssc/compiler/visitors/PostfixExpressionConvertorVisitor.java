@@ -3,18 +3,17 @@ package cz.mipit.sscc.ssc.compiler.visitors;
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.Main;
 import cz.mipit.sscc.file.InputFile;
-import cz.mipit.sscc.ssc.compiler.data.Field;
-import cz.mipit.sscc.ssc.compiler.data.FunctionDefinition;
-import cz.mipit.sscc.ssc.compiler.data.SSMember;
-import cz.mipit.sscc.ssc.compiler.data.SuperStruct;
-import cz.mipit.sscc.ssc.compiler.data.SuperstructVariable;
-import cz.mipit.sscc.ssc.exceptions.children.SSCSyntaxException;
+import cz.mipit.sscc.ssc.compiler.data.macro.Macro;
+import cz.mipit.sscc.ssc.compiler.data.ss.Field;
+import cz.mipit.sscc.ssc.compiler.data.ss.FunctionDefinition;
+import cz.mipit.sscc.ssc.compiler.data.ss.SSMember;
+import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
+import cz.mipit.sscc.ssc.compiler.data.ss.SuperstructVariable;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -26,17 +25,20 @@ import static cz.mipit.sscc.util.SSCCUtil.Text.getLiteral;
 import static java.lang.System.lineSeparator;
 
 public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
-    private final Collection<SuperStruct> superstructs;
+    private final Set<SuperStruct> superstructs;
+    private final HashMap<String /* name */, Macro> macros;
 
     public final Map<String /* Function name */, Set<SuperstructVariable>> functionVariables;
 
     public PostfixExpressionConvertorVisitor(CommonTokenStream tokens,
-                                             Collection<SuperStruct> sss,
+                                             Set<SuperStruct> sss,
                                              final InputFile currentFile) {
         super(tokens, currentFile);
         this.superstructs = sss;
 
+        macros = new HashMap<>();
         functionVariables = new HashMap<>();
+
         functionVariables.put(null /* Global variables */, new HashSet<>());
     }
 
@@ -173,11 +175,16 @@ public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
             return res.get();
         }
 
-        Optional<ParserRuleContext> parent = getParent(ctx);
+        final Optional<Macro> maybeMacro = getMacro(ctx);
+        if (maybeMacro.isPresent()) {
+            return replaceMacro(ctx, maybeMacro.get());
+        }
+
+        Optional<SSCParser.FunctionDefinitionContext> parent = getFunctionDefinitionParent(ctx);
         if (parent.isEmpty()) {
             return super.visitPostfixExpression(ctx);
         }
-        final SSCParser.FunctionDefinitionContext funcCtx = (SSCParser.FunctionDefinitionContext) parent.get();
+        final SSCParser.FunctionDefinitionContext funcCtx = parent.get();
         final String functionName = FunctionDefinition.parseName(funcCtx.declarator(), tokens, currentFile);
 
         if (!ctx.Arrow().isEmpty() || !ctx.Dot().isEmpty()) {
@@ -186,18 +193,79 @@ public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
         if (!ctx.DoubleColon().isEmpty()) {
             return convertStaticFunctionCall(ctx, functionName);
         }
-        return visitChildren(ctx);
+        return super.visitPostfixExpression(ctx);
     }
 
-    private static Optional<ParserRuleContext> getParent(SSCParser.PostfixExpressionContext ctx) {
+    private Optional<Macro> getMacro(SSCParser.PostfixExpressionContext ctx) {
+        if (ctx.LeftParen().isEmpty()) {
+            return Optional.empty();
+        }
+        if (ctx.primaryExpression() == null) {
+            return Optional.empty();
+        }
+        /* Macro invocation must start with an Identifier */
+        if (ctx.primaryExpression().Identifier() == null) {
+            return Optional.empty();
+        }
+
+        final String possibleMacroName = ctx.primaryExpression().Identifier().getText();
+
+        if ("streq".equals(possibleMacroName)) {
+            System.out.println("Here");
+        }
+
+        final var macro = macros.get(possibleMacroName);
+
+        /* assume function call if macro is null */
+        return Optional.ofNullable(macro);
+    }
+
+    private String replaceMacro(SSCParser.PostfixExpressionContext ctx, Macro macro) {
+        System.out.println("ctx = " + ctx + ", macro = " + macro);
+        return "";
+    }
+
+    private static Optional<SSCParser.FunctionDefinitionContext> getFunctionDefinitionParent(
+            final SSCParser.PostfixExpressionContext ctx
+    ) {
         ParserRuleContext parent = ctx;
-        while (parent != null && !(parent instanceof SSCParser.FunctionDefinitionContext)) {
+        while (parent != null) {
+            if (parent instanceof SSCParser.FunctionDefinitionContext func) {
+                return Optional.of(func);
+            }
             parent = parent.getParent();
         }
-        return Optional.ofNullable(parent);
+        return Optional.empty();
     }
 
     private Optional<String> getCompoundLiteralReplaced(SSCParser.PostfixExpressionContext ctx) {
+        /* TODO */
+//        if (ctx.typeName() == null) {
+//            return Optional.empty();
+//        }
+//        final var typeName = ctx.typeName();
+//        final var initializerList = ctx.initializerList();
+//        final var specifierQualifierList = typeName.specifierQualifierList();
+//
+//        final List<String> typeSpecs = new ArrayList<>();
+//        final List<String> typeQuals = new ArrayList<>();
+//        for (var specOrQual = specifierQualifierList;
+//             specOrQual.specifierQualifierList() != null;
+//             specOrQual = specOrQual.specifierQualifierList()) {
+//
+//            if (specOrQual.typeSpecifier() != null) {
+//                final SSCParser.TypeSpecifierContext typeSpec = specOrQual.typeSpecifier();
+//                if (typeSpec.superStructSpecifier() != null) {
+//                    typeSpecs.add("struct");
+//                } else {
+//                    typeSpecs.add(typeSpec.getText());
+//                }
+//            } else {
+//                assert specOrQual.typeQualifier() != null;
+//                typeQuals.add(specOrQual.typeQualifier().getText());
+//            }
+//        }
+
         try {
             var ss = ctx.typeName().specifierQualifierList().typeSpecifier().superStructSpecifier();
             if (ss != null) {
@@ -525,6 +593,31 @@ public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
         if (node.getSymbol().getType() == SSCParser.Superstruct) {
             return "struct ";
         }
+        if (node.getSymbol().getType() == SSCParser.Define) {
+            System.out.println("Macro Define! @" + node.getSymbol().getLine());
+        }
         return super.visitTerminal(node);
+    }
+
+    @Override
+    public String visitDirective(SSCParser.DirectiveContext ctx) {
+        System.out.println("Directive: " + ctx.getText());
+        return super.visitDirective(ctx);
+    }
+
+    @Override
+    public String visitMacroDefinition(SSCParser.MacroDefinitionContext ctx) {
+        System.out.println("Macro definition: " + ctx);
+
+        inMacroDefinition = true;
+
+        final Macro macro = Macro.fromContext(ctx, tokens, currentFile);
+        macros.put(macro.identifier(), macro);
+
+        final var rv = super.visitMacroDefinition(ctx);
+
+        inMacroDefinition = false;
+
+        return rv;
     }
 }

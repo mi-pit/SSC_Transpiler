@@ -1,4 +1,4 @@
-package cz.mipit.sscc.ssc.compiler.data;
+package cz.mipit.sscc.ssc.compiler.data.ss;
 
 import java.util.List;
 import java.util.Objects;

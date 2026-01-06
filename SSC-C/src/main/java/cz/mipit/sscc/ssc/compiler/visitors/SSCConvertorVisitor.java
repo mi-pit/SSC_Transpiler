@@ -2,6 +2,7 @@ package cz.mipit.sscc.ssc.compiler.visitors;
 
 import antlr.ssc.SSCBaseVisitor;
 import antlr.ssc.SSCParser;
+import cz.mipit.sscc.Logger;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.ssc.exceptions.children.AntlrException;
@@ -17,15 +18,19 @@ import static java.lang.System.lineSeparator;
 
 public abstract class SSCConvertorVisitor extends SSCBaseVisitor<String> {
     protected final CommonTokenStream tokens;
-    private boolean hasErrors;
     protected final InputFile currentFile;
+
+    private boolean hasErrors;
+
+    protected boolean inMacroDefinition;
 
     protected SSCConvertorVisitor(CommonTokenStream tokens, InputFile currentFile) {
         this.tokens = tokens;
         this.currentFile = currentFile;
-        hasErrors = false;
-    }
 
+        hasErrors = false;
+        inMacroDefinition = false;
+    }
 
     protected SSCTranspilerException getSSCSyntaxException(String message, ParserRuleContext ctx) {
         return new SSCSyntaxException(message, ctx, tokens, currentFile);
@@ -55,7 +60,6 @@ public abstract class SSCConvertorVisitor extends SSCBaseVisitor<String> {
 
         return switch (node.getSymbol().getType()) {
             case SSCParser.Semi,
-                 SSCParser.GeneralDirective,
                  SSCParser.LeftBrace,
                  SSCParser.RightBrace -> node.getText() + lineSeparator();
 
@@ -64,9 +68,17 @@ public abstract class SSCConvertorVisitor extends SSCBaseVisitor<String> {
     }
 
     @Override
+    public String visitDirective(SSCParser.DirectiveContext ctx) {
+        return super.visitDirective(ctx) + lineSeparator();
+    }
+
+    @Override
     protected String defaultResult() {
         return "";
     }
+
+    private int nErrors;
+    private static final int MAX_ANTLR_ERRORS = 10;
 
     @Override
     public String visitErrorNode(ErrorNode node) {
@@ -74,8 +86,14 @@ public abstract class SSCConvertorVisitor extends SSCBaseVisitor<String> {
         //    hasErrors = true;
         //}
 
-        // Don't throw! Let the user see the rest of the error nodes!
-        printErrorMessage(new AntlrException(node.getSymbol(), tokens, currentFile));
+        /* Don't throw! Let the user see the rest of the error nodes! */
+        if (nErrors < MAX_ANTLR_ERRORS) {
+            printErrorMessage(new AntlrException(node.getSymbol(), tokens, currentFile));
+        }
+
+        if (nErrors++ == MAX_ANTLR_ERRORS) {
+            Logger.warn("Too many errors, omitting.");
+        }
 
         return super.visitErrorNode(node);
     }

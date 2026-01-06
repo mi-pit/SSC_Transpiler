@@ -46,7 +46,7 @@ primaryExpression
     | '__builtin_va_arg' '(' unaryExpression ',' typeName ')'
     | '__builtin_offsetof' '(' typeName ',' unaryExpression ')'
     | VersionNumber // For attributes only (dirty hack)
-    | directive
+    | directive     /* e.g. `#embed` */
     ;
 
 genericSelection
@@ -62,15 +62,19 @@ genericAssociation
     ;
 
 postfixExpression
-    : (primaryExpression | '__extension__'? '(' typeName ')' '{' initializerList ','? '}') (
+    :
+    (
+        primaryExpression
+         | '__extension__'? '(' typeName ')' '{' initializerList ','? '}'
+    ) (
         '[' expression ']'
-        | '(' argumentExpressionList? ')'
-        | '::'          Identifier '(' argumentExpressionList? ')' // Static superstruct function call
-        | '::'          Identifier                                 // Static superstruct function reference
-        | ('.' | '->')  Identifier '(' argumentExpressionList? ')' // Object method call
-        | ('.' | '->')  Identifier                                 // Attribute access (plain C)
-        | '++'
-        | '--'
+         | '(' argumentExpressionList? ')'                           /* function call / macro invocation */
+         | '::'          Identifier '(' argumentExpressionList? ')'  // Static superstruct function call
+         | '::'          Identifier                                  // Static superstruct function reference
+         | ('.' | '->')  Identifier '(' argumentExpressionList? ')'  // Object method call
+         | ('.' | '->')  Identifier                                  // Attribute access (plain C) TODO: CHECK reference
+         | '++'
+         | '--'
     )*
     ;
 
@@ -546,8 +550,17 @@ externalDeclaration
     ;
 
 directive
-    : macroDefinition
-    | GeneralDirective
+    : Hash (
+           macroDefinition
+         | macroUndef
+         | includeDirective
+         | embedDirective
+         | lineDirective
+         | ErrorDirective
+         | WarningDirective
+         | PragmaDirective
+         | conditionDirective
+    )
     ;
 
 functionDefinition
@@ -559,8 +572,8 @@ declarationList
     ;
 
 macroDefinition
-    : MacroDefine Identifier macroBody?
-    | MacroDefine Identifier '(' macroArgs? ')' macroBody?
+    : Define Identifier macroBody?
+    | Define Identifier '(' macroArgs? ')' macroBody?
     ;
 
 /* externalDeclaration without other directives */
@@ -574,10 +587,73 @@ macroArgs
     : Identifier (',' Identifier)*
     ;
 
-MacroDefine
-    : '#' 'define'
+
+Hash        : '#' ;
+
+Define      : 'define' ;
+Undef       : 'undef' ;
+Include     : 'include' ;
+Embed       : 'embed' ;        // C23
+Line        : 'line' ;
+Error       : 'error' ;
+Warning     : 'warning' ;      // C23
+Pragma      : 'pragma' ;
+
+Ifdef       : 'ifdef' ;
+Ifndef      : 'ifndef' ;
+Elif        : 'elif' ;
+Elifdef     : 'elifdef' ;      // C23
+Elifndef    : 'elifndef' ;     // C23
+Endif       : 'endif' ;
+
+
+macroUndef
+    : Undef Identifier
     ;
 
+includeDirective
+    : Include DirectiveFileName
+    ;
+
+embedDirective
+    : Embed DirectiveFileName
+    ;
+
+DirectiveFileName
+    : '<' ~'>'+ '>'
+    | '"' ~'"'+ '"'
+    | Identifier
+    ;
+
+lineDirective
+    : Line LineNumber
+    ;
+
+LineNumber
+    : DecimalConstant
+    ;
+
+ErrorDirective
+    : Error
+    ;
+
+WarningDirective
+    : Warning
+    ;
+
+PragmaDirective
+    : Pragma
+    ;
+
+conditionDirective
+    : ConditionalCompilationDirective expression
+    | Else
+    | Endif
+    ;
+
+ConditionalCompilationDirective
+    : If | Elif | Ifdef | Elifdef | Ifndef | Elifndef
+    ;
 
 Auto
     : 'auto'
@@ -1170,10 +1246,6 @@ fragment SChar
         mfspr x, 286;
     }
  */
-
-GeneralDirective
-    : '#' (~[\r\n\\] | '\\' [\r\n])*
-    ;
 
 AsmBlock
     : 'asm' ~'{'* '{' ~'}'* '}' -> channel(HIDDEN)

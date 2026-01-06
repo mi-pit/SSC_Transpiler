@@ -44,7 +44,7 @@ public final class SSCCUtil {
 
             final List<EnumeratedLine> ls = new ArrayList<>();
             for (int i = start; i <= end; i++) {
-                ls.add(new EnumeratedLine(i, lines[i]));
+                ls.add(new EnumeratedLine(i + 1, lines[i]));
             }
 
             return ls;
