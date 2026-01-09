@@ -144,14 +144,12 @@ public final class Preprocessor {
             return;
         }
 
-        final Path fileDir = resolvedNormalized.getParent();
-
         Main.logger.printDebug("\tFile path:       '" + resolvedNormalized + "'");
 
         if (!Files.exists(resolvedNormalized)) {
             throw new PreprocessorException(
                     "Included file '" + resolvedNormalized + "' does not exist",
-                    lastLines, inputFile
+                    lastLines, currentLine.indexOf('"'), currentLine.lastIndexOf('"'), inputFile
             );
         }
 
@@ -161,9 +159,10 @@ public final class Preprocessor {
         final Preprocessor subFilePreprocessor = new Preprocessor(subFile);
 
         try {
+            final Path fileDir = resolvedNormalized.getParent();
             final List<String> linesConverted = subFilePreprocessor.processFile(linesLiteral, fileDir);
             outputLines.addAll(linesConverted);
-        } catch (PreprocessorException e) {
+        } catch (final PreprocessorException e) {
             throw new PreprocessorException(
                     "In the expansion of file '" + inputFile.getFullName() + "'",
                     e, inputFile
@@ -206,10 +205,8 @@ public final class Preprocessor {
             throw new PreprocessorException(
                     "Include directive argument is missing a closing '>' or '\"'",
                     lastLines,
-                    new int[]{
-                            index,
-                            index + 1
-                    },
+                    index,
+                    index + 1,
                     inputFile
             );
         }
@@ -217,12 +214,12 @@ public final class Preprocessor {
         final char firstChar = withoutInclude.charAt(0);
         final char lastChar = withoutInclude.charAt(withoutInclude.length() - 1);
 
-        if ((firstChar != '"' || lastChar != '"') && (firstChar != '<' || lastChar != '>')) {
+        if (!(firstChar == '"' && lastChar == '"' || firstChar == '<' && lastChar == '>')) {
             throw new PreprocessorException(
                     String.format("Include argument `%s` is not terminated properly", withoutInclude),
                     lastLines,
                     new int[]{
-                            currentLine.lastIndexOf(firstChar),
+                            currentLine.indexOf(firstChar),
                             currentLine.lastIndexOf(lastChar)
                     },
                     inputFile
