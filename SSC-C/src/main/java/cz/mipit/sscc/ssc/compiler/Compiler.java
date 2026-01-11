@@ -159,7 +159,8 @@ public final class Compiler {
             throws IOException, InterruptedException {
         logger.printVerbose("Processing file: ", inputFile.absolutePathString());
 
-        final Path workingFileAbsolutePath = inputFile.getChangedSuffix("c").toAbsolutePath();
+        final InputFile workingFile = inputFile.getChangedSuffix("c");
+        final Path workingFileAbsolutePath = workingFile.toAbsolutePath();
 
         logger.printVerbose("Preprocessing file...");
         if (!preprocessSSCCode(inputFile, workingFileAbsolutePath)) {
@@ -168,7 +169,7 @@ public final class Compiler {
         }
 
         {
-            final VisitorData data = VisitorData.fromFile(workingFileAbsolutePath);
+            final VisitorData data = VisitorData.fromFile(workingFile);
 
             logger.printVerbose("Extracting superstructs...");
             if (!extractSuperstructMembers(data.tokens(), data.tree(), workingFileAbsolutePath)) {
@@ -177,7 +178,7 @@ public final class Compiler {
             }
         }
         {
-            final VisitorData data = VisitorData.fromFile(workingFileAbsolutePath);
+            final VisitorData data = VisitorData.fromFile(workingFile);
 
             logger.printVerbose("Replacing superstruct references...");
             if (!replaceSuperstructCalls(data.tokens(), data.tree(), workingFileAbsolutePath)) {

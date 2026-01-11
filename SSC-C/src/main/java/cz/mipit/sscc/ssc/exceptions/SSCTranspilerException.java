@@ -33,6 +33,8 @@ public abstract class SSCTranspilerException extends RuntimeException {
     protected static final ConsoleColor COLOR_LOCATOR = create(Ground.FORE, Color.CYAN);
 
     private static final ConsoleColor COLOR_CODE_BOLD = new ConsoleColor() {
+        private static final String r = "\u001B[1m" + COLOR_CODE;
+
         @Override
         public void setConsoleColor(PrintStream stream) {
             stream.print(this);
@@ -40,7 +42,7 @@ public abstract class SSCTranspilerException extends RuntimeException {
 
         @Override
         public String toString() {
-            return "\u001B[1m" + COLOR_CODE;
+            return r;
         }
     };
 
@@ -121,13 +123,9 @@ public abstract class SSCTranspilerException extends RuntimeException {
                 currentFile);
     }
 
-    protected SSCTranspilerException(Type type, Token tok, CommonTokenStream tokens,
-                                     InputFile currentFile) {
-        this(type, "Could not parse token '" + tok.getText() + "'", getLinesFromToken(
-                        requireNonNull(tok, "Token"),
-                        requireNonNull(tokens, "Token stream")),
-                getLocator(tok),
-                currentFile);
+    protected SSCTranspilerException(Type type, String message, Token token,
+                                     CommonTokenStream tokens, InputFile currentFile) {
+        this(type, message, getLinesFromToken(token, tokens), getLocator(token), currentFile);
     }
 
     protected static String formatLines(final List<EnumeratedLine> lines) {

@@ -163,8 +163,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
                     || declSpec.functionSpecifier().Pure() == null)
                     && (declSpec.storageClassSpecifier() == null
                     || declSpec.storageClassSpecifier().Static() == null)) {
-                String contextText = SSCCUtil.Text.getLiteral(declSpec, tokens);
-                withoutCustom.add(contextText);
+                withoutCustom.add(SSCCUtil.Text.getLiteral(declSpec, tokens));
             }
         }
         return withoutCustom;

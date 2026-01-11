@@ -7,6 +7,7 @@ import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.ssc.exceptions.children.AntlrException;
 import cz.mipit.sscc.ssc.exceptions.children.SSCSyntaxException;
+import cz.mipit.sscc.util.SSCCUtil;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
@@ -69,7 +70,8 @@ public abstract class SSCConvertorVisitor extends SSCBaseVisitor<String> {
 
     @Override
     public String visitDirective(SSCParser.DirectiveContext ctx) {
-        return super.visitDirective(ctx) + lineSeparator();
+        final String str = SSCCUtil.Text.getLiteral(ctx, tokens);
+        return str + lineSeparator();
     }
 
     @Override
@@ -81,11 +83,7 @@ public abstract class SSCConvertorVisitor extends SSCBaseVisitor<String> {
     private static final int MAX_ANTLR_ERRORS = 10;
 
     @Override
-    public String visitErrorNode(ErrorNode node) {
-        //if (opts.escalateAntlrExceptions) {
-        //    hasErrors = true;
-        //}
-
+    public String visitErrorNode(final ErrorNode node) {
         /* Don't throw! Let the user see the rest of the error nodes! */
         if (nErrors < MAX_ANTLR_ERRORS) {
             printErrorMessage(new AntlrException(node.getSymbol(), tokens, currentFile));
