@@ -5,17 +5,21 @@ import java.io.PrintStream;
 import static cz.mipit.sscc.util.color.ConsoleColorFactory.Color;
 import static cz.mipit.sscc.util.color.ConsoleColorFactory.Ground;
 
-public class UnixTerminalColor extends ConsoleColor {
+public final class UnixTerminalColor extends ConsoleColor {
     private static final String RESET = "\u001B[0m";
     public static final UnixTerminalColor DEFAULT = new UnixTerminalColor(RESET);
 
+    private static final String SEQUENCE_START = "\u001B[";
+    private static final String SEQUENCE_END = "m";
+
+
     private final String repre;
 
-    protected UnixTerminalColor(String repre) {
+    private UnixTerminalColor(String repre) {
         this.repre = repre;
     }
 
-    protected UnixTerminalColor(Ground ground, Color color) {
+    UnixTerminalColor(Ground ground, Color color) {
         this(createString(ground, color));
     }
 
@@ -25,13 +29,14 @@ public class UnixTerminalColor extends ConsoleColor {
     }
 
     private static String createString(Ground ground, Color color) {
-        return "\u001B[" + code(ground) + code(color) + "m";
+        return SEQUENCE_START + code(ground) + code(color) + SEQUENCE_END;
     }
 
     @Override
     public void setConsoleColor(PrintStream stream) {
         stream.print(repre);
     }
+
 
     private static String code(Ground ground) {
         return String.valueOf(ground.ordinal() + 3);

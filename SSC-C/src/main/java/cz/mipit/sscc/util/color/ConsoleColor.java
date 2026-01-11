@@ -3,20 +3,30 @@ package cz.mipit.sscc.util.color;
 import java.io.PrintStream;
 
 /**
- * An OS-agnostic interface for setting the color of ({@code System.out.print(...)}).
+ * An OS-agnostic interface for setting the color of the console/terminal ({@code System.out.print(...)}).
  * <p>
  * These objects must have a well-defined {@link ConsoleColor#toString()} method, even if not applicable
  * (see {@link ConsoleColorFactory.UnsupportedConsoleColor}).
  */
 public abstract class ConsoleColor {
     /**
+     * Made abstract so that an inheritor HAS to think about the implementation.
+     * <p>
+     * If the color is impossible to be set this way, this method should return an empty string or similar
+     * </p>
+     *
+     * @see ConsoleColorFactory.UnsupportedConsoleColor
+     */
+    abstract public String toString();
+
+    abstract public void setConsoleColor(PrintStream stream);
+
+    /**
      * Sets the color of the console to the color represented by this object.
      */
     final public void setConsoleColor() {
         setConsoleColor(System.out);
     }
-
-    abstract public void setConsoleColor(PrintStream stream);
 
 
     public void printf(PrintStream stream, String format, Object... args) {
@@ -45,15 +55,4 @@ public abstract class ConsoleColor {
     final public void println(String message) {
         println(System.out, message);
     }
-
-
-    /**
-     * Made abstract so that an inheritor HAS to think about the implementation.
-     * <p>
-     * If the color is impossible to be set this way, this method should return an empty string or similar
-     * </p>
-     *
-     * @see ConsoleColorFactory.UnsupportedConsoleColor
-     */
-    abstract public String toString();
 }

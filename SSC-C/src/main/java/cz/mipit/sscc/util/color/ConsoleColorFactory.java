@@ -4,37 +4,37 @@ import java.io.PrintStream;
 import java.util.function.BiFunction;
 
 public abstract class ConsoleColorFactory {
-    public static final ConsoleColorFactory UNIX = new ConsoleColorFactory() {
+    private static final ConsoleColorFactory UNIX = new ConsoleColorFactory() {
         @Override
         protected BiFunction<Ground, Color, ConsoleColor> getFactory() {
             return UnixTerminalColor::new;
         }
 
         @Override
-        public ConsoleColor defaultColor() {
+        protected ConsoleColor defaultColor() {
             return UnixTerminalColor.DEFAULT;
         }
     };
 
-    public static final ConsoleColorFactory OTHER = new ConsoleColorFactory() {
+    private static final ConsoleColorFactory OTHER = new ConsoleColorFactory() {
         @Override
         protected BiFunction<Ground, Color, ConsoleColor> getFactory() {
             return UnsupportedConsoleColor::create;
         }
 
         @Override
-        public ConsoleColor defaultColor() {
+        protected ConsoleColor defaultColor() {
             return UnsupportedConsoleColor.DEFAULT;
         }
     };
 
     /// TODO?
-    public static final ConsoleColorFactory WINDOWS = OTHER;
+    private static final ConsoleColorFactory WINDOWS = OTHER;
 
 
     protected abstract BiFunction<Ground, Color, ConsoleColor> getFactory();
 
-    public abstract ConsoleColor defaultColor();
+    protected abstract ConsoleColor defaultColor();
 
 
     public static final ConsoleColor COLOR_DEFAULT = fromOS().defaultColor();
@@ -51,11 +51,14 @@ public abstract class ConsoleColorFactory {
 
     private static ConsoleColorFactory fromOS() {
         final String property = System.getProperty("os.name");
+        final String lowercase = property.toLowerCase();
 
         if (property.toLowerCase().contains("windows")) {
             return WINDOWS;
-        } else {
+        } else if (lowercase.contains("mac") || lowercase.contains("linux")) {
             return UNIX;
+        } else {
+            return OTHER;
         }
     }
 
@@ -80,9 +83,6 @@ public abstract class ConsoleColorFactory {
      * Does jack
      */
     private static final class UnsupportedConsoleColor extends ConsoleColor {
-        /**
-         * Only one object, since it doesn't do anything
-         */
         private static final UnsupportedConsoleColor DEFAULT = new UnsupportedConsoleColor();
 
         private UnsupportedConsoleColor() {
@@ -92,9 +92,6 @@ public abstract class ConsoleColorFactory {
         public void setConsoleColor(PrintStream stream) {
         }
 
-        /**
-         * @return empty string
-         */
         @Override
         public String toString() {
             return "";
