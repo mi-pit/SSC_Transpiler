@@ -550,17 +550,7 @@ externalDeclaration
     ;
 
 directive
-    : Hash (
-           macroDefinition
-         | macroUndef
-         | includeDirective
-         | embedDirective
-         | lineDirective
-         | ErrorDirective
-         | WarningDirective
-         | PragmaDirective
-         | conditionDirective
-    )
+    : Directive
     ;
 
 functionDefinition
@@ -569,90 +559,6 @@ functionDefinition
 
 declarationList
     : declaration+
-    ;
-
-macroDefinition
-    : Define Identifier macroBody?
-    | Define Identifier '(' macroArgs? ')' macroBody?
-    ;
-
-/* externalDeclaration without other directives */
-macroBody
-    : functionDefinition
-    | declaration
-    | ';'
-    ;
-
-macroArgs
-    : Identifier (',' Identifier)*
-    ;
-
-
-Hash        : '#' ;
-
-Define      : 'define' ;
-Undef       : 'undef' ;
-Include     : 'include' ;
-Embed       : 'embed' ;        // C23
-Line        : 'line' ;
-Error       : 'error' ;
-Warning     : 'warning' ;      // C23
-Pragma      : 'pragma' ;
-
-Ifdef       : 'ifdef' ;
-Ifndef      : 'ifndef' ;
-Elif        : 'elif' ;
-Elifdef     : 'elifdef' ;      // C23
-Elifndef    : 'elifndef' ;     // C23
-Endif       : 'endif' ;
-
-
-macroUndef
-    : Undef Identifier
-    ;
-
-includeDirective
-    : Include DirectiveFileName
-    ;
-
-embedDirective
-    : Embed DirectiveFileName
-    ;
-
-DirectiveFileName
-    : '<' ~'>'+ '>'
-    | '"' ~'"'+ '"'
-    | Identifier
-    ;
-
-lineDirective
-    : Line LineNumber
-    ;
-
-LineNumber
-    : DecimalConstant
-    ;
-
-ErrorDirective
-    : Error
-    ;
-
-WarningDirective
-    : Warning
-    ;
-
-PragmaDirective
-    : Pragma
-    ;
-
-conditionDirective
-    : ConditionalCompilationDirective expression
-    | Else
-    | Endif
-    ;
-
-ConditionalCompilationDirective
-    : If | Elif | Ifdef | Elifdef | Ifndef | Elifndef
     ;
 
 Auto
@@ -1246,6 +1152,10 @@ fragment SChar
         mfspr x, 286;
     }
  */
+
+Directive
+    : '#' (~[\r\n\\] | '\\' [\r\n])*
+    ;
 
 AsmBlock
     : 'asm' ~'{'* '{' ~'}'* '}' -> channel(HIDDEN)

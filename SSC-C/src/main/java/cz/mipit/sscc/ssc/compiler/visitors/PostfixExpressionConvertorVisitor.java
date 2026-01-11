@@ -593,31 +593,6 @@ public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
         if (node.getSymbol().getType() == SSCParser.Superstruct) {
             return "struct ";
         }
-        if (node.getSymbol().getType() == SSCParser.Define) {
-            System.out.println("Macro Define! @" + node.getSymbol().getLine());
-        }
         return super.visitTerminal(node);
-    }
-
-    @Override
-    public String visitDirective(SSCParser.DirectiveContext ctx) {
-        System.out.println("Directive: " + ctx.getText());
-        return super.visitDirective(ctx);
-    }
-
-    @Override
-    public String visitMacroDefinition(SSCParser.MacroDefinitionContext ctx) {
-        System.out.println("Macro definition: " + ctx);
-
-        inMacroDefinition = true;
-
-        final Macro macro = Macro.fromContext(ctx, tokens, currentFile);
-        macros.put(macro.identifier(), macro);
-
-        final var rv = super.visitMacroDefinition(ctx);
-
-        inMacroDefinition = false;
-
-        return rv;
     }
 }
