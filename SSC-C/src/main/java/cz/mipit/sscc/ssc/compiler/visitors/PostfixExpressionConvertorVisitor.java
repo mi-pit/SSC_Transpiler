@@ -9,11 +9,13 @@ import cz.mipit.sscc.ssc.compiler.data.ss.FunctionDefinition;
 import cz.mipit.sscc.ssc.compiler.data.ss.SSMember;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperstructVariable;
+import cz.mipit.sscc.util.annotations.Nullable;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -26,23 +28,23 @@ import static java.lang.System.lineSeparator;
 
 public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
     private final Set<SuperStruct> superstructs;
-    private final HashMap<String /* name */, Macro> macros;
 
-    public final Map<String /* Function name */, Set<SuperstructVariable>> functionVariables;
+    private final Map<String /* Macro name */, Macro> macros;
+    public final Map<@Nullable String /* Function name */, Set<SuperstructVariable>> functionVariables;
 
-    public PostfixExpressionConvertorVisitor(CommonTokenStream tokens,
-                                             Set<SuperStruct> sss,
+    public PostfixExpressionConvertorVisitor(final CommonTokenStream tokens,
+                                             final Set<SuperStruct> sss,
+                                             final Map<String, Macro> macros,
                                              final InputFile currentFile) {
         super(tokens, currentFile);
-        this.superstructs = sss;
+        this.superstructs = Collections.unmodifiableSet(sss);
+        this.macros = Collections.unmodifiableMap(macros);
 
-        macros = new HashMap<>();
         functionVariables = new HashMap<>();
-
         functionVariables.put(null /* Global variables */, new HashSet<>());
     }
 
-    private String currentFunctionName = null; /* null => no function => global */
+    private @Nullable String currentFunctionName = null; /* null => no function => global */
 
     @Override
     public String visitFunctionDefinition(final SSCParser.FunctionDefinitionContext ctx) {
@@ -210,18 +212,12 @@ public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
 
         final String possibleMacroName = ctx.primaryExpression().Identifier().getText();
 
-        if ("streq".equals(possibleMacroName)) {
-            System.out.println("Here");
-        }
-
-        final var macro = macros.get(possibleMacroName);
-
         /* assume function call if macro is null */
-        return Optional.ofNullable(macro);
+        return Optional.ofNullable(macros.get(possibleMacroName));
     }
 
     private String replaceMacro(SSCParser.PostfixExpressionContext ctx, Macro macro) {
-        System.out.println("ctx = " + ctx + ", macro = " + macro);
+        System.out.println("ctx = " + ctx.getText() + ", macro = " + macro);
         return "";
     }
 

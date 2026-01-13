@@ -3,6 +3,7 @@ package cz.mipit.sscc.ssc.compiler;
 import cz.mipit.sscc.args.ArgumentParser;
 import cz.mipit.sscc.args.Options;
 import cz.mipit.sscc.file.InputFile;
+import cz.mipit.sscc.ssc.compiler.data.macro.Macro;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.visitors.PostfixExpressionConvertorVisitor;
 import cz.mipit.sscc.ssc.compiler.visitors.SSCConvertorVisitor;
@@ -21,8 +22,10 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -32,6 +35,8 @@ import static cz.mipit.sscc.Logger.warn;
 
 public final class Compiler {
     private final Set<SuperStruct> sss = new HashSet<>();
+    private final Map<String, Macro> macros = new HashMap<>();
+
     private final Options options;
 
     private static final List<String> CC_OPTIONS = List.of(
@@ -220,7 +225,7 @@ public final class Compiler {
                                             final ParseTree tree,
                                             final Path outputFile)
             throws IOException {
-        final SSCConvertorVisitor visitor = new PostfixExpressionConvertorVisitor(tokens, sss, currentFile);
+        final SSCConvertorVisitor visitor = new PostfixExpressionConvertorVisitor(tokens, sss, macros, currentFile);
         final String result = visitor.visit(tree) + "\n";
 
         Files.writeString(outputFile, result,
@@ -242,7 +247,7 @@ public final class Compiler {
     private boolean preprocessSSCCode(final InputFile inFile,
                                       final Path outFileAbsolute)
             throws IOException, InterruptedException {
-        if (!Preprocessor.preprocessSSC(inFile, outFileAbsolute)) {
+        if (!Preprocessor.preprocessSSC(inFile, outFileAbsolute, macros)) {
             return false;
         }
         if (true)
