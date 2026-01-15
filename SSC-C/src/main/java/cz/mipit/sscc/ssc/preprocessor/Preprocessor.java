@@ -22,6 +22,7 @@ import java.util.regex.Pattern;
 
 public final class Preprocessor {
     private static final String SSCH_FILE_SUFFIX = "ssch";
+
     private static final String INCLUDE_DIRECTIVE_NAME = "include";
     private static final String DEFINE_DIRECTIVE_NAME = "define";
 
@@ -51,8 +52,9 @@ public final class Preprocessor {
                                         final Path outputFileAbsolutePath,
                                         final Map<String, Macro> macros) throws IOException {
         assert outputFileAbsolutePath.isAbsolute();
-        if (!new Preprocessor(inputFile, macros).writeToOutput(outputFileAbsolutePath))
+        if (!new Preprocessor(inputFile, macros).writeToOutput(outputFileAbsolutePath)) {
             return false;
+        }
 
         Main.logger.printDebug("Preprocessing success");
         return true;
@@ -91,7 +93,7 @@ public final class Preprocessor {
 
             lastLines.add(new EnumeratedLine(currentLineNumber++, line));
             if (lastLines.size() > N_LINES) {
-                lastLines.remove();
+                lastLines.poll();
             }
 
             processLine(outputLines, dir);
@@ -288,7 +290,6 @@ public final class Preprocessor {
 
         final InputFile subFile = InputFile.fromAbsolutePath(resolvedNormalized);
         final Preprocessor subFilePreprocessor = new Preprocessor(subFile, macros);
-
         try {
             final Path fileDir = resolvedNormalized.getParent();
             final List<String> linesConverted = subFilePreprocessor.processLines(linesLiteral, fileDir);

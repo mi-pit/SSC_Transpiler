@@ -6,6 +6,7 @@ import cz.mipit.sscc.util.annotations.Nullable;
 import java.util.List;
 import java.util.Objects;
 
+/* TODO: add # and ## functionality */
 public class Macro {
     private final @NotNull String identifier;
     private final @Nullable List<String> fields; /* null => no `()` */

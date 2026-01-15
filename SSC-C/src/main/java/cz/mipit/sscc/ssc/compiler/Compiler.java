@@ -21,7 +21,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -79,8 +78,8 @@ public final class Compiler {
 
         final Set<Path> outputtedFiles = new HashSet<>();
         final Set<Path> filesToCompile = new HashSet<>();
-        final int totalFailed = goThroughAllFiles(files, filesToCompile, outputtedFiles);
 
+        final int totalFailed = goThroughAllFiles(files, filesToCompile, outputtedFiles);
         if (totalFailed != 0) {
             err(ExitValue.TRANSPILATION_FAIL, "Could not process " + totalFailed + " file(s)");
             return;
@@ -153,8 +152,8 @@ public final class Compiler {
     }
 
     private void handleKnownExceptionsOrRethrow(final RuntimeException exception) throws RuntimeException {
-        if (exception instanceof SSCTranspilerException) {
-            System.err.println(exception.getMessage());
+        if (exception instanceof SSCTranspilerException e) {
+            System.err.println(e.getMessage());
         } else {
             throw exception; /* doesn't get caught again */
         }
@@ -287,7 +286,7 @@ public final class Compiler {
         );
     }
 
-    private void compileCBatch(String binaryName, Collection<Path> files)
+    private void compileCBatch(String binaryName, Set<Path> files)
             throws IOException, InterruptedException {
         /* cc -Werror -Wall -Wextra -pedantic -fsyntax-only "$file" */
         final int exitCode = doProcess(ListBuilder

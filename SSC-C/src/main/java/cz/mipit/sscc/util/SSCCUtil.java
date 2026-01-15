@@ -51,24 +51,25 @@ public final class SSCCUtil {
         }
 
         public static List<String> splitLogicalLines(String input) {
-            List<String> lines = new ArrayList<>();
-            StringBuilder current = new StringBuilder();
+            final List<String> lines = new ArrayList<>();
+            final StringBuilder currentLineBuilder = new StringBuilder();
 
             final String[] physicalLines = input.split("\\R", -1);
 
-            for (String line : physicalLines) {
+            for (final String line : physicalLines) {
                 if (line.endsWith("\\")) {
                     /* remove the trailing backslash and continue */
-                    current.append(line, 0, line.length() - 1);
+                    currentLineBuilder.append(line, 0, line.length() - 1);
                 } else {
-                    current.append(line);
-                    lines.add(current.toString());
-                    current.setLength(0);
+                    currentLineBuilder.append(line);
+
+                    lines.add(currentLineBuilder.toString());
+                    currentLineBuilder.setLength(0);
                 }
             }
 
-            if (!current.isEmpty()) {
-                lines.add(current.toString());
+            if (!currentLineBuilder.isEmpty()) {
+                lines.add(currentLineBuilder.toString());
             }
 
             return lines;
