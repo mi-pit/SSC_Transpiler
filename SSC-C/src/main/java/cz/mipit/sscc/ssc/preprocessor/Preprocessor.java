@@ -157,16 +157,18 @@ public final class Preprocessor {
     }
 
     private void processDirectiveDefine(final String withoutHash) {
-        final String withoutDefine = withoutHash.substring(DEFINE_DIRECTIVE_NAME.length()).trim();
-        Main.logger.printDebug("\tWithout define: '" + withoutDefine + "'");
+        final String withoutDefine = withoutHash.substring(DEFINE_DIRECTIVE_NAME.length());
+        Main.logger.printDebug("\tWithout define:  '" + withoutDefine + "'");
         if (withoutDefine.isEmpty()) {
-            throw new PreprocessorException(
-                    "Empty define directive",
-                    lastLines,
-                    inputFile
-            );
+            throw new PreprocessorException("Empty define directive", lastLines, inputFile);
         }
-        final Macro macro = parseMacro(withoutDefine);
+
+        if (!Character.isWhitespace(withoutDefine.charAt(0))) {
+            throw new PreprocessorException("Invalid directive", lastLines, inputFile);
+        }
+
+        final Macro macro = parseMacro(withoutDefine.trim());
+        Main.logger.printDebug(macro.toString());
         macros.put(macro.identifier(), macro);
     }
 
