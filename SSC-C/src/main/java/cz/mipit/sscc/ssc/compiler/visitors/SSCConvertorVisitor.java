@@ -74,11 +74,6 @@ public abstract class SSCConvertorVisitor extends SSCBaseVisitor<String> {
         return str + lineSeparator();
     }
 
-    @Override
-    protected String defaultResult() {
-        return "";
-    }
-
     private int nErrors;
     private static final int MAX_ANTLR_ERRORS = 10;
 
