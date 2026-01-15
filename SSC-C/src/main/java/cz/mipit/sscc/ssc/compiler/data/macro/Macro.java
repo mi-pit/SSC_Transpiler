@@ -3,6 +3,7 @@ package cz.mipit.sscc.ssc.compiler.data.macro;
 import cz.mipit.sscc.util.annotations.NotNull;
 import cz.mipit.sscc.util.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -21,8 +22,16 @@ public class Macro {
     }
 
     public String replace(List<String> arguments) {
-        System.out.println("Macro " + identifier + " invoked with arguments: " + arguments);
-        return "";
+        final List<String> result = new ArrayList<>();
+        for (MacroBodyMember member : replacement) {
+            if (member.isArgument()) {
+                final int fieldIdx = fields.indexOf(member.token());
+                result.add(arguments.get(fieldIdx));
+            } else {
+                result.add(member.token());
+            }
+        }
+        return String.join(" ", result);
     }
 
 
