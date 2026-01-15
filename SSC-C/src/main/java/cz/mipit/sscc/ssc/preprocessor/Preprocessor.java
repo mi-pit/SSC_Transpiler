@@ -286,7 +286,7 @@ public final class Preprocessor {
             );
         }
 
-        final List<String> linesLiteral = Files.readAllLines(resolvedNormalized);
+        final List<String> linesLiteral = getLinesFromPath(resolvedNormalized);
 
         final InputFile subFile = InputFile.fromAbsolutePath(resolvedNormalized);
         final Preprocessor subFilePreprocessor = new Preprocessor(subFile, macros);
