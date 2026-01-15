@@ -148,11 +148,12 @@ public final class Preprocessor {
             processDirectiveInclude(outputLines, baseDir, withoutHash, commentsRemoved);
             return;
         } else if (withoutHash.startsWith(DEFINE_DIRECTIVE_NAME)) {
+            outputLines.add(currentLine);
             processDirectiveDefine(withoutHash);
             return;
         }
 
-        Main.logger.printDebug("\tNot an include");
+        Main.logger.printDebug("\tNot an include or define");
         outputLines.add(commentsRemoved);
     }
 
