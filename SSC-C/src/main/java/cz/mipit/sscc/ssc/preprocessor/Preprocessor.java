@@ -215,6 +215,16 @@ public final class Preprocessor {
             } else {
                 replacements = new ArrayList<>();
                 /* todo */
+                if ("streq".contentEquals(identifier)) {
+                    final String rep = "( strcmp( S1 , S2 ) == 0 )";
+                    final String[] spl = rep.split("\\s+");
+                    for (final String str : spl) {
+                        replacements.add(new MacroBodyMember(str.equals("S1") || str.equals("S2"), str));
+                    }
+                } else {
+                    replacements.add(new MacroBodyMember(false, withoutDefine.substring(i)));
+                    break;
+                }
             }
         }
 

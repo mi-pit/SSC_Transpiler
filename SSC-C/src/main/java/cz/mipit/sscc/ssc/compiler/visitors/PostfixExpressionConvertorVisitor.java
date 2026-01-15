@@ -9,6 +9,7 @@ import cz.mipit.sscc.ssc.compiler.data.ss.FunctionDefinition;
 import cz.mipit.sscc.ssc.compiler.data.ss.SSMember;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperstructVariable;
+import cz.mipit.sscc.util.SSCCUtil;
 import cz.mipit.sscc.util.annotations.Nullable;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -217,8 +218,18 @@ public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
     }
 
     private String replaceMacro(SSCParser.PostfixExpressionContext ctx, Macro macro) {
-        System.out.println("ctx = " + ctx.getText() + ", macro = " + macro);
-        return "";
+        System.out.println("In PostfixExpressionConvertorVisitor.replaceMacro");
+        System.out.println("ctx = `" + SSCCUtil.Text.getLiteral(ctx, tokens) + "`");
+        System.out.println("macro = " + macro);
+
+        final SSCParser.ArgumentExpressionListContext argsExprList = ctx.argumentExpressionList(0);
+        final List<String> args = argsExprList.assignmentExpression().stream()
+                .map(s -> SSCCUtil.Text.getLiteral(s, tokens))
+                .toList();
+        System.out.println("args = " + args);
+        final String replacement = macro.replace(args);
+        System.out.println("candidate replacement: `" + replacement + "`");
+        return replacement;
     }
 
     private static Optional<SSCParser.FunctionDefinitionContext> getFunctionDefinitionParent(
