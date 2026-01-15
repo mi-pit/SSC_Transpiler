@@ -47,6 +47,7 @@ primaryExpression
     | '__builtin_offsetof' '(' typeName ',' unaryExpression ')'
     | VersionNumber // For attributes only (dirty hack)
     | directive     /* e.g. `#embed` */
+    | typeName      /* in macros */
     ;
 
 genericSelection
