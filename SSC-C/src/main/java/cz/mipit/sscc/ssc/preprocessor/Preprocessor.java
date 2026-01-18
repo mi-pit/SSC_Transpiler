@@ -57,14 +57,14 @@ public final class Preprocessor implements Processor {
         this(inputFile, null);
     }
 
-    private static List<String> getLinesFromPath(final Path path) throws IOException {
+    private static List<String> getPreprocessorLines(final Path path) throws IOException {
         final String read = Files.readString(path);
         return SSCCUtil.Text.splitLogicalLines(read);
     }
 
     public ExitValue run() throws IOException {
         final List<String> preprocessedLines = processLines(
-                getLinesFromPath(inputFile.toAbsolutePath()),
+                getPreprocessorLines(inputFile.toAbsolutePath()),
                 inputFile.dir()
         );
 
@@ -96,22 +96,33 @@ public final class Preprocessor implements Processor {
 
     private static final Pattern BLOCK_COMMENT_START = Pattern.compile("/\\*.*");
     private static final Pattern BLOCK_COMMENT_END = Pattern.compile(".*?\\*/");
+    private static final Pattern BLOCK_COMMENT_WHOLE = Pattern.compile("/\\*.*?\\*/");
+    private static final Pattern LINE_COMMENT = Pattern.compile("//.*");
 
     private String removeComments(final String line) {
-        final Matcher endMatcher = BLOCK_COMMENT_END.matcher(line);
-        if (comment && !endMatcher.find()) {
-            Main.logger.printDebug("\tOnly comment");
-            return "";
-        }
+        String replaced;
 
-        String replaced = comment
-                ? line.replaceAll(".*?\\*/", "")
-                : line;
+        final Matcher endMatcher = BLOCK_COMMENT_END.matcher(line);
+        if (comment) {
+            if (!endMatcher.find()) {
+                Main.logger.printDebug("\tOnly comment");
+                return "";
+            }
+            replaced = endMatcher.replaceAll("");
+        } else {
+            replaced = line;
+        }
         comment = false;
 
-        replaced = replaced
-                .replaceAll("//.*", "")
-                .replaceAll("/\\*.*?\\*/", "");
+        final Matcher lineCommentMatcher = LINE_COMMENT.matcher(replaced);
+        if (lineCommentMatcher.find()) {
+            replaced = lineCommentMatcher.replaceFirst("");
+        }
+
+        final Matcher blockCommentMatcher = BLOCK_COMMENT_WHOLE.matcher(replaced);
+        if (blockCommentMatcher.find()) {
+            replaced = blockCommentMatcher.replaceFirst("");
+        }
 
         final Matcher matcher = BLOCK_COMMENT_START.matcher(replaced);
         if (matcher.find()) {
@@ -209,7 +220,7 @@ public final class Preprocessor implements Processor {
             );
         }
 
-        final List<String> linesLiteral = getLinesFromPath(resolvedNormalized);
+        final List<String> linesLiteral = getPreprocessorLines(resolvedNormalized);
 
         final InputFile subFile = InputFile.fromAbsolutePath(resolvedNormalized);
         final Preprocessor subFilePreprocessor = new Preprocessor(subFile);
