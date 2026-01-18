@@ -3,13 +3,11 @@ package cz.mipit.sscc.ssc.compiler.visitors;
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.Main;
 import cz.mipit.sscc.file.InputFile;
-import cz.mipit.sscc.ssc.compiler.data.macro.Macro;
 import cz.mipit.sscc.ssc.compiler.data.ss.Field;
 import cz.mipit.sscc.ssc.compiler.data.ss.FunctionDefinition;
 import cz.mipit.sscc.ssc.compiler.data.ss.SSMember;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperstructVariable;
-import cz.mipit.sscc.util.SSCCUtil;
 import cz.mipit.sscc.util.annotations.Nullable;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -30,16 +28,13 @@ import static java.lang.System.lineSeparator;
 public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
     private final Set<SuperStruct> superstructs;
 
-    private final Map<String /* Macro name */, Macro> macros;
     public final Map<@Nullable String /* Function name */, Set<SuperstructVariable>> functionVariables;
 
     public PostfixExpressionConvertorVisitor(final CommonTokenStream tokens,
                                              final Set<SuperStruct> sss,
-                                             final Map<String, Macro> macros,
                                              final InputFile currentFile) {
         super(tokens, currentFile);
         this.superstructs = Collections.unmodifiableSet(sss);
-        this.macros = Collections.unmodifiableMap(macros);
 
         functionVariables = new HashMap<>();
         functionVariables.put(null /* Global variables */, new HashSet<>());
@@ -178,11 +173,6 @@ public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
             return res.get();
         }
 
-        final Optional<Macro> maybeMacro = getMacro(ctx);
-        if (maybeMacro.isPresent()) {
-            return replaceMacro(ctx, maybeMacro.get());
-        }
-
         Optional<SSCParser.FunctionDefinitionContext> parent = getFunctionDefinitionParent(ctx);
         if (parent.isEmpty()) {
             return super.visitPostfixExpression(ctx);
@@ -197,39 +187,6 @@ public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
             return convertStaticFunctionCall(ctx, functionName);
         }
         return super.visitPostfixExpression(ctx);
-    }
-
-    private Optional<Macro> getMacro(SSCParser.PostfixExpressionContext ctx) {
-        if (ctx.LeftParen().isEmpty()) {
-            return Optional.empty();
-        }
-        if (ctx.primaryExpression() == null) {
-            return Optional.empty();
-        }
-        /* Macro invocation must start with an Identifier */
-        if (ctx.primaryExpression().Identifier() == null) {
-            return Optional.empty();
-        }
-
-        final String possibleMacroName = ctx.primaryExpression().Identifier().getText();
-
-        /* assume function call if macro is null */
-        return Optional.ofNullable(macros.get(possibleMacroName));
-    }
-
-    private String replaceMacro(SSCParser.PostfixExpressionContext ctx, Macro macro) {
-        System.out.println("In PostfixExpressionConvertorVisitor.replaceMacro");
-        System.out.println("ctx = `" + SSCCUtil.Text.getLiteral(ctx, tokens) + "`");
-        System.out.println("macro = " + macro);
-
-        final SSCParser.ArgumentExpressionListContext argsExprList = ctx.argumentExpressionList(0);
-        final List<String> args = argsExprList.assignmentExpression().stream()
-                .map(s -> SSCCUtil.Text.getLiteral(s, tokens))
-                .toList();
-        System.out.println("args = " + args);
-        final String replacement = macro.replace(args);
-        System.out.println("candidate replacement: `" + replacement + "`");
-        return replacement;
     }
 
     private static Optional<SSCParser.FunctionDefinitionContext> getFunctionDefinitionParent(

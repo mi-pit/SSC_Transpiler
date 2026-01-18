@@ -7,7 +7,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-public class Options {
+public final class SSCCOptions {
     public static final boolean DEF_VERBOSE = false;
     public static final boolean DEF_DEBUG = false;
     public static final boolean DEF_STOP_ON_ERROR = true;
@@ -15,8 +15,8 @@ public class Options {
     public static final List<InputFile> DEF_FILES_TO_PROCESS = Collections.emptyList();
     public static final CCStandard DEF_C_STANDARD = CCStandard.C23;
 
-    public static final Options DEFAULT =
-            new Options(DEF_VERBOSE, DEF_DEBUG,
+    public static final SSCCOptions DEFAULT =
+            new SSCCOptions(DEF_VERBOSE, DEF_DEBUG,
                     DEF_STOP_ON_ERROR, DEF_COMPILER_TARGET,
                     DEF_FILES_TO_PROCESS, DEF_C_STANDARD);
 
@@ -27,9 +27,9 @@ public class Options {
     private final List<InputFile> filesToProcess;
     private final CCStandard standard;
 
-    Options(boolean verbose, boolean debug, boolean stopOnError,
-            String compileTargetFilename, List<InputFile> filesToProcess,
-            CCStandard standard) {
+    SSCCOptions(boolean verbose, boolean debug, boolean stopOnError,
+                String compileTargetFilename, List<InputFile> filesToProcess,
+                CCStandard standard) {
         this.verbose = verbose;
         this.debug = debug;
         this.stopOnError = stopOnError;

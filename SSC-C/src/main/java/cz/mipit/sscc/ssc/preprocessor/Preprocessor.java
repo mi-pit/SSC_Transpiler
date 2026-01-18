@@ -2,62 +2,59 @@ package cz.mipit.sscc.ssc.preprocessor;
 
 import cz.mipit.sscc.Main;
 import cz.mipit.sscc.file.InputFile;
-import cz.mipit.sscc.ssc.compiler.data.macro.Macro;
-import cz.mipit.sscc.ssc.compiler.data.macro.MacroBodyMember;
+import cz.mipit.sscc.ssc.compiler.Processor;
 import cz.mipit.sscc.ssc.exceptions.children.PreprocessorException;
+import cz.mipit.sscc.util.ExitValue;
 import cz.mipit.sscc.util.SSCCUtil;
+import cz.mipit.sscc.util.annotations.NotNull;
+import cz.mipit.sscc.util.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public final class Preprocessor {
-    private static final String SSCH_FILE_SUFFIX = "ssch";
+public final class Preprocessor implements Processor {
+    private static final String SSC_HEADER_FILE_SUFFIX = "ssch";
 
     private static final String INCLUDE_DIRECTIVE_NAME = "include";
-    private static final String DEFINE_DIRECTIVE_NAME = "define";
 
     private static final int N_LINES = 4;
 
     private final InputFile inputFile;
+    private final Path outputFile;
 
     private final LinkedList<EnumeratedLine> lastLines;
-    private final Map<String, Macro> macros;
 
     private int currentLineNumber;
     private String currentLine;
     private boolean comment;
 
-    private Preprocessor(final InputFile inputFile, final Map<String, Macro> macros) {
+    public Preprocessor(@NotNull final InputFile inputFile,
+                        @Nullable final Path outputFileAbsolutePath) {
+        if (outputFileAbsolutePath != null && !outputFileAbsolutePath.isAbsolute()) {
+            throw new IllegalArgumentException("Output file path must be absolute");
+        }
+
         currentLineNumber = 1;
         currentLine = null;
         comment = false;
 
         lastLines = new LinkedList<>();
-        this.macros = macros;
 
-        this.inputFile = inputFile;
+        this.inputFile = Objects.requireNonNull(inputFile);
+        this.outputFile = outputFileAbsolutePath;
     }
 
-    public static boolean preprocessSSC(final InputFile inputFile,
-                                        final Path outputFileAbsolutePath,
-                                        final Map<String, Macro> macros) throws IOException {
-        assert outputFileAbsolutePath.isAbsolute();
-        if (!new Preprocessor(inputFile, macros).writeToOutput(outputFileAbsolutePath)) {
-            return false;
-        }
-
-        Main.logger.printDebug("Preprocessing success");
-        return true;
+    private Preprocessor(final InputFile inputFile) {
+        this(inputFile, null);
     }
 
     private static List<String> getLinesFromPath(final Path path) throws IOException {
@@ -65,23 +62,18 @@ public final class Preprocessor {
         return SSCCUtil.Text.splitLogicalLines(read);
     }
 
-    private boolean writeToOutput(final Path outputFileAbsolutePath)
-            throws IOException {
-        if (!outputFileAbsolutePath.isAbsolute()) {
-            throw new IllegalArgumentException("Output file path must be absolute");
-        }
-
+    public ExitValue run() throws IOException {
         final List<String> preprocessedLines = processLines(
                 getLinesFromPath(inputFile.toAbsolutePath()),
                 inputFile.dir()
         );
 
-        if (!Files.exists(outputFileAbsolutePath)) {
-            Files.createFile(outputFileAbsolutePath);
+        if (!Files.exists(outputFile)) {
+            Files.createFile(outputFile);
         }
 
-        Files.write(outputFileAbsolutePath.toAbsolutePath(), preprocessedLines);
-        return true;
+        Files.write(outputFile.toAbsolutePath(), preprocessedLines);
+        return ExitValue.SUCCESS;
     }
 
     private List<String> processLines(final List<String> lines,
@@ -147,92 +139,10 @@ public final class Preprocessor {
         if (withoutHash.startsWith(INCLUDE_DIRECTIVE_NAME)) {
             processDirectiveInclude(outputLines, baseDir, withoutHash, commentsRemoved);
             return;
-        } else if (withoutHash.startsWith(DEFINE_DIRECTIVE_NAME)) {
-            outputLines.add(currentLine);
-            processDirectiveDefine(withoutHash);
-            return;
         }
 
-        Main.logger.printDebug("\tNot an include or define");
+        Main.logger.printDebug("\tNot an include");
         outputLines.add(commentsRemoved);
-    }
-
-    private void processDirectiveDefine(final String withoutHash) {
-        final String withoutDefine = withoutHash.substring(DEFINE_DIRECTIVE_NAME.length());
-        Main.logger.printDebug("\tWithout define:  '" + withoutDefine + "'");
-        if (withoutDefine.isEmpty()) {
-            throw new PreprocessorException("Empty define directive", lastLines, inputFile);
-        }
-
-        if (!Character.isWhitespace(withoutDefine.charAt(0))) {
-            throw new PreprocessorException("Invalid directive", lastLines, inputFile);
-        }
-
-        final Macro macro = parseMacro(withoutDefine.trim());
-        Main.logger.printDebug(macro.toString());
-        macros.put(macro.identifier(), macro);
-    }
-
-    private Macro parseMacro(final String withoutDefine) {
-        if (Character.isDigit(withoutDefine.charAt(0))) {
-            throw new PreprocessorException(
-                    "Invalid macro identifier character", lastLines,
-                    new int[]{currentLine.indexOf(withoutDefine)}, inputFile
-            );
-        }
-        final StringBuilder identifier = new StringBuilder();
-
-        boolean stillIdentifier = true;
-        List<String> args = null;
-        List<MacroBodyMember> replacements = null;
-
-        for (int i = 0; i < withoutDefine.length(); i++) {
-            final char c = withoutDefine.charAt(i);
-            if (stillIdentifier) {
-                if (charIsIdentifier(c)) {
-                    identifier.append(c);
-                    continue;
-                }
-                stillIdentifier = false;
-
-                if (c == '(') {
-                    final int closingBracketIdx = withoutDefine.indexOf(')', i + 1);
-                    if (closingBracketIdx == -1) {
-                        throw new PreprocessorException("Missing ')'", lastLines,
-                                new int[]{currentLine.indexOf(c)}, inputFile);
-                    }
-                    final String[] split = withoutDefine.substring(i + 1, closingBracketIdx).split(",");
-                    for (int idx = 0; idx < split.length; idx++) {
-                        split[idx] = split[idx].trim();
-                    }
-                    args = Arrays.asList(split);
-                } else if (!Character.isWhitespace(c)) {
-                    throw new PreprocessorException(
-                            "Invalid macro identifier character", lastLines,
-                            new int[]{currentLine.indexOf(c)}, inputFile
-                    );
-                }
-            } else {
-                replacements = new ArrayList<>();
-                /* todo */
-                if ("streq".contentEquals(identifier)) {
-                    final String rep = "( strcmp( S1 , S2 ) == 0 )";
-                    final String[] spl = rep.split("\\s+");
-                    for (final String str : spl) {
-                        replacements.add(new MacroBodyMember(str.equals("S1") || str.equals("S2"), str));
-                    }
-                } else {
-                    replacements.add(new MacroBodyMember(false, withoutDefine.substring(i)));
-                    break;
-                }
-            }
-        }
-
-        return new Macro(identifier.toString(), args, replacements);
-    }
-
-    private static boolean charIsIdentifier(final char c) {
-        return Character.isLetterOrDigit(c) || c == '_';
     }
 
     private void processDirectiveInclude(final List<String> outputLines,
@@ -281,7 +191,7 @@ public final class Preprocessor {
                 .toAbsolutePath()
                 .normalize();
 
-        final boolean isSscHeader = SSCH_FILE_SUFFIX.equals(InputFile.fromAbsolutePath(resolvedNormalized).suffix());
+        final boolean isSscHeader = SSC_HEADER_FILE_SUFFIX.equals(InputFile.fromAbsolutePath(resolvedNormalized).suffix());
         if (!isSscHeader) {
             final String newIncludeLine =
                     "#" + INCLUDE_DIRECTIVE_NAME + " \"" + resolvedNormalized + "\"" +
@@ -302,7 +212,7 @@ public final class Preprocessor {
         final List<String> linesLiteral = getLinesFromPath(resolvedNormalized);
 
         final InputFile subFile = InputFile.fromAbsolutePath(resolvedNormalized);
-        final Preprocessor subFilePreprocessor = new Preprocessor(subFile, macros);
+        final Preprocessor subFilePreprocessor = new Preprocessor(subFile);
         try {
             final Path fileDir = resolvedNormalized.getParent();
             final List<String> linesConverted = subFilePreprocessor.processLines(linesLiteral, fileDir);

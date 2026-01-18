@@ -11,7 +11,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -67,7 +66,9 @@ class TestPreprocessor {
     @Test
     void testPreprocessor() {
         try {
-            Preprocessor.preprocessSSC(InputFile.fromAbsolutePath(testFilePath), outputFilePath, new HashMap<>());
+            final Preprocessor preprocessor =
+                    new Preprocessor(InputFile.fromAbsolutePath(testFilePath), outputFilePath);
+            preprocessor.run();
 
             assertTrue(Files.exists(outputFilePath));
 

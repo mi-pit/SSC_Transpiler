@@ -48,7 +48,7 @@ public final class ArgumentParser {
 
     private enum NextOperation {None, CompileTarget, LibPath}
 
-    public static Options parse(String[] args) throws IOException {
+    public static SSCCOptions parse(String[] args) throws IOException {
         if (args.length == 0) {
             printHelpAndExit();
         }
@@ -58,7 +58,7 @@ public final class ArgumentParser {
         boolean verbose = false;
         boolean printDebug = false;
         boolean stopOnError = true;
-        CCStandard standard = Options.DEF_C_STANDARD;
+        CCStandard standard = SSCCOptions.DEF_C_STANDARD;
 
         NextOperation nextOperation = NextOperation.None;
         for (String arg : args) {
@@ -137,7 +137,7 @@ public final class ArgumentParser {
             err(ExitValue.INVALID_ARGUMENTS, "Missing argument for option '" + nextOperation + "'");
         }
 
-        return new Options(verbose, printDebug, stopOnError, compileTarget, filesToProcess, standard);
+        return new SSCCOptions(verbose, printDebug, stopOnError, compileTarget, filesToProcess, standard);
     }
 
     private static InputFile verifyInputFilePath(final Path path) {

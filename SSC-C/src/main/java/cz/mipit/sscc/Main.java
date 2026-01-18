@@ -1,5 +1,7 @@
 package cz.mipit.sscc;
 
+import cz.mipit.sscc.args.ArgumentParser;
+import cz.mipit.sscc.args.SSCCOptions;
 import cz.mipit.sscc.ssc.compiler.Compiler;
 
 import java.io.IOException;
@@ -16,8 +18,9 @@ public final class Main {
     public static final Logger logger = new Logger();
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        final Compiler compiler = new Compiler(args);
-        logger.setOptions(compiler.getOptions());
-        compiler.run();
+        final SSCCOptions options = ArgumentParser.parse(args);
+        logger.setOptions(options);
+        final Compiler compiler = new Compiler(options);
+        System.exit(compiler.run().ordinal());
     }
 }

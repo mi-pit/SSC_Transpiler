@@ -9,6 +9,14 @@ public enum ExitValue {
     C_COMPILATION_FAIL,
     IO_EXCEPTION;
 
+    public boolean isSuccess() {
+        return this == SUCCESS;
+    }
+
+    public boolean isFailure() {
+        return this != SUCCESS;
+    }
+
     @Override
     public String toString() {
         return super.toString().replaceAll("_", " ");

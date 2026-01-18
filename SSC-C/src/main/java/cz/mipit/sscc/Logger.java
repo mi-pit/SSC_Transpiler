@@ -1,6 +1,6 @@
 package cz.mipit.sscc;
 
-import cz.mipit.sscc.args.Options;
+import cz.mipit.sscc.args.SSCCOptions;
 import cz.mipit.sscc.util.ExitValue;
 import cz.mipit.sscc.util.color.ConsoleColor;
 
@@ -42,6 +42,11 @@ public final class Logger {
         log(COLOR_DEFAULT, "info", System.out, format, args);
     }
 
+    public static ExitValue errNoExit(final ExitValue exitValue, String message) {
+        log(COLOR_ERROR, exitValue.toString(), System.err, "%s", message);
+        return exitValue;
+    }
+
     private static void log(final ConsoleColor color,
                             final String typeString,
                             final PrintStream stream,
@@ -52,17 +57,17 @@ public final class Logger {
     }
 
 
-    private Options options;
+    private SSCCOptions options;
 
-    public Logger(Options opts) {
+    public Logger(SSCCOptions opts) {
         options = opts;
     }
 
     public Logger() {
-        this(Options.DEFAULT);
+        this(SSCCOptions.DEFAULT);
     }
 
-    public void setOptions(final Options options) {
+    public void setOptions(final SSCCOptions options) {
         this.options = options;
     }
 

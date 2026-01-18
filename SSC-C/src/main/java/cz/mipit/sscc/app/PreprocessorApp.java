@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 public final class PreprocessorApp {
@@ -24,7 +23,9 @@ public final class PreprocessorApp {
         }
 
         for (InputFile file : files) {
-            Preprocessor.preprocessSSC(file, file.getChangedSuffix("preprocessed").toAbsolutePath(), new HashMap<>());
+            final Preprocessor preprocessor =
+                    new Preprocessor(file, file.getChangedSuffix("preprocessed").toAbsolutePath());
+            preprocessor.run();
         }
     }
 }

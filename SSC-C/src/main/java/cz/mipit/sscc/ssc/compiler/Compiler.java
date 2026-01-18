@@ -1,9 +1,7 @@
 package cz.mipit.sscc.ssc.compiler;
 
-import cz.mipit.sscc.args.ArgumentParser;
-import cz.mipit.sscc.args.Options;
+import cz.mipit.sscc.args.SSCCOptions;
 import cz.mipit.sscc.file.InputFile;
-import cz.mipit.sscc.ssc.compiler.data.macro.Macro;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.visitors.PostfixExpressionConvertorVisitor;
 import cz.mipit.sscc.ssc.compiler.visitors.SSCConvertorVisitor;
@@ -21,22 +19,19 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+import static cz.mipit.sscc.Logger.errNoExit;
 import static cz.mipit.sscc.Main.logger;
-import static cz.mipit.sscc.Logger.err;
 import static cz.mipit.sscc.Logger.warn;
 
-public final class Compiler {
+public final class Compiler implements Processor {
     private final Set<SuperStruct> sss = new HashSet<>();
-    private final Map<String, Macro> macros = new HashMap<>();
 
-    private final Options options;
+    private final SSCCOptions options;
 
     private static final List<String> CC_OPTIONS = List.of(
             "-Wall",
@@ -52,12 +47,8 @@ public final class Compiler {
 
     private InputFile currentFile = null;
 
-    public Options getOptions() {
-        return options;
-    }
-
-    public Compiler(final String[] args) throws IOException {
-        options = ArgumentParser.parse(args);
+    public Compiler(final SSCCOptions options) {
+        this.options = options;
 
         ccProcessArgBase = ListBuilder
                 .from("cc")
@@ -66,28 +57,24 @@ public final class Compiler {
                 .build();
     }
 
-    public void run() throws IOException, InterruptedException {
-        processFiles(options.filesToProcess());
-    }
-
-    private void processFiles(final List<InputFile> files)
-            throws IOException, InterruptedException {
-        if (files.isEmpty()) {
-            err(ExitValue.INVALID_ARGUMENTS, "No files given to process");
+    public ExitValue run() throws IOException, InterruptedException {
+        if (options.filesToProcess().isEmpty()) {
+            return errNoExit(ExitValue.INVALID_ARGUMENTS, "No files given to process");
         }
 
         final Set<Path> outputtedFiles = new HashSet<>();
         final Set<Path> filesToCompile = new HashSet<>();
 
-        final int totalFailed = goThroughAllFiles(files, filesToCompile, outputtedFiles);
+        final int totalFailed = goThroughAllFiles(filesToCompile, outputtedFiles);
         if (totalFailed != 0) {
-            err(ExitValue.TRANSPILATION_FAIL, "Could not process " + totalFailed + " file(s)");
-            return;
+            return errNoExit(ExitValue.TRANSPILATION_FAIL, "Could not process " + totalFailed + " file(s)");
         }
 
         if (options.compileTargetFilename().isPresent()) {
             logger.printVerbose("Compiling...");
-            compileCBatch(options.compileTargetFilename().get(), filesToCompile);
+            if (!compileCBatch(options.compileTargetFilename().get(), filesToCompile)) {
+                return ExitValue.C_COMPILATION_FAIL;
+            }
 
             outputtedFiles.forEach(path -> {
                 logger.printVerbose("Trying to delete output file '" + path + "'...");
@@ -100,14 +87,14 @@ public final class Compiler {
             });
         }
         logger.printVerbose("Successfully processed.");
+        return ExitValue.SUCCESS;
     }
 
-    private int goThroughAllFiles(List<InputFile> files,
-                                  Set<Path> filesToCompile,
-                                  Set<Path> outputtedFiles)
+    private int goThroughAllFiles(final Set<Path> filesToCompile,
+                                  final Set<Path> outputtedFiles)
             throws IOException, InterruptedException {
         int totalFailed = 0;
-        for (final InputFile fileArg : files) {
+        for (final InputFile fileArg : options.filesToProcess()) {
             if (!"ssc".equals(fileArg.suffix())) {
                 handleNonSSCFiles(fileArg, filesToCompile);
                 continue;
@@ -224,7 +211,7 @@ public final class Compiler {
                                             final ParseTree tree,
                                             final Path outputFile)
             throws IOException {
-        final SSCConvertorVisitor visitor = new PostfixExpressionConvertorVisitor(tokens, sss, macros, currentFile);
+        final SSCConvertorVisitor visitor = new PostfixExpressionConvertorVisitor(tokens, sss, currentFile);
         final String result = visitor.visit(tree) + "\n";
 
         Files.writeString(outputFile, result,
@@ -242,15 +229,13 @@ public final class Compiler {
 
     private static final String SSC_DEF_MACRO_STRING_NAME = "__SSC_SOURCE__";
 
-    @Deprecated(since = "preprocessor impl", forRemoval = true)
     private boolean preprocessSSCCode(final InputFile inFile,
                                       final Path outFileAbsolute)
             throws IOException, InterruptedException {
-        if (!Preprocessor.preprocessSSC(inFile, outFileAbsolute, macros)) {
+        final Processor preprocessor = new Preprocessor(inFile, outFileAbsolute);
+        if (preprocessor.run().isFailure()) {
             return false;
         }
-        if (true)
-            return true;
 
         final Path tempOut = Files.createTempFile(inFile.dir(), inFile.getFullName(), ".i");
 
@@ -286,7 +271,7 @@ public final class Compiler {
         );
     }
 
-    private void compileCBatch(String binaryName, Set<Path> files)
+    private boolean compileCBatch(String binaryName, Set<Path> files)
             throws IOException, InterruptedException {
         /* cc -Werror -Wall -Wextra -pedantic -fsyntax-only "$file" */
         final int exitCode = doProcess(ListBuilder
@@ -297,7 +282,9 @@ public final class Compiler {
                 .build()
         );
         if (exitCode != 0) {
-            err(ExitValue.C_COMPILATION_FAIL, "Compilation failed with exit code: " + exitCode);
+            errNoExit(ExitValue.C_COMPILATION_FAIL, "Compilation failed with exit code: " + exitCode);
+            return false;
         }
+        return true;
     }
 }
