@@ -7,7 +7,9 @@ public enum ExitValue {
     C_PREPROCESSING_FAIL,
     C_VERIFICATION_FAIL,
     C_COMPILATION_FAIL,
-    IO_EXCEPTION;
+    IO_EXCEPTION,
+    LIBRARY_NOT_FOUND,
+    ;
 
     public boolean isSuccess() {
         return this == SUCCESS;

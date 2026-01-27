@@ -2,7 +2,8 @@ package cz.mipit.sscc.ssc.preprocessor;
 
 import cz.mipit.sscc.Main;
 import cz.mipit.sscc.file.InputFile;
-import cz.mipit.sscc.ssc.compiler.Processor;
+import cz.mipit.sscc.ssc.Processor;
+import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.ssc.exceptions.children.PreprocessorException;
 import cz.mipit.sscc.util.ExitValue;
 import cz.mipit.sscc.util.SSCCUtil;
@@ -14,12 +15,12 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.Set;
 
 public final class Preprocessor implements Processor {
     private static final String SSC_HEADER_FILE_SUFFIX = "ssch";
@@ -62,7 +63,7 @@ public final class Preprocessor implements Processor {
         return SSCCUtil.Text.splitLogicalLines(read);
     }
 
-    public ExitValue run() throws IOException {
+    public ExitValue run() throws IOException, SSCTranspilerException {
         final List<String> preprocessedLines = processLines(
                 getPreprocessorLines(inputFile.toAbsolutePath()),
                 inputFile.dir()
@@ -72,7 +73,7 @@ public final class Preprocessor implements Processor {
             Files.createFile(outputFile);
         }
 
-        Files.write(outputFile.toAbsolutePath(), preprocessedLines);
+        Files.write(outputFile, preprocessedLines);
         return ExitValue.SUCCESS;
     }
 
@@ -88,56 +89,73 @@ public final class Preprocessor implements Processor {
                 lastLines.poll();
             }
 
-            processLine(outputLines, dir);
+            if (!line.isBlank()) {
+                processLine(outputLines, dir);
+            } else {
+                outputLines.add(currentLine);
+            }
         }
 
         return outputLines;
     }
 
-    private static final Pattern BLOCK_COMMENT_START = Pattern.compile("/\\*.*");
-    private static final Pattern BLOCK_COMMENT_END = Pattern.compile(".*?\\*/");
-    private static final Pattern BLOCK_COMMENT_WHOLE = Pattern.compile("/\\*.*?\\*/");
-    private static final Pattern LINE_COMMENT = Pattern.compile("//.*");
-
     private String removeComments(final String line) {
-        String replaced;
+        final StringBuilder dynstring = new StringBuilder();
 
-        final Matcher endMatcher = BLOCK_COMMENT_END.matcher(line);
-        if (comment) {
-            if (!endMatcher.find()) {
-                Main.logger.printDebug("\tOnly comment");
-                return "";
+        /* `bool stringLiteral` is local since strings may only span one line.
+         * `bool comment` may span multiple lines => global */
+        boolean stringLiteral = false;
+
+        for (int i = 0; i < line.length(); ++i) {
+            final char curr = line.charAt(i);
+
+            if (comment) {
+                if (i + 1 < line.length() && curr == '*' && line.charAt(i + 1) == '/') {
+                    comment = false;
+                    ++i;
+                }
+                continue;
             }
-            replaced = endMatcher.replaceAll("");
-        } else {
-            replaced = line;
-        }
-        comment = false;
 
-        final Matcher lineCommentMatcher = LINE_COMMENT.matcher(replaced);
-        if (lineCommentMatcher.find()) {
-            replaced = lineCommentMatcher.replaceFirst("");
+            if (curr == '"') {
+                stringLiteral = !stringLiteral;
+                dynstring.append(curr);
+                continue;
+            }
+
+            if (i + 1 >= line.length()) {
+                dynstring.append(curr);
+                break;
+            }
+
+            if (!stringLiteral && curr == '/') {
+                final char next = line.charAt(i + 1);
+                // `/*`
+                if (next == '*') {
+                    comment = true;
+                    ++i;
+                    continue;
+                }
+                // `//`
+                if (next == '/') {
+                    /* line comment => skip rest of line */
+                    break;
+                }
+            }
+
+            dynstring.append(curr);
         }
 
-        final Matcher blockCommentMatcher = BLOCK_COMMENT_WHOLE.matcher(replaced);
-        if (blockCommentMatcher.find()) {
-            replaced = blockCommentMatcher.replaceFirst("");
-        }
-
-        final Matcher matcher = BLOCK_COMMENT_START.matcher(replaced);
-        if (matcher.find()) {
-            comment = true;
-            replaced = matcher.replaceAll("");
-        }
-
-        Main.logger.printDebug("\tWithout comment: '" + replaced + "'");
-        return replaced;
+        return dynstring.toString();
     }
 
     private void processLine(final List<String> outputLines,
                              final Path baseDir)
             throws IOException {
         final String commentsRemoved = removeComments(currentLine);
+        if (commentsRemoved.isEmpty()) {
+            return;
+        }
         final Optional<String> maybeWithoutHash = getWithoutHash(commentsRemoved);
         if (maybeWithoutHash.isEmpty()) {
             outputLines.add(commentsRemoved);
@@ -172,7 +190,7 @@ public final class Preprocessor implements Processor {
         if (withoutInclude.length() == 1) {
             final int index = currentLine.lastIndexOf(withoutInclude);
             throw new PreprocessorException(
-                    "Include directive argument is missing a closing '>' or '\"'",
+                    "Include directive argument must be more than one character",
                     lastLines,
                     index,
                     index + 1,
@@ -180,15 +198,9 @@ public final class Preprocessor implements Processor {
             );
         }
         final char firstChar = getFirstChar(withoutInclude);
-        if (firstChar == '<') {
-            Main.logger.printDebug("\tNot quoted include");
-            outputLines.add(commentsRemoved);
-            return;
-        }
-        final String filePathString = withoutInclude
-                .substring(1, withoutInclude.length() - 1)
-                .trim();
-        if (filePathString.isBlank()) {
+        final String strippedIncludeArg = withoutInclude
+                .substring(1, withoutInclude.length() - 1);
+        if (strippedIncludeArg.isBlank()) {
             throw new PreprocessorException(
                     "Empty file path string",
                     lastLines,
@@ -198,16 +210,19 @@ public final class Preprocessor implements Processor {
             );
         }
 
-        final Path resolvedNormalized = tryGetPathFromString(filePathString, baseDir)
+        if (firstChar == '<') {
+            Main.logger.printDebug("\tNot quoted include");
+            return;
+        }
+
+        final Path resolvedNormalized = tryGetPathFromString(strippedIncludeArg, baseDir)
                 .toAbsolutePath()
                 .normalize();
 
-        final boolean isSscHeader = SSC_HEADER_FILE_SUFFIX.equals(InputFile.fromAbsolutePath(resolvedNormalized).suffix());
+        final InputFile newFile = InputFile.fromAbsolutePath(resolvedNormalized);
+        final boolean isSscHeader = SSC_HEADER_FILE_SUFFIX.equals(newFile.suffix());
         if (!isSscHeader) {
-            final String newIncludeLine =
-                    "#" + INCLUDE_DIRECTIVE_NAME + " \"" + resolvedNormalized + "\"" +
-                            " /* resolved from " + filePathString + " */";
-            outputLines.add(newIncludeLine);
+            handleNonSSCHeaders(strippedIncludeArg, outputLines, newFile, resolvedNormalized);
             return;
         }
 
@@ -220,20 +235,42 @@ public final class Preprocessor implements Processor {
             );
         }
 
-        final List<String> linesLiteral = getPreprocessorLines(resolvedNormalized);
-
         final InputFile subFile = InputFile.fromAbsolutePath(resolvedNormalized);
+        processSubFile(outputLines, subFile, resolvedNormalized);
+    }
+
+    private void processSubFile(final List<String> outputLines,
+                                final InputFile subFile,
+                                final Path subFilePath) throws IOException {
+        final List<String> linesLiteral = getPreprocessorLines(subFilePath);
         final Preprocessor subFilePreprocessor = new Preprocessor(subFile);
         try {
-            final Path fileDir = resolvedNormalized.getParent();
+            final Path fileDir = subFilePath.getParent();
             final List<String> linesConverted = subFilePreprocessor.processLines(linesLiteral, fileDir);
             outputLines.addAll(linesConverted);
         } catch (final PreprocessorException e) {
-            throw new PreprocessorException(
-                    "In the expansion of file '" + inputFile.getFullName() + "'",
-                    e, inputFile
-            );
+            throw new PreprocessorException(e, inputFile);
         }
+    }
+
+    private void handleNonSSCHeaders(final String strippedIncludeArg,
+                                     final List<String> outputLines,
+                                     final InputFile subFile,
+                                     final Path subFilePath) throws IOException {
+        if (Files.exists(subFilePath)) {
+            processSubFile(outputLines, subFile, subFilePath);
+            return;
+        }
+
+        Main.logger.printDebug("Included file not found: '" + subFilePath + "'");
+        Main.logger.printDebug("Treating as a <std> header");
+
+        final String converted = "#include <" + strippedIncludeArg + "> /* resolved from " + inputFile.getFullName() + " */";
+        outputLines.add(converted);
+
+        Main.logger.printDebug("Added include: " + converted);
+
+        throw new PreprocessorException("Could not find file \"" + strippedIncludeArg + "\"", lastLines, inputFile);
     }
 
     private static Optional<String> getWithoutHash(String commentsRemoved) {
@@ -250,6 +287,9 @@ public final class Preprocessor implements Processor {
         return Optional.of(trimmed.substring(1).trim());
     }
 
+    /**
+     * Verifies file and returns first character ({@code "} or {@code <})
+     */
     private char getFirstChar(String withoutInclude) {
         final char firstChar = withoutInclude.charAt(0);
         final char lastChar = withoutInclude.charAt(withoutInclude.length() - 1);

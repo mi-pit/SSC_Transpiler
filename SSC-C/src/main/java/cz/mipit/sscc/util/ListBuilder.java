@@ -63,7 +63,7 @@ public final class ListBuilder<T> {
      * @return this
      */
     @SafeVarargs
-    public final ListBuilder<T> add(T... values) {
+    public final ListBuilder<T> addAll(T... values) {
         for (T value : values) {
             add(value);
         }

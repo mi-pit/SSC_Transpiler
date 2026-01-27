@@ -8,8 +8,8 @@ import cz.mipit.sscc.util.SSCCUtil;
 import java.util.List;
 
 public class PreprocessorException extends SSCTranspilerException {
-    public PreprocessorException(final String message, final SSCTranspilerException e, InputFile currentFile) {
-        super(Type.Preprocessor, message, e, currentFile);
+    public PreprocessorException(final SSCTranspilerException e, InputFile currentFile) {
+        super(Type.Preprocessor, e, currentFile);
     }
 
     private PreprocessorException(String message, List<EnumeratedLine> lines,

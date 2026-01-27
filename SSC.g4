@@ -47,7 +47,7 @@ primaryExpression
     | '__builtin_offsetof' '(' typeName ',' unaryExpression ')'
     | VersionNumber // For attributes only (dirty hack)
     | directive     /* e.g. `#embed` */
-    //| typeName      /* in macros */
+    | typeName      /* in macros (va_arg doesn't expand) */
     ;
 
 genericSelection
@@ -315,11 +315,13 @@ atomicTypeSpecifier
 
 typeQualifier
     : 'const'
-    | 'restrict'
+    | Restrict
     | 'volatile'
     | '_Atomic'
     | '_Nonnull'
     | '_Nullable'
+    // TODO?
+    //| '[[' Identifier ']]'
     ;
 
 functionSpecifier
@@ -653,6 +655,7 @@ Register
 
 Restrict
     : 'restrict'
+    | '__restrict'
     ;
 
 Return

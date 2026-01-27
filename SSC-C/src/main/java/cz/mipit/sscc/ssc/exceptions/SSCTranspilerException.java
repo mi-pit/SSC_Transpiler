@@ -4,6 +4,7 @@ import cz.mipit.sscc.Main;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.preprocessor.EnumeratedLine;
 import cz.mipit.sscc.util.SSCCUtil;
+import cz.mipit.sscc.util.annotations.Nullable;
 import cz.mipit.sscc.util.color.ConsoleColor;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -51,9 +52,9 @@ public abstract class SSCTranspilerException extends RuntimeException {
 
     private final InputFile currentFile;
     private final Type type;
-    private final String message;
+    private final @Nullable String message;
     private final String context;
-    private final String locator;
+    private final @Nullable String locator;
 
 
     private String formattedMessage() {
@@ -66,15 +67,19 @@ public abstract class SSCTranspilerException extends RuntimeException {
                 .append(type.humanReadableName())
                 .append(" exception while processing file '")
                 .append(COLOR_DEFAULT)
-                .append(currentFile.toPath())
+                .append(currentFile.getFullName())
                 .append(color)
                 .append("':")
-                .append(lineSeparator())
-                .append("    ")
-                .append(message)
-                .append(COLOR_DEFAULT)
-                .append(lineSeparator())
-                .append(context);
+                .append(lineSeparator());
+
+        if (message != null) {
+            sBuilder
+                    .append("    ")
+                    .append(message)
+                    .append(COLOR_DEFAULT)
+                    .append(lineSeparator());
+        }
+        sBuilder.append(context);
 
         if (locator != null) {
             sBuilder.append(lineSeparator())
@@ -92,7 +97,7 @@ public abstract class SSCTranspilerException extends RuntimeException {
                                    String context, String locator,
                                    InputFile currentFile) {
         this.type = requireNonNull(type);
-        this.message = requireNonNull(message);
+        this.message = message;
         this.context = requireNonNull(context);
         this.locator = locator;
         this.currentFile = requireNonNull(currentFile);
@@ -106,11 +111,10 @@ public abstract class SSCTranspilerException extends RuntimeException {
 
     protected SSCTranspilerException(
             final Type type,
-            final String message,
             final SSCTranspilerException e,
             final InputFile currentFile
     ) {
-        this(type, message, e.getMessage(), null, currentFile);
+        this(type, null, e.getMessage(), null, currentFile);
     }
 
     protected SSCTranspilerException(Type type, String message,

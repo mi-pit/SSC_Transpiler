@@ -1,6 +1,6 @@
 package cz.mipit.sscc.ssc.compiler.cc;
 
-import cz.mipit.sscc.Main;
+import cz.mipit.sscc.Logger;
 
 public final class CCStandard {
     public static final CCStandard
@@ -27,7 +27,7 @@ public final class CCStandard {
             case "c23" -> C23;
 
             default -> {
-                Main.logger.printDebug("Unknown standard: '%s'", repre);
+                Logger.warn("Unknown standard: '%s'", repre);
                 yield new CCStandard(repre);
             }
         };

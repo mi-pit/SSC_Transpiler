@@ -4,7 +4,7 @@ import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.compiler.cc.CCStandard;
 
 import java.util.Collections;
-import java.util.List;
+import java.util.Set;
 import java.util.Optional;
 
 public final class SSCCOptions {
@@ -12,7 +12,7 @@ public final class SSCCOptions {
     public static final boolean DEF_DEBUG = false;
     public static final boolean DEF_STOP_ON_ERROR = true;
     public static final String DEF_COMPILER_TARGET = null;
-    public static final List<InputFile> DEF_FILES_TO_PROCESS = Collections.emptyList();
+    public static final Set<InputFile> DEF_FILES_TO_PROCESS = Collections.emptySet();
     public static final CCStandard DEF_C_STANDARD = CCStandard.C23;
 
     public static final SSCCOptions DEFAULT =
@@ -24,11 +24,11 @@ public final class SSCCOptions {
     private final boolean debug;
     private final boolean stopOnError;
     private final String compileTargetFilename;
-    private final List<InputFile> filesToProcess;
+    private final Set<InputFile> filesToProcess;
     private final CCStandard standard;
 
     SSCCOptions(boolean verbose, boolean debug, boolean stopOnError,
-                String compileTargetFilename, List<InputFile> filesToProcess,
+                String compileTargetFilename, Set<InputFile> filesToProcess,
                 CCStandard standard) {
         this.verbose = verbose;
         this.debug = debug;
@@ -54,8 +54,8 @@ public final class SSCCOptions {
         return Optional.ofNullable(compileTargetFilename);
     }
 
-    public List<InputFile> filesToProcess() {
-        return Collections.unmodifiableList(filesToProcess);
+    public Set<InputFile> filesToProcess() {
+        return Collections.unmodifiableSet(filesToProcess);
     }
 
     public CCStandard cStandard() {

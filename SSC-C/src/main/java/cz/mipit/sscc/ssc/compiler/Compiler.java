@@ -1,13 +1,14 @@
 package cz.mipit.sscc.ssc.compiler;
 
 import cz.mipit.sscc.args.SSCCOptions;
+import cz.mipit.sscc.file.DirectoryTreeParser;
 import cz.mipit.sscc.file.InputFile;
+import cz.mipit.sscc.ssc.Processor;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.visitors.PostfixExpressionConvertorVisitor;
 import cz.mipit.sscc.ssc.compiler.visitors.SSCConvertorVisitor;
 import cz.mipit.sscc.ssc.compiler.visitors.SuperstructConvertorVisitor;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
-import cz.mipit.sscc.ssc.preprocessor.Preprocessor;
 import cz.mipit.sscc.util.ExitValue;
 import cz.mipit.sscc.util.ListBuilder;
 import cz.mipit.sscc.util.VisitorData;
@@ -29,6 +30,10 @@ import static cz.mipit.sscc.Main.logger;
 import static cz.mipit.sscc.Logger.warn;
 
 public final class Compiler implements Processor {
+    private static final Path LIBRARY_ROOT = DirectoryTreeParser.getLibraryRoot();
+    private static final Set<Path> LIBRARY_FILES = DirectoryTreeParser.getLibraryFiles(LIBRARY_ROOT);
+
+
     private final Set<SuperStruct> sss = new HashSet<>();
 
     private final SSCCOptions options;
@@ -50,14 +55,16 @@ public final class Compiler implements Processor {
     public Compiler(final SSCCOptions options) {
         this.options = options;
 
-        ccProcessArgBase = ListBuilder
+        final ListBuilder<String> cc = ListBuilder
                 .from("cc")
                 .addAll(CC_OPTIONS)
-                .add(options.cStandard().ccOptionString())
-                .build();
+                .add("-I" + LIBRARY_ROOT)
+                .add(options.cStandard().ccOptionString());
+
+        ccProcessArgBase = cc.build();
     }
 
-    public ExitValue run() throws IOException, InterruptedException {
+    public ExitValue run() throws IOException, InterruptedException, SSCTranspilerException {
         if (options.filesToProcess().isEmpty()) {
             return errNoExit(ExitValue.INVALID_ARGUMENTS, "No files given to process");
         }
@@ -76,7 +83,7 @@ public final class Compiler implements Processor {
                 return ExitValue.C_COMPILATION_FAIL;
             }
 
-            outputtedFiles.forEach(path -> {
+            for (final Path path : outputtedFiles) {
                 logger.printVerbose("Trying to delete output file '" + path + "'...");
                 try {
                     Files.delete(path);
@@ -84,7 +91,7 @@ public final class Compiler implements Processor {
                 } catch (IOException e) {
                     warn("Could not delete file '" + path + "'");
                 }
-            });
+            }
         }
         logger.printVerbose("Successfully processed.");
         return ExitValue.SUCCESS;
@@ -94,7 +101,10 @@ public final class Compiler implements Processor {
                                   final Set<Path> outputtedFiles)
             throws IOException, InterruptedException {
         int totalFailed = 0;
-        for (final InputFile fileArg : options.filesToProcess()) {
+        final List<InputFile> filesToProcess = ListBuilder.from(options.filesToProcess())
+                .addMapped(LIBRARY_FILES, InputFile::fromAbsolutePath)
+                .build();
+        for (final InputFile fileArg : filesToProcess) {
             if (!"ssc".equals(fileArg.suffix())) {
                 handleNonSSCFiles(fileArg, filesToCompile);
                 continue;
@@ -165,7 +175,7 @@ public final class Compiler implements Processor {
             logger.printVerbose("Extracting superstructs...");
             if (!extractSuperstructMembers(data.tokens(), data.tree(), workingFileAbsolutePath)) {
                 logger.printVerbose("Failed to extract superstructs.");
-                return Optional.empty(); // Error nodes encountered
+                return Optional.empty();
             }
         }
         {
@@ -214,10 +224,10 @@ public final class Compiler implements Processor {
         final SSCConvertorVisitor visitor = new PostfixExpressionConvertorVisitor(tokens, sss, currentFile);
         final String result = visitor.visit(tree) + "\n";
 
-        Files.writeString(outputFile, result,
-                StandardOpenOption.WRITE,
-                StandardOpenOption.TRUNCATE_EXISTING
-        );
+        try (final var bw = Files.newBufferedWriter(outputFile, StandardOpenOption.TRUNCATE_EXISTING)) {
+            bw.write(result);
+            bw.flush();
+        }
 
         return visitor.hasNoErrors();
     }
@@ -232,20 +242,20 @@ public final class Compiler implements Processor {
     private boolean preprocessSSCCode(final InputFile inFile,
                                       final Path outFileAbsolute)
             throws IOException, InterruptedException {
-        final Processor preprocessor = new Preprocessor(inFile, outFileAbsolute);
-        if (preprocessor.run().isFailure()) {
-            return false;
-        }
+//        final Processor preprocessor = new Preprocessor(inFile, outFileAbsolute);
+//        if (preprocessor.run().isFailure()) {
+//            return false;
+//        }
 
         final Path tempOut = Files.createTempFile(inFile.dir(), inFile.getFullName(), ".i");
 
         final int exitCode = doProcess(ListBuilder
                 .from(ccProcessArgBase)
-                .add(
+                .addAll(
                         "-E",
                         "-P",
                         "-D" + SSC_DEF_MACRO_STRING_NAME,
-                        "-D__attribute__(...)=", /* fixme */
+                        //"-D__attribute__(...)=", /* fixme */
                         "-x", "c",
                         inFile.absolutePathString(),
                         "-o", tempOut.toString()
@@ -254,7 +264,7 @@ public final class Compiler implements Processor {
         );
 
         if (exitCode != 0) {
-            tempOut.toFile().deleteOnExit();
+            Files.deleteIfExists(tempOut);
             return false;
         }
 
@@ -273,14 +283,15 @@ public final class Compiler implements Processor {
 
     private boolean compileCBatch(String binaryName, Set<Path> files)
             throws IOException, InterruptedException {
-        /* cc -Werror -Wall -Wextra -pedantic -fsyntax-only "$file" */
-        final int exitCode = doProcess(ListBuilder
+        final List<String> args = ListBuilder
                 .from(ccProcessArgBase)
                 .addMapped(files, Path::toString)
                 .add("-o")
                 .add(binaryName)
-                .build()
-        );
+                .build();
+
+        /* cc -Werror -Wall -Wextra -pedantic -fsyntax-only "$file" */
+        final int exitCode = doProcess(args);
         if (exitCode != 0) {
             errNoExit(ExitValue.C_COMPILATION_FAIL, "Compilation failed with exit code: " + exitCode);
             return false;

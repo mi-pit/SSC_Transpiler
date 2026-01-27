@@ -8,8 +8,9 @@ import cz.mipit.sscc.util.ExitValue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static cz.mipit.sscc.Logger.err;
 import static cz.mipit.sscc.Logger.warn;
@@ -53,7 +54,7 @@ public final class ArgumentParser {
             printHelpAndExit();
         }
 
-        final List<InputFile> filesToProcess = new ArrayList<>();
+        final Set<InputFile> filesToProcess = new HashSet<>();
         String compileTarget = null;
         boolean verbose = false;
         boolean printDebug = false;
