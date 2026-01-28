@@ -33,7 +33,7 @@ public final class ArgumentParser {
             Option.of(OPTSTR_HELP, "Help", "Display this message", null),
             Option.of(OPTSTR_VERBOSE, "Verbose", "Print information about current stage", null),
             Option.of(OPTSTR_DEBUG, "Debug mode", "Print debug information (unstable)", null),
-            Option.of(OPTSTR_STOP_ON_ERROR, "Stop on error", "Stops processing after encountering an error", null),
+            Option.of(OPTSTR_STOP_ON_ERROR, "Don't stop on error", "By default, sscc stops processing after encountering an error (this powers through)", null),
             Option.of(OPTSTR_STD_C, "Set C standard", "Sets the C standard for compilation/preprocessing", "c standard string (same as in cc)"),
             Option.of(OPTSTR_COMPILE + " ", "Compile", "Compiles the resulting C code into a binary", "name of the resulting binary"),
             Option.of(OPTSTR_LIB + " ", "Library", "Process all `.c` & `.ssc` files in a directory", "library path")
