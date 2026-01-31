@@ -14,7 +14,7 @@ import java.util.function.Function;
 public final class ListBuilder<T> {
     public static final int DEFAULT_CAPACITY = 16;
 
-    private final List<T> ls;
+    private final ArrayList<T> ls;
 
     private ListBuilder(int capacity) {
         ls = new ArrayList<>(capacity);
@@ -91,5 +91,10 @@ public final class ListBuilder<T> {
      */
     public List<T> build() {
         return Collections.unmodifiableList(ls);
+    }
+
+    @Override
+    public String toString() {
+        return "ListBuilder" + ls;
     }
 }

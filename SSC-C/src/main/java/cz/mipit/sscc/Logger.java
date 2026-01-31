@@ -105,7 +105,7 @@ public final class Logger {
         printVerbose("%s", (Object) string);
     }
 
-    public void printVerbose(String a, String b) {
+    public void printVerboseFilename(String a, String b) {
         printVerbose("%s'" + COLOR_DEFAULT + "%s" + VERBOSE_COLOR + "'", a, b);
     }
 }

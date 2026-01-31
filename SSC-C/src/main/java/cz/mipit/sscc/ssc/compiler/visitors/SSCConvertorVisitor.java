@@ -37,6 +37,10 @@ public abstract class SSCConvertorVisitor extends SSCBaseVisitor<String> {
         return new SSCSyntaxException(message, ctx, tokens, currentFile);
     }
 
+    @Override
+    protected String defaultResult() {
+        return "";
+    }
 
     @Override
     public String visitChildren(RuleNode node) {

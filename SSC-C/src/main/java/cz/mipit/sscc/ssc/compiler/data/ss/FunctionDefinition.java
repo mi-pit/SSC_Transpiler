@@ -167,9 +167,8 @@ public class FunctionDefinition {
                     .append(" *");
 
             if (willHaveBody) {
-                selfRef.append("const ");
+                selfRef.append("const this");
             }
-            selfRef.append("this");
 
             if (!args.isEmpty()) {
                 selfRef.append(", ");

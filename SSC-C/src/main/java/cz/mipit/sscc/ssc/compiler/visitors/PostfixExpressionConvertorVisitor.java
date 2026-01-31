@@ -65,7 +65,7 @@ public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
         final SSCParser.ParameterTypeListContext paramTypeList =
                 ctx.declarator().directDeclarator().parameterTypeList();
         if (paramTypeList == null) {
-            throw getSSCSyntaxException("Invalid function definition", ctx);
+            throw getSSCSyntaxException("Function definition has no parameter type list", ctx.declarator());
         }
 
         final List<SSCParser.ParameterDeclarationContext> paramList =

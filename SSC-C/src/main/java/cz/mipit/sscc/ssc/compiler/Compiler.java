@@ -30,9 +30,7 @@ import static cz.mipit.sscc.Main.logger;
 import static cz.mipit.sscc.Logger.warn;
 
 public final class Compiler implements Processor {
-    private static final Path LIBRARY_ROOT = DirectoryTreeParser.getLibraryRoot();
-    private static final Set<Path> LIBRARY_FILES = DirectoryTreeParser.getLibraryFiles(LIBRARY_ROOT);
-
+    private static final Path SSCLIB_HOME = DirectoryTreeParser.getLibraryRoot();
 
     private final Set<SuperStruct> sss = new HashSet<>();
 
@@ -57,8 +55,8 @@ public final class Compiler implements Processor {
 
         final ListBuilder<String> cc = ListBuilder
                 .from("cc")
+                .add("-I" + SSCLIB_HOME + "/include/")
                 .addAll(CC_OPTIONS)
-                .add("-I" + LIBRARY_ROOT)
                 .add(options.cStandard().ccOptionString());
 
         ccProcessArgBase = cc.build();
@@ -101,9 +99,7 @@ public final class Compiler implements Processor {
                                   final Set<Path> outputtedFiles)
             throws IOException, InterruptedException {
         int totalFailed = 0;
-        final List<InputFile> filesToProcess = ListBuilder.from(options.filesToProcess())
-                .addMapped(LIBRARY_FILES, InputFile::fromAbsolutePath)
-                .build();
+        final Set<InputFile> filesToProcess = options.filesToProcess();
         for (final InputFile fileArg : filesToProcess) {
             if (!"ssc".equals(fileArg.suffix())) {
                 handleNonSSCFiles(fileArg, filesToCompile);
@@ -158,7 +154,7 @@ public final class Compiler implements Processor {
 
     private Optional<Path> transpileFile(final InputFile inputFile)
             throws IOException, InterruptedException {
-        logger.printVerbose("Processing file: ", inputFile.absolutePathString());
+        logger.printVerboseFilename("Processing file: ", inputFile.absolutePathString());
 
         final InputFile workingFile = inputFile.getChangedSuffix("c");
         final Path workingFileAbsolutePath = workingFile.toAbsolutePath();
@@ -234,6 +230,7 @@ public final class Compiler implements Processor {
 
     private static int doProcess(final List<String> args)
             throws IOException, InterruptedException {
+        logger.printDebug(args.toString());
         return new ProcessBuilder(args).inheritIO().start().waitFor();
     }
 
@@ -255,7 +252,6 @@ public final class Compiler implements Processor {
                         "-E",
                         "-P",
                         "-D" + SSC_DEF_MACRO_STRING_NAME,
-                        //"-D__attribute__(...)=", /* fixme */
                         "-x", "c",
                         inFile.absolutePathString(),
                         "-o", tempOut.toString()
@@ -283,12 +279,26 @@ public final class Compiler implements Processor {
 
     private boolean compileCBatch(String binaryName, Set<Path> files)
             throws IOException, InterruptedException {
-        final List<String> args = ListBuilder
+        final ListBuilder<String> argsBuilder = ListBuilder
                 .from(ccProcessArgBase)
                 .addMapped(files, Path::toString)
+
                 .add("-o")
                 .add(binaryName)
-                .build();
+
+                .add("-fsanitize=address")
+                .add("-fsanitize=undefined")
+                .add("-fsanitize=integer")
+
+                .add("-L" + SSCLIB_HOME + "/dylib/")
+                .add("-lssclib")
+                .add("-Wl,-rpath," + SSCLIB_HOME + "/dylib/");
+        if (options.debug()) {
+            argsBuilder.add("-v");
+        }
+        final List<String> args = argsBuilder.build();
+
+        logger.printVerbose("Compiling using `%s`", String.join(" ", args));
 
         /* cc -Werror -Wall -Wextra -pedantic -fsyntax-only "$file" */
         final int exitCode = doProcess(args);

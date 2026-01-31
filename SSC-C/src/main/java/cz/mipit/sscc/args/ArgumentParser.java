@@ -66,14 +66,11 @@ public final class ArgumentParser {
             nextOperation = switch (nextOperation) {
                 case CompileTarget -> {
                     final Path asPath = Path.of(arg);
-                    if (asPath.toFile().exists()) {
+                    if (Files.exists(asPath)) {
                         warn("File chosen as output already exists");
                     }
-                    if (asPath.toFile().isDirectory()) {
+                    if (Files.isDirectory(asPath)) {
                         err(ExitValue.INVALID_ARGUMENTS, "'" + arg + "' is a directory");
-                    }
-                    if (asPath.toString().split("\\.").length != 1) {
-                        err(ExitValue.INVALID_ARGUMENTS, "Output file has a strange suffix");
                     }
                     compileTarget = arg;
                     yield NextOperation.None;
