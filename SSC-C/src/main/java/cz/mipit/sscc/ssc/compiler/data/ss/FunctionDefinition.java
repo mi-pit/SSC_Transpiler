@@ -175,7 +175,7 @@ public class FunctionDefinition {
             }
         }
 
-        final String specsString = String.join(" ", specs);
+        final String specsString = "static " + String.join(" ", specs);
 
         return specsString
                 + (specsString.isBlank() ? "" : " ")
