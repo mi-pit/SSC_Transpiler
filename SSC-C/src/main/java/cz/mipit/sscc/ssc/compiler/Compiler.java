@@ -195,6 +195,14 @@ public final class Compiler implements Processor {
             return Optional.of(workingFileAbsolutePath);
         }
 
+        if (options.debug()) {
+            doProcess(List.of(
+                    "/opt/homebrew/bin/clang-format",
+                    "-i",
+                    workingFileAbsolutePath.toString())
+            );
+        }
+
         logger.printVerbose("Verifying...");
         final int exitCode = verifyCCode(workingFileAbsolutePath);
         if (exitCode != 0) {
