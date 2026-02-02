@@ -35,7 +35,7 @@ public record SuperStruct(String name, List<SSMember> members) {
     private void getForwardDeclarations(final StringBuilder result) {
         for (SSMember member : members) {
             member.data().getRight().ifPresent(fnDef ->
-                    result.append(fnDef.getDeclaration()));
+                    result.append(fnDef.getDeclaration()).append(System.lineSeparator()));
         }
     }
 }

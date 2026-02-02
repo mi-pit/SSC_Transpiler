@@ -29,4 +29,11 @@ public record SSMember(Either<Field, FunctionDefinition> data) {
                 }
         );
     }
+
+    @Override
+    public String toString() {
+        return "SSMember{" +
+                "data=" + data +
+                '}';
+    }
 }

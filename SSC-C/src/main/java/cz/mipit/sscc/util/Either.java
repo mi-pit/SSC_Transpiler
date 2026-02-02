@@ -132,4 +132,12 @@ public abstract class Either<L, R> {
             return null;
         };
     }
+
+    @Override
+    public String toString() {
+        return map(
+                L::toString,
+                R::toString
+        );
+    }
 }

@@ -32,4 +32,10 @@ public class Field {
     public boolean isPrivate() {
         return isPrivate;
     }
+
+
+    @Override
+    public String toString() {
+        return "Field{" + getWhole() + "}";
+    }
 }

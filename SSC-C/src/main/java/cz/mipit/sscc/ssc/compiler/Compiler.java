@@ -184,9 +184,14 @@ public final class Compiler implements Processor {
             }
         }
 
+        if (options.debug()) {
+            for (var ss : sss) {
+                logger.printDebug(ss.toString());
+            }
+        }
+
         if (options.compileTargetFilename().isPresent()) {
-            /* don't format if you're going to delete the files anyway;
-             * don't verify if you're going to compile the files anyway */
+            /* don't verify if you're going to compile the files anyway */
             return Optional.of(workingFileAbsolutePath);
         }
 

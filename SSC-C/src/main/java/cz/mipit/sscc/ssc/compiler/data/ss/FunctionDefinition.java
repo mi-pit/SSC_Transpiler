@@ -142,7 +142,7 @@ public class FunctionDefinition {
     }
 
     public String getDeclaration() {
-        return getDeclaration(false) + ";\n";
+        return getDeclaration(false) + ";";
     }
 
     public String getDefinition() {
@@ -197,5 +197,11 @@ public class FunctionDefinition {
 
     public boolean isPrivate() {
         return isPrivate;
+    }
+
+
+    @Override
+    public String toString() {
+        return "FunctionDefinition{" + getDeclaration(true) + "}";
     }
 }
