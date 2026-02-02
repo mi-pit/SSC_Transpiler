@@ -81,20 +81,6 @@ public abstract class SSCConvertorVisitor extends SSCBaseVisitor<String> {
     private int nErrors;
     private static final int MAX_ANTLR_ERRORS = 10;
 
-    @Override
-    public String visitErrorNode(final ErrorNode node) {
-        /* Don't throw! Let the user see the rest of the error nodes! */
-        if (nErrors < MAX_ANTLR_ERRORS) {
-            printErrorMessage(new AntlrException(node.getSymbol(), tokens, currentFile));
-        }
-
-        if (nErrors++ == MAX_ANTLR_ERRORS) {
-            Logger.warn("Too many errors, omitting.");
-        }
-
-        return super.visitErrorNode(node);
-    }
-
     private static void printErrorMessage(final SSCTranspilerException e) {
         System.err.println(e.getMessage());
     }
