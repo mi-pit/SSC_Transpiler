@@ -1,10 +1,13 @@
 package cz.mipit.sscc.ssc.compiler.data.ss;
 
+import cz.mipit.sscc.util.annotations.NotNull;
+
 import java.util.List;
 import java.util.Objects;
 
 public record SuperStruct(String name, List<SSMember> members) {
-    public SuperStruct(String name, List<SSMember> members) {
+    public SuperStruct(@NotNull final String name,
+                       @NotNull final List<SSMember> members) {
         this.name = Objects.requireNonNull(name);
         this.members = Objects.requireNonNull(members);
     }

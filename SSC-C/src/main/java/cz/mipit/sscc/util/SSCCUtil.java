@@ -60,12 +60,12 @@ public final class SSCCUtil {
                 if (line.endsWith("\\")) {
                     /* remove the trailing backslash and continue */
                     currentLineBuilder.append(line, 0, line.length() - 1);
-                } else {
-                    currentLineBuilder.append(line);
-
-                    lines.add(currentLineBuilder.toString());
-                    currentLineBuilder.setLength(0);
+                    continue;
                 }
+                currentLineBuilder.append(line);
+
+                lines.add(currentLineBuilder.toString());
+                currentLineBuilder.setLength(0);
             }
 
             if (!currentLineBuilder.isEmpty()) {

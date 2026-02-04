@@ -39,6 +39,10 @@ public class FunctionDefinition {
         this.args = args;
         this.statements = statements;
         this.superstructMemberOfName = superstructMemberOfName;
+
+        if (!isStatic && args.size() == 1 && args.get(0).equals("void")) {
+            this.args.remove(0);
+        }
     }
 
     public static FunctionDefinition fromSemiParsedContext(final boolean isStatic,
@@ -150,12 +154,6 @@ public class FunctionDefinition {
     }
 
     private String getDeclaration(boolean willHaveBody) {
-        assert !isStatic || !isPure;
-
-        if (!isStatic && args.size() == 1 && args.get(0).equals("void")) {
-            args.remove(0);
-        }
-
         final StringBuilder selfRef = new StringBuilder();
         if (!isStatic) {
             if (isPure) {
