@@ -5,7 +5,7 @@ import cz.mipit.sscc.file.DirectoryTreeParser;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.Processor;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
-import cz.mipit.sscc.ssc.compiler.visitors.PostfixExpressionConvertorVisitor;
+import cz.mipit.sscc.ssc.compiler.visitors.ExpressionConvertorVisitor;
 import cz.mipit.sscc.ssc.compiler.visitors.SSCConvertorVisitor;
 import cz.mipit.sscc.ssc.compiler.visitors.SuperstructConvertorVisitor;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
@@ -230,7 +230,7 @@ public final class Compiler implements Processor {
                                             final ParseTree tree,
                                             final Path outputFile)
             throws IOException {
-        final SSCConvertorVisitor visitor = new PostfixExpressionConvertorVisitor(tokens, sss, currentFile);
+        final SSCConvertorVisitor visitor = new ExpressionConvertorVisitor(tokens, sss, currentFile);
         final String result = visitor.visit(tree) + "\n";
 
         try (final var bw = Files.newBufferedWriter(outputFile, StandardOpenOption.TRUNCATE_EXISTING)) {

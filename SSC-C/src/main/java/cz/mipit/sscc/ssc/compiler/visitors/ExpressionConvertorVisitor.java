@@ -25,14 +25,14 @@ import java.util.Set;
 import static cz.mipit.sscc.util.SSCCUtil.Text.getLiteral;
 import static java.lang.System.lineSeparator;
 
-public class PostfixExpressionConvertorVisitor extends SSCConvertorVisitor {
+public class ExpressionConvertorVisitor extends SSCConvertorVisitor {
     private final Set<SuperStruct> superstructs;
 
     public final Map<@Nullable String /* Function name */, Set<SuperstructVariable>> functionVariables;
 
-    public PostfixExpressionConvertorVisitor(final CommonTokenStream tokens,
-                                             final Set<SuperStruct> sss,
-                                             final InputFile currentFile) {
+    public ExpressionConvertorVisitor(final CommonTokenStream tokens,
+                                      final Set<SuperStruct> sss,
+                                      final InputFile currentFile) {
         super(tokens, currentFile);
         this.superstructs = Collections.unmodifiableSet(sss);
 
