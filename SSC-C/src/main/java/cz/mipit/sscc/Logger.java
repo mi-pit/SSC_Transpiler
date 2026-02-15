@@ -5,6 +5,7 @@ import cz.mipit.sscc.util.ExitValue;
 import cz.mipit.sscc.util.color.ConsoleColor;
 
 import java.io.PrintStream;
+import java.util.function.Supplier;
 
 import static cz.mipit.sscc.util.color.ConsoleColorFactory.COLOR_DEFAULT;
 import static cz.mipit.sscc.util.color.ConsoleColorFactory.Color;
@@ -71,9 +72,6 @@ public final class Logger {
         this.options = options;
     }
 
-    public void printDebug(String string) {
-        printDebug("%s", string);
-    }
 
     private static final ConsoleColor DEBUG_COLOR = create(
             Ground.FORE,
@@ -83,6 +81,14 @@ public final class Logger {
             Ground.FORE,
             Color.YELLOW
     );
+
+    public void printDebug(String message) {
+        printDebug("%s", message);
+    }
+
+    public void printDebug(Supplier<String> supplier) {
+        printDebug("%s", supplier.get());
+    }
 
     public void printDebug(String fmt, Object... objects) {
         if (!options.debug()) {
@@ -101,8 +107,8 @@ public final class Logger {
         System.out.println();
     }
 
-    public void printVerbose(String string) {
-        printVerbose("%s", (Object) string);
+    public void printVerbose(Supplier<String> supplier) {
+        printVerbose("%s", supplier.get());
     }
 
     public void printVerboseFilename(String a, String b) {

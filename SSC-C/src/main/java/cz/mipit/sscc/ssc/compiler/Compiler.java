@@ -139,7 +139,7 @@ public final class Compiler implements Processor {
 
     private void handleNonSSCFiles(final InputFile fileArg,
                                    final Set<Path> filesToCompile) {
-        logger.printDebug("Skipping transpilation of file '"
+        logger.printDebug(() -> "Skipping transpilation of file '"
                 + fileArg.absolutePathString()
                 + "' (not an ssc file)");
         filesToCompile.add(fileArg.toAbsolutePath());
@@ -187,7 +187,7 @@ public final class Compiler implements Processor {
 
         if (options.debug()) {
             for (var ss : sss) {
-                logger.printDebug(ss.toString());
+                logger.printDebug(ss::toString);
             }
         }
 
@@ -236,7 +236,6 @@ public final class Compiler implements Processor {
 
         try (final var bw = Files.newBufferedWriter(outputFile, StandardOpenOption.TRUNCATE_EXISTING)) {
             bw.write(result);
-            bw.flush();
         }
 
         return visitor.hasNoErrors();
@@ -244,7 +243,7 @@ public final class Compiler implements Processor {
 
     private static int doProcess(final List<String> args)
             throws IOException, InterruptedException {
-        logger.printDebug(args.toString());
+        logger.printDebug(args::toString);
         return new ProcessBuilder(args).inheritIO().start().waitFor();
     }
 
@@ -257,8 +256,8 @@ public final class Compiler implements Processor {
         if (preprocessor.run().isFailure()) {
             return false;
         }
-
         final Path ccOutPathTemp = Files.createTempFile(inFile.dir(), inFile.getFullName(), ".i");
+
         final int exitCode = doProcess(ListBuilder
                 .from(ccProcessArgBase)
                 .addAll(

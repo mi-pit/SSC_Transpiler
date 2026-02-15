@@ -247,7 +247,7 @@ public class ExpressionConvertorVisitor extends SSCConvertorVisitor {
 
     public String convertStaticFunctionCall(final SSCParser.PostfixExpressionContext ctx,
                                             final String ctxFunctionName) {
-        Main.logger.printDebug("Double colon in: %s", getLiteral(ctx, tokens));
+        Main.logger.printDebug(() -> "Double colon in: " + getLiteral(ctx, tokens));
 
         if (ctx.primaryExpression() == null) {
             throw getSSCSyntaxException("Double colon expression has no left side (Superstruct name) expression", ctx);
@@ -276,7 +276,7 @@ public class ExpressionConvertorVisitor extends SSCConvertorVisitor {
         }
 
         final String result = namespacedMethodName + "( " + String.join(", ", args) + " )";
-        Main.logger.printDebug("\tResult: " + result);
+        Main.logger.printDebug(() -> "\tResult: " + result);
         return result;
     }
 
@@ -300,7 +300,7 @@ public class ExpressionConvertorVisitor extends SSCConvertorVisitor {
         final FunctionDefinition method = maybeMethod.get();
 
         if (method.isPrivate()) {
-            Main.logger.printDebug("Method '" + methodName + "' is private. Going to check if it may be used here...");
+            Main.logger.printDebug(() -> "Method '" + methodName + "' is private. Going to check if it may be used here...");
             if (notInSuperstructMethod(ctxFunctionName)) {
                 throw getSSCSyntaxException(
                         "Cannot access private static method `" + methodName + "` from outside the superstruct", ctx
@@ -338,7 +338,7 @@ public class ExpressionConvertorVisitor extends SSCConvertorVisitor {
                         : !ctx.Dot().isEmpty() ? ArrowOrDot.Dot
                         : ArrowOrDot.Neither;
 
-        Main.logger.printDebug(arrowOrDot + " in: " + getLiteral(ctx, tokens));
+        Main.logger.printDebug(() -> arrowOrDot + " in: " + getLiteral(ctx, tokens));
         assert arrowOrDot != ArrowOrDot.Neither;
 
         final String objectName = getLiteral(ctx.primaryExpression(), tokens);
@@ -347,8 +347,8 @@ public class ExpressionConvertorVisitor extends SSCConvertorVisitor {
 
         final Optional<SuperstructVariable> maybeVar = findSuperstructVariable(functionName, objectName);
         if (maybeVar.isEmpty()) {
-            Main.logger.printDebug("\tVariable is not superstruct");
-            Main.logger.printDebug("\t\tlocal vars: " + functionVariables.get(functionName));
+            Main.logger.printDebug(() -> "\tVariable is not superstruct");
+            Main.logger.printDebug(() -> "\t\tlocal vars: " + functionVariables.get(functionName));
             return getLiteral(ctx, tokens);
         }
         final SuperstructVariable var = maybeVar.get();
@@ -359,7 +359,7 @@ public class ExpressionConvertorVisitor extends SSCConvertorVisitor {
         final boolean hasRightParen = !ctx.RightParen().isEmpty();
         assert hasLeftParen == hasRightParen;
         if (!hasLeftParen) {
-            Main.logger.printDebug("\tNo parentheses");
+            Main.logger.printDebug(() -> "\tNo parentheses");
             return getFieldAccessString(ctx, functionName, superstruct);
         }
 
@@ -367,7 +367,7 @@ public class ExpressionConvertorVisitor extends SSCConvertorVisitor {
         final Optional<FunctionDefinition> maybeMethod = findMethodInSuperstruct(superstruct, methodName);
 
         if (maybeMethod.isEmpty()) {
-            Main.logger.printDebug("Variable does not have such a method");
+            Main.logger.printDebug(() -> "Variable does not have such a method");
             if (superstruct.members()
                     .stream()
                     .filter(mem -> mem.data().getLeft().isPresent())
@@ -386,7 +386,7 @@ public class ExpressionConvertorVisitor extends SSCConvertorVisitor {
         }
 
         if (method.isPrivate()) {
-            Main.logger.printDebug("Method '" + methodName + "' is private. Going to check if it may be used here...");
+            Main.logger.printDebug(() -> "Method '" + methodName + "' is private. Going to check if it may be used here...");
             if (notInSuperstructMethod(functionName)) {
                 throw getSSCSyntaxException(
                         "Cannot access private method `" + methodName + "` from outside the superstruct", ctx);
@@ -421,7 +421,7 @@ public class ExpressionConvertorVisitor extends SSCConvertorVisitor {
                 .append(String.join(", ", args))
                 .append(")");
 
-        Main.logger.printDebug("\tFinal Expression: " + finalExpression);
+        Main.logger.printDebug(() -> "\tFinal Expression: " + finalExpression);
         return finalExpression.toString();
     }
 
@@ -500,7 +500,7 @@ public class ExpressionConvertorVisitor extends SSCConvertorVisitor {
         final Field field = allMatching.get(0);
 
         if (field.isPrivate()) {
-            Main.logger.printDebug("Field `" + fieldName + "` is private. Going to check if it may be used here...");
+            Main.logger.printDebug(() -> "Field `" + fieldName + "` is private. Going to check if it may be used here...");
             if (notInSuperstructMethod(functionName)) {
                 throw getSSCSyntaxException(
                         "Cannot access private field `" + fieldName + "` from outside the superstruct", ctx
@@ -515,14 +515,14 @@ public class ExpressionConvertorVisitor extends SSCConvertorVisitor {
         /* TODO (?) look if methods was defined inside the ss
          *  (currently checks namespace only)
          */
-        Main.logger.printDebug("Looking for function: " + functionName);
+        Main.logger.printDebug(() -> "Looking for function: " + functionName);
         for (SuperStruct ssr : superstructs) {
-            Main.logger.printDebug("\tin superstruct: " + ssr.name());
+            Main.logger.printDebug(() -> "\tin superstruct: " + ssr.name());
             if (functionName.startsWith(ssr.name() + "__")) {
-                Main.logger.printDebug("... found");
+                Main.logger.printDebug(() -> "... found");
                 return false;
             }
-            Main.logger.printDebug("... not found");
+            Main.logger.printDebug(() -> "... not found");
         }
 
         return true;
@@ -540,18 +540,9 @@ public class ExpressionConvertorVisitor extends SSCConvertorVisitor {
     }
 
     @Override
-    public String visitConditionalExpression(final SSCParser.ConditionalExpressionContext ctx) {
-        return ctx.ternaryExpressionThen() == null
-                ? visitLogicalOrExpression(ctx.logicalOrExpression())
-                : visitLogicalOrExpression(ctx.logicalOrExpression()) +
-                "?" + visitExpression(ctx.expression()) +
-                ":" + visitConditionalExpression(ctx.conditionalExpression());
-    }
-
-    @Override
     public String visitStdIncludeDirective(SSCParser.StdIncludeDirectiveContext ctx) {
         final String directive = String.format("#include %s%n", ctx.DirectiveFileName().getText());
-        Main.logger.printDebug("converted directive: " + directive);
+        Main.logger.printDebug(() -> "converted directive: " + directive);
         return directive;
     }
 

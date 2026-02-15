@@ -163,14 +163,14 @@ public final class Preprocessor implements Processor {
         }
 
         final String withoutHash = maybeWithoutHash.get();
-        Main.logger.printDebug("\tWithout hash:    '" + withoutHash + "'");
+        Main.logger.printDebug(() -> "\tWithout hash:    '" + withoutHash + "'");
 
         if (withoutHash.startsWith(INCLUDE_DIRECTIVE_NAME)) {
             processDirectiveInclude(outputLines, baseDir, withoutHash);
             return;
         }
 
-        Main.logger.printDebug("\tNot an include");
+        Main.logger.printDebug(() -> "\tNot an include");
         outputLines.add(commentsRemoved);
     }
 
@@ -178,7 +178,7 @@ public final class Preprocessor implements Processor {
                                          final Path baseDir, final String withoutHash)
             throws IOException {
         final String withoutInclude = withoutHash.substring(INCLUDE_DIRECTIVE_NAME.length()).trim();
-        Main.logger.printDebug("\tWithout include: '" + withoutInclude + "'");
+        Main.logger.printDebug(() -> "\tWithout include: '" + withoutInclude + "'");
         if (withoutInclude.isEmpty()) {
             throw new PreprocessorException(
                     "Empty include directive",
@@ -234,7 +234,7 @@ public final class Preprocessor implements Processor {
     }
 
     private void handleSSCHeaders(List<String> outputLines, Path resolvedNormalized) throws IOException {
-        Main.logger.printDebug("\tFile path:       '" + resolvedNormalized + "'");
+        Main.logger.printDebug(() -> "\tFile path:       '" + resolvedNormalized + "'");
 
         final InputFile subFile = InputFile.fromAbsolutePath(resolvedNormalized);
         processSubFile(outputLines, subFile, resolvedNormalized);
@@ -261,7 +261,7 @@ public final class Preprocessor implements Processor {
             return Optional.empty();
         }
         if (!trimmed.startsWith("#")) {
-            Main.logger.printDebug("\tNot a directive");
+            Main.logger.printDebug(() -> "\tNot a directive");
             return Optional.empty();
         }
 
@@ -303,7 +303,7 @@ public final class Preprocessor implements Processor {
     }
 
     private static void handleNonSSCHeader(List<String> outputLines, String strippedIncludeArg) {
-        Main.logger.printDebug("\tNot quoted include");
+        Main.logger.printDebug(() -> "\tNot quoted include");
         final String include = String.format("%s <%s>", SSC_PREPROCESSOR_INCLUDE_REPLACEMENT, strippedIncludeArg);
         outputLines.add(include);
     }
