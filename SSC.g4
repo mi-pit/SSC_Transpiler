@@ -147,7 +147,17 @@ logicalOrExpression
     ;
 
 conditionalExpression
-    : logicalOrExpression ('?' expression ':' conditionalExpression)?
+    : logicalOrExpression (ternaryExpressionThen expression ternaryExpressionElse conditionalExpression)?
+    ;
+
+ternaryExpressionThen
+    : '?'
+    | 'then'
+    ;
+
+ternaryExpressionElse
+    : ':'
+    | 'else'
     ;
 
 assignmentExpression
