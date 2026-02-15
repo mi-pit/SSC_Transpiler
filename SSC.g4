@@ -46,7 +46,6 @@ primaryExpression
     | '__builtin_va_arg' '(' unaryExpression ',' typeName ')'
     | '__builtin_offsetof' '(' typeName ',' unaryExpression ')'
     | VersionNumber // For attributes only (dirty hack)
-    | directive     /* e.g. `#embed` */
     | typeName      /* in macros (va_arg doesn't expand) */
     ;
 
@@ -302,7 +301,9 @@ enumeratorList
     ;
 
 enumerator
-    : enumerationConstant ('=' constantExpression)?
+    : enumerationConstant
+      gccAttributeSpecifier* /* fixme? */
+      ('=' constantExpression)?
     ;
 
 enumerationConstant
@@ -476,7 +477,6 @@ statement
     | ('__asm' | '__asm__') ('volatile' | '__volatile__') '(' (
         logicalOrExpression (',' logicalOrExpression)*
     )? (':' (logicalOrExpression (',' logicalOrExpression)*)?)* ')' ';'
-    | directive
     ;
 
 labeledStatement
@@ -549,16 +549,23 @@ translationUnit
 externalDeclaration
     : functionDefinition
     | declaration
-    | directive
+    | stdIncludeDirective
     | ';' // stray ;
     ;
 
-directive
-    : Directive
+stdIncludeDirective
+    : SSCDirective DirectiveFileName
+    ;
+
+DirectiveFileName
+    : '<' ~[>" \t\r\n\\]+ '>'
     ;
 
 functionDefinition
-    : declarationSpecifiers? declarator declarationList? /* K&R decls (deprecated) */ compoundStatement
+    : declarationSpecifiers?
+      declarator
+      declarationList? /* K&R decls (deprecated) */
+      compoundStatement
     ;
 
 declarationList
@@ -1158,8 +1165,12 @@ fragment SChar
     }
  */
 
-Directive
-    : '#' (~[\r\n\\] | '\\' [\r\n])*
+SSCDirective
+    : '@sscpreprocessor_include'
+    ;
+
+CDirective
+    : '#' (~[\r\n\\] | '\\' [\r\n])* -> channel(HIDDEN)
     ;
 
 AsmBlock

@@ -3,6 +3,7 @@ package cz.mipit.sscc.ssc.preprocessor;
 import cz.mipit.sscc.Main;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.Processor;
+import cz.mipit.sscc.ssc.compiler.Compiler;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.ssc.exceptions.children.PreprocessorException;
 import cz.mipit.sscc.util.ExitValue;
@@ -16,17 +17,15 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 
 public final class Preprocessor implements Processor {
-    private static final String SSC_HEADER_FILE_SUFFIX = "ssch";
+    public static final String SSC_PREPROCESSOR_INCLUDE_REPLACEMENT = "@sscpreprocessor_include";
 
-    private static final String INCLUDE_DIRECTIVE_NAME = "include";
+    public static final String INCLUDE_DIRECTIVE_NAME = "include";
 
     private static final int N_LINES = 4;
 
@@ -167,7 +166,7 @@ public final class Preprocessor implements Processor {
         Main.logger.printDebug("\tWithout hash:    '" + withoutHash + "'");
 
         if (withoutHash.startsWith(INCLUDE_DIRECTIVE_NAME)) {
-            processDirectiveInclude(outputLines, baseDir, withoutHash, commentsRemoved);
+            processDirectiveInclude(outputLines, baseDir, withoutHash);
             return;
         }
 
@@ -176,8 +175,7 @@ public final class Preprocessor implements Processor {
     }
 
     private void processDirectiveInclude(final List<String> outputLines,
-                                         final Path baseDir, final String withoutHash,
-                                         final String commentsRemoved)
+                                         final Path baseDir, final String withoutHash)
             throws IOException {
         final String withoutInclude = withoutHash.substring(INCLUDE_DIRECTIVE_NAME.length()).trim();
         Main.logger.printDebug("\tWithout include: '" + withoutInclude + "'");
@@ -210,21 +208,19 @@ public final class Preprocessor implements Processor {
             );
         }
 
-        if (firstChar == '<') {
-            Main.logger.printDebug("\tNot quoted include");
+        final boolean isSSCLibHeader = strippedIncludeArg.startsWith("ssclib/") || strippedIncludeArg.equals("ssclib.ssch");
+
+        if (firstChar == '<' && !isSSCLibHeader) {
+            handleNonSSCHeader(outputLines, strippedIncludeArg);
             return;
         }
 
-        final Path resolvedNormalized = tryGetPathFromString(strippedIncludeArg, baseDir)
+        final Path resolvedNormalized = isSSCLibHeader
+                ? Path.of(Compiler.SSCLIB_HOME.toString(), "include", strippedIncludeArg)
+                : tryGetPathFromString(strippedIncludeArg, baseDir)
                 .toAbsolutePath()
                 .normalize();
 
-        final InputFile newFile = InputFile.fromAbsolutePath(resolvedNormalized);
-        final boolean isSscHeader = SSC_HEADER_FILE_SUFFIX.equals(newFile.suffix());
-        if (!isSscHeader) {
-            handleNonSSCHeaders(strippedIncludeArg, outputLines, newFile, resolvedNormalized);
-            return;
-        }
         if (!Files.exists(resolvedNormalized)) {
             throw new PreprocessorException(
                     "Included file '" + resolvedNormalized + "' does not exist",
@@ -234,6 +230,10 @@ public final class Preprocessor implements Processor {
             );
         }
 
+        handleSSCHeaders(outputLines, resolvedNormalized);
+    }
+
+    private void handleSSCHeaders(List<String> outputLines, Path resolvedNormalized) throws IOException {
         Main.logger.printDebug("\tFile path:       '" + resolvedNormalized + "'");
 
         final InputFile subFile = InputFile.fromAbsolutePath(resolvedNormalized);
@@ -246,32 +246,12 @@ public final class Preprocessor implements Processor {
         final List<String> linesLiteral = getPreprocessorLines(subFilePath);
         final Preprocessor subFilePreprocessor = new Preprocessor(subFile);
         try {
-            final Path fileDir = subFilePath.getParent();
+            final Path fileDir = subFile.dir();
             final List<String> linesConverted = subFilePreprocessor.processLines(linesLiteral, fileDir);
             outputLines.addAll(linesConverted);
         } catch (final PreprocessorException e) {
             throw new PreprocessorException(e, inputFile);
         }
-    }
-
-    private void handleNonSSCHeaders(final String strippedIncludeArg,
-                                     final List<String> outputLines,
-                                     final InputFile subFile,
-                                     final Path subFilePath) throws IOException {
-        if (Files.exists(subFilePath)) {
-            processSubFile(outputLines, subFile, subFilePath);
-            return;
-        }
-
-        Main.logger.printDebug("Included file not found: '" + subFilePath + "'");
-        Main.logger.printDebug("Treating as a <std> header");
-
-        final String converted = "#include <" + strippedIncludeArg + "> /* resolved from " + inputFile.getFullName() + " */";
-        outputLines.add(converted);
-
-        Main.logger.printDebug("Added include: " + converted);
-
-        throw new PreprocessorException("Could not find file \"" + strippedIncludeArg + "\"", lastLines, inputFile);
     }
 
     private static Optional<String> getWithoutHash(String commentsRemoved) {
@@ -320,5 +300,11 @@ public final class Preprocessor implements Processor {
                     inputFile
             );
         }
+    }
+
+    private static void handleNonSSCHeader(List<String> outputLines, String strippedIncludeArg) {
+        Main.logger.printDebug("\tNot quoted include");
+        final String include = String.format("%s <%s>", SSC_PREPROCESSOR_INCLUDE_REPLACEMENT, strippedIncludeArg);
+        outputLines.add(include);
     }
 }

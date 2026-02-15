@@ -2,6 +2,7 @@ package cz.mipit.sscc.ssc.compiler.data.ss;
 
 import cz.mipit.sscc.util.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -40,5 +41,15 @@ public record SuperStruct(String name, List<SSMember> members) {
             member.data().getRight().ifPresent(fnDef ->
                     result.append(fnDef.getDeclaration()).append(System.lineSeparator()));
         }
+    }
+
+    public List<FunctionDefinition> getFunctions() {
+        final List<FunctionDefinition> result = new ArrayList<>();
+        for (SSMember member : members) {
+            if (member.data().getRight().isPresent()) {
+                result.add(member.data().getRight().get());
+            }
+        }
+        return result;
     }
 }

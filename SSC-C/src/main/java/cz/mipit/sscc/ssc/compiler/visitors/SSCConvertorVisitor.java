@@ -2,6 +2,7 @@ package cz.mipit.sscc.ssc.compiler.visitors;
 
 import antlr.ssc.SSCBaseVisitor;
 import antlr.ssc.SSCParser;
+import cz.mipit.sscc.Main;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.ssc.exceptions.children.SSCSyntaxException;
@@ -60,6 +61,12 @@ public abstract class SSCConvertorVisitor extends SSCBaseVisitor<String> {
             return "";
         }
 
+        if (Main.TOKEN_DEBUG) {
+            final Token token = node.getSymbol();
+            final String symbolicName = SSCParser.VOCABULARY.getSymbolicName(token.getType());
+            System.out.printf("token %s ~> %s%n", node.getText(), symbolicName);
+        }
+
         return switch (node.getSymbol().getType()) {
             case SSCParser.Semi,
                  SSCParser.LeftBrace,
@@ -70,9 +77,8 @@ public abstract class SSCConvertorVisitor extends SSCBaseVisitor<String> {
     }
 
     @Override
-    public String visitDirective(SSCParser.DirectiveContext ctx) {
-        final String str = SSCCUtil.Text.getLiteral(ctx, tokens);
-        return str + lineSeparator();
+    public String visitStdIncludeDirective(SSCParser.StdIncludeDirectiveContext ctx) {
+        return SSCCUtil.Text.getLiteral(ctx, tokens) + lineSeparator();
     }
 
     private static void printErrorMessage(final SSCTranspilerException e) {

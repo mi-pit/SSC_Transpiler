@@ -539,13 +539,20 @@ public class ExpressionConvertorVisitor extends SSCConvertorVisitor {
         return Optional.empty();
     }
 
+    @Override
+    public String visitConditionalExpression(final SSCParser.ConditionalExpressionContext ctx) {
+        return ctx.ternaryExpressionThen() == null
+                ? visitLogicalOrExpression(ctx.logicalOrExpression())
+                : visitLogicalOrExpression(ctx.logicalOrExpression()) +
+                "?" + visitExpression(ctx.expression()) +
+                ":" + visitConditionalExpression(ctx.conditionalExpression());
+    }
 
     @Override
-    public String visitSuperStructSpecifier(SSCParser.SuperStructSpecifierContext ctx) {
-        if (ctx.superStructBody() == null) {
-            return "struct " + ctx.Identifier().getText() + " ";
-        }
-        return super.visitSuperStructSpecifier(ctx);
+    public String visitStdIncludeDirective(SSCParser.StdIncludeDirectiveContext ctx) {
+        final String directive = String.format("#include %s%n", ctx.DirectiveFileName().getText());
+        Main.logger.printDebug("converted directive: " + directive);
+        return directive;
     }
 
     @Override

@@ -1,5 +1,7 @@
 # TODO
 
+pre-compile library and link it on compilation
+
 ---
 
 ## Fix/QOL
@@ -9,13 +11,11 @@
 * add options for:
     - adding files with different suffixes
     - compiling with custom flags
-    - format (off by default, maybe even impossible)
-* ? own macro preprocessor
+* ? own macro preprocessor (cpp takes AGES to go through)
 
 ---
 
 ## Features
 
 * lambda functions
-* library
 * namespaced macros

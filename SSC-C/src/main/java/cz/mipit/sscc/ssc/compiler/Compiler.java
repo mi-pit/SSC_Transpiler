@@ -9,6 +9,7 @@ import cz.mipit.sscc.ssc.compiler.visitors.ExpressionConvertorVisitor;
 import cz.mipit.sscc.ssc.compiler.visitors.SSCConvertorVisitor;
 import cz.mipit.sscc.ssc.compiler.visitors.SuperstructConvertorVisitor;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
+import cz.mipit.sscc.ssc.preprocessor.Preprocessor;
 import cz.mipit.sscc.util.ExitValue;
 import cz.mipit.sscc.util.ListBuilder;
 import cz.mipit.sscc.util.VisitorData;
@@ -250,34 +251,32 @@ public final class Compiler implements Processor {
     private static final String SSC_DEF_MACRO_STRING_NAME = "__SSC_SOURCE__";
 
     private boolean preprocessSSCCode(final InputFile inFile,
-                                      final Path outFileAbsolute)
+                                      final Path outputFile)
             throws IOException, InterruptedException {
-//        final Processor preprocessor = new Preprocessor(inFile, outFileAbsolute);
-//        if (preprocessor.run().isFailure()) {
-//            return false;
-//        }
+        final Processor preprocessor = new Preprocessor(inFile, outputFile);
+        if (preprocessor.run().isFailure()) {
+            return false;
+        }
 
-        final Path tempOut = Files.createTempFile(inFile.dir(), inFile.getFullName(), ".i");
-
+        final Path ccOutPathTemp = Files.createTempFile(inFile.dir(), inFile.getFullName(), ".i");
         final int exitCode = doProcess(ListBuilder
                 .from(ccProcessArgBase)
                 .addAll(
                         "-E",
                         "-P",
                         "-D" + SSC_DEF_MACRO_STRING_NAME,
-                        "-x", "c",
-                        inFile.absolutePathString(),
-                        "-o", tempOut.toString()
+                        "-x", "c", outputFile.toString(),
+                        "-o", ccOutPathTemp.toString()
                 )
                 .build()
         );
 
         if (exitCode != 0) {
-            Files.deleteIfExists(tempOut);
+            Files.deleteIfExists(ccOutPathTemp);
             return false;
         }
 
-        Files.move(tempOut, outFileAbsolute, StandardCopyOption.REPLACE_EXISTING);
+        Files.move(ccOutPathTemp, outputFile, StandardCopyOption.REPLACE_EXISTING);
         return true;
     }
 

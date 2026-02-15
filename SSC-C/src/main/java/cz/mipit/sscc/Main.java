@@ -7,6 +7,8 @@ import cz.mipit.sscc.ssc.compiler.Compiler;
 import java.io.IOException;
 
 public final class Main {
+    public static final boolean TOKEN_DEBUG = false;
+
     /**
      * Acts as argv[0]
      */
