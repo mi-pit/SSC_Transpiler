@@ -3,7 +3,7 @@ package cz.mipit.sscc.ssc.exceptions.children;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.ssc.preprocessor.EnumeratedLine;
-import cz.mipit.sscc.util.SSCCUtil;
+import cz.mipit.sscc.util.Range;
 
 import java.util.List;
 
@@ -29,8 +29,8 @@ public class PreprocessorException extends SSCTranspilerException {
     }
 
     public PreprocessorException(String message, List<EnumeratedLine> enumeratedLines,
-                                 int start, int end, InputFile currentFile) {
-        this(message, enumeratedLines, SSCCUtil.Maths.getRange(start, end), currentFile);
+                                 Range range, InputFile currentFile) {
+        this(message, enumeratedLines, range.array(), currentFile);
     }
 
 

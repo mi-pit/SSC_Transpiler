@@ -86,13 +86,5 @@ public final class SSCCUtil {
 
             return ndigs;
         }
-
-        public static int[] getRange(int from, int to) {
-            int[] array = new int[to - from + 1];
-            for (int i = 0; i < array.length; i++) {
-                array[i] = i + from;
-            }
-            return array;
-        }
     }
 }

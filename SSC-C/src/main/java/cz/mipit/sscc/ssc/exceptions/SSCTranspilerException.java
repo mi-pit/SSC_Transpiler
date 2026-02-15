@@ -3,6 +3,7 @@ package cz.mipit.sscc.ssc.exceptions;
 import cz.mipit.sscc.Main;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.preprocessor.EnumeratedLine;
+import cz.mipit.sscc.util.Range;
 import cz.mipit.sscc.util.SSCCUtil;
 import cz.mipit.sscc.util.annotations.Nullable;
 import cz.mipit.sscc.util.color.ConsoleColor;
@@ -187,8 +188,10 @@ public abstract class SSCTranspilerException extends RuntimeException {
     }
 
     /// Creates a locator for a given range of columns
-    protected static String getLocator(EnumeratedLine line, int from, int to) {
-        return getLocator(line, SSCCUtil.Maths.getRange(from, to));
+    protected static String getLocator(final EnumeratedLine line,
+                                       @SuppressWarnings("SameParameterValue") int from,
+                                       final int to) {
+        return getLocator(line, Range.array(from, to));
     }
 
     /// Creates a locator highlighting a single token

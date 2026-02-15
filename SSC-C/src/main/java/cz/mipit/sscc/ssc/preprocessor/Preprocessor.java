@@ -6,6 +6,7 @@ import cz.mipit.sscc.ssc.Processor;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.ssc.exceptions.children.PreprocessorException;
 import cz.mipit.sscc.util.ExitValue;
+import cz.mipit.sscc.util.Range;
 import cz.mipit.sscc.util.SSCCUtil;
 import cz.mipit.sscc.util.annotations.NotNull;
 import cz.mipit.sscc.util.annotations.Nullable;
@@ -192,8 +193,7 @@ public final class Preprocessor implements Processor {
             throw new PreprocessorException(
                     "Include directive argument must be more than one character",
                     lastLines,
-                    index,
-                    index + 1,
+                    new Range(index, index + 1),
                     inputFile
             );
         }
@@ -204,8 +204,8 @@ public final class Preprocessor implements Processor {
             throw new PreprocessorException(
                     "Empty file path string",
                     lastLines,
-                    currentLine.lastIndexOf(withoutInclude) + 1,
-                    withoutInclude.length() - 2,
+                    new Range(currentLine.lastIndexOf(withoutInclude) + 1,
+                            withoutInclude.length() - 2),
                     inputFile
             );
         }
@@ -225,15 +225,16 @@ public final class Preprocessor implements Processor {
             handleNonSSCHeaders(strippedIncludeArg, outputLines, newFile, resolvedNormalized);
             return;
         }
-
-        Main.logger.printDebug("\tFile path:       '" + resolvedNormalized + "'");
-
         if (!Files.exists(resolvedNormalized)) {
             throw new PreprocessorException(
                     "Included file '" + resolvedNormalized + "' does not exist",
-                    lastLines, currentLine.indexOf('"'), currentLine.lastIndexOf('"'), inputFile
+                    lastLines,
+                    new Range(currentLine.indexOf('"'), currentLine.lastIndexOf('"')),
+                    inputFile
             );
         }
+
+        Main.logger.printDebug("\tFile path:       '" + resolvedNormalized + "'");
 
         final InputFile subFile = InputFile.fromAbsolutePath(resolvedNormalized);
         processSubFile(outputLines, subFile, resolvedNormalized);
