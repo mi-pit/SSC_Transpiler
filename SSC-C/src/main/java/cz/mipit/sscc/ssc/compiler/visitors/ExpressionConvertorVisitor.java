@@ -230,19 +230,21 @@ public class ExpressionConvertorVisitor extends SSCConvertorVisitor {
 //            }
 //        }
 
-        try {
-            var ss = ctx.typeName().specifierQualifierList().typeSpecifier().superStructSpecifier();
-            if (ss != null) {
-                final String res = getLiteral(ctx, tokens)
-                        .replaceFirst("\\(\\s*superstruct\\s+", "( struct ");
-                Main.logger.printDebug("superStructSpecifier in: "
-                        + getLiteral(ctx, tokens).replace(lineSeparator(), " ")
-                        + lineSeparator() + "\t\tReturning: " + res.replace(lineSeparator(), " "));
-                return Optional.of(res);
-            }
-        } catch (NullPointerException ignored) {
+        if (ctx.typeName() == null
+                || ctx.typeName().specifierQualifierList() == null
+                || ctx.typeName().specifierQualifierList().typeSpecifier() == null
+                || ctx.typeName().specifierQualifierList().typeSpecifier().superStructSpecifier() == null) {
+            return Optional.empty();
         }
-        return Optional.empty();
+
+        final String res = getLiteral(ctx, tokens)
+                .replaceFirst("\\(\\s*superstruct\\s+", "( struct ");
+
+        Main.logger.printDebug(() -> "superStructSpecifier in: "
+                + getLiteral(ctx, tokens).replace(lineSeparator(), " ")
+                + lineSeparator() + "\t\tReturning: " + res.replace(lineSeparator(), " "));
+
+        return Optional.of(res);
     }
 
     public String convertStaticFunctionCall(final SSCParser.PostfixExpressionContext ctx,
