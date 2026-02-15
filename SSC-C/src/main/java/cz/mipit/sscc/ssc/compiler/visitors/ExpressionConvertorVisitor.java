@@ -364,7 +364,7 @@ public class ExpressionConvertorVisitor extends SSCConvertorVisitor {
         }
 
         final String methodName = ctx.Identifier(0).getText();
-        final Optional<FunctionDefinition> maybeMethod = findMethod(superstruct, methodName);
+        final Optional<FunctionDefinition> maybeMethod = findMethodInSuperstruct(superstruct, methodName);
 
         if (maybeMethod.isEmpty()) {
             Main.logger.printDebug("Variable does not have such a method");
@@ -528,13 +528,9 @@ public class ExpressionConvertorVisitor extends SSCConvertorVisitor {
         return true;
     }
 
-    private Optional<FunctionDefinition> findMethod(final SuperStruct ssr,
-                                                    final String methodName) {
-        for (final FunctionDefinition func : ssr.members().stream()
-                .map(m -> m.data().getRight())
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .toList()) {
+    private Optional<FunctionDefinition> findMethodInSuperstruct(final SuperStruct ssr,
+                                                                 final String methodName) {
+        for (final FunctionDefinition func : ssr.getFunctions()) {
             if (func.getName().equals(methodName)) {
                 return Optional.of(func);
             }

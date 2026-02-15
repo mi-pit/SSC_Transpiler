@@ -7,6 +7,7 @@ import cz.mipit.sscc.util.Range;
 import cz.mipit.sscc.util.SSCCUtil;
 import cz.mipit.sscc.util.annotations.Nullable;
 import cz.mipit.sscc.util.color.ConsoleColor;
+import cz.mipit.sscc.util.color.ConsoleColorFactory;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
@@ -19,7 +20,6 @@ import static cz.mipit.sscc.util.SSCCUtil.Maths.digitsOf;
 import static cz.mipit.sscc.util.color.ConsoleColorFactory.COLOR_DEFAULT;
 import static cz.mipit.sscc.util.color.ConsoleColorFactory.Color;
 import static cz.mipit.sscc.util.color.ConsoleColorFactory.Ground;
-import static cz.mipit.sscc.util.color.ConsoleColorFactory.create;
 import static java.lang.System.lineSeparator;
 import static java.util.Objects.requireNonNull;
 
@@ -27,19 +27,19 @@ public abstract class SSCTranspilerException extends RuntimeException {
     private static final int LINES_BEFORE = 4;
     private static final int LINES_AFTER = 0;
 
-    protected static final ConsoleColor COLOR_ERR_MESSAGE = create(Ground.FORE, Color.RED);
-    protected static final ConsoleColor COLOR_WARNING = create(Ground.FORE, Color.YELLOW);
-    protected static final ConsoleColor COLOR_OTHER = create(Ground.BACK, Color.YELLOW);
+    protected static final ConsoleColor COLOR_ERR_MESSAGE = ConsoleColorFactory.create(Ground.FORE, Color.RED);
+    protected static final ConsoleColor COLOR_WARNING = ConsoleColorFactory.create(Ground.FORE, Color.YELLOW);
+    protected static final ConsoleColor COLOR_OTHER = ConsoleColorFactory.create(Ground.BACK, Color.YELLOW);
 
-    protected static final ConsoleColor COLOR_CODE = create(Ground.FORE, Color.WHITE);
-    protected static final ConsoleColor COLOR_LOCATOR = create(Ground.FORE, Color.CYAN);
+    protected static final ConsoleColor COLOR_CODE = ConsoleColorFactory.create(Ground.FORE, Color.WHITE);
+    protected static final ConsoleColor COLOR_LOCATOR = ConsoleColorFactory.create(Ground.FORE, Color.CYAN);
 
     private static final ConsoleColor COLOR_CODE_BOLD = new ConsoleColor() {
         private static final String r = "\u001B[1m" + COLOR_CODE;
 
         @Override
         public void setConsoleColor(PrintStream stream) {
-            stream.print(this);
+            stream.print(r);
         }
 
         @Override
@@ -209,8 +209,8 @@ public abstract class SSCTranspilerException extends RuntimeException {
     }
 
     private static int getLineNumberOffset(final int lineNumber) {
-        return getLineNumberLength(lineNumber, lineNumber - (LINES_BEFORE + LINES_AFTER))
-                + LINENO_SEPARATOR.length();
+        return getLineNumberLength(lineNumber,
+                lineNumber - (LINES_BEFORE + LINES_AFTER)) + LINENO_SEPARATOR.length();
     }
 
     private static int getLineNumberLength(final int min, final int max) {

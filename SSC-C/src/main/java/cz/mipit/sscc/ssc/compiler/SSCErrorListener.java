@@ -20,8 +20,6 @@ public class SSCErrorListener extends BaseErrorListener {
         this.inputFile = inputFile;
     }
 
-    private static final ConsoleColor c = ConsoleColorFactory.create(ConsoleColorFactory.Ground.FORE, ConsoleColorFactory.Color.CYAN);
-
     @Override
     public void syntaxError(Recognizer<?, ?> recognizer,
                             Object offendingSymbol,

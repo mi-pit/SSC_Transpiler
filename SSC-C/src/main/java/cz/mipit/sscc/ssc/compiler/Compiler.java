@@ -30,7 +30,7 @@ import static cz.mipit.sscc.Main.logger;
 import static cz.mipit.sscc.Logger.warn;
 
 public final class Compiler implements Processor {
-    private static final Path SSCLIB_HOME = DirectoryTreeParser.getLibraryRoot();
+    public static final Path SSCLIB_HOME = DirectoryTreeParser.getLibraryRoot();
 
     private final Set<SuperStruct> sss = new HashSet<>();
 
