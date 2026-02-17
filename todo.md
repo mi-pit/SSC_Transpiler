@@ -1,5 +1,7 @@
 # TODO
 
+profile different versions
+
 ---
 
 ## Fix/QOL
@@ -9,13 +11,10 @@
 * add options for:
     - adding files with different suffixes
     - compiling with custom flags
-    - format (off by default, maybe even impossible)
-* ? own macro preprocessor
 
 ---
 
 ## Features
 
 * lambda functions
-* library
 * namespaced macros

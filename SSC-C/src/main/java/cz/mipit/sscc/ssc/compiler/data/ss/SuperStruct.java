@@ -1,0 +1,55 @@
+package cz.mipit.sscc.ssc.compiler.data.ss;
+
+import cz.mipit.sscc.util.annotations.NotNull;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
+public record SuperStruct(String name, List<SSMember> members) {
+    public SuperStruct(@NotNull final String name,
+                       @NotNull final List<SSMember> members) {
+        this.name = Objects.requireNonNull(name);
+        this.members = Objects.requireNonNull(members);
+    }
+
+    public String convert() {
+        final StringBuilder result = new StringBuilder();
+
+        result.append(String.format("superstruct %s {\n", name));
+        for (SSMember member : members) {
+            member.data().getLeft().ifPresent(field -> result
+                    /* do a little bit of formatting for mid-compilation error messages */
+                    .append("    ")
+                    .append(field.getWhole())
+                    .append(";\n"));
+        }
+        result.append("};\n");
+
+        getForwardDeclarations(result);
+
+        for (SSMember member : members) {
+            member.data().getRight().ifPresent(functionDefinition ->
+                    result.append(functionDefinition.getDefinition()));
+        }
+
+        return result.toString();
+    }
+
+    private void getForwardDeclarations(final StringBuilder result) {
+        for (SSMember member : members) {
+            member.data().getRight().ifPresent(fnDef ->
+                    result.append(fnDef.getDeclaration()).append(System.lineSeparator()));
+        }
+    }
+
+    public List<FunctionDefinition> getFunctions() {
+        final List<FunctionDefinition> result = new ArrayList<>();
+        for (SSMember member : members) {
+            if (member.data().getRight().isPresent()) {
+                result.add(member.data().getRight().get());
+            }
+        }
+        return result;
+    }
+}

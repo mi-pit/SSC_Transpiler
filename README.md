@@ -15,12 +15,18 @@ java, a C compiler, clang-format (optional)
 
 ---
 
-## SSC code
+---
 
-### Description
+# SSC code
+
+---
+
+## Features
 
 SSC is (supposed to be) a superset of C, with the added `superstructs`
 (more features to come, if I get around to it).
+
+### Superstructs
 
 SuperStructs are sort of a mid-way point between structs and classes;
 they have fields and methods, but no inheritance.
@@ -34,10 +40,24 @@ Methods may be declared `static`, `pure` or `private`:
 
 - `pure` methods don't modify the SS in any way (is passed as `const`)
 - `static` functions behave like normal C functions, namespaced
-  – those aren't called on an SS, rather as `Classname::methodname(‹args›)`
+  – those aren't called on an SS, rather as `SSName::methodname(‹args›)`
 - `private` members (fields or methods) are not visible outside the superstruct's "namespace"
 
-### Caveats
+Methods may not be declared both pure and static, since static methods don't operate on a superstruct
+
+One may get references to non-static member functions using the following syntax: `SSName::methodname` (no parens)
+
+---
+
+### Ternary operators
+
+You may now use `then` instead of `?` and `else` instead of `:` in a conditional expression
+
+---
+
+---
+
+## Caveats
 
 Since this language is just a hobby project of one idiot, there will be a lot of bugs.
 
@@ -48,12 +68,29 @@ but should be readable and the output `.c` file doesn't get deleted, so (worst c
 
 As a guide (not a rule):
 
-- `Syntax` exceptions => user (writer of the ssc code) made a mistake
+- `Syntax` and `Preprocessor` exceptions => user (writer of the ssc code) made a mistake
 - `Antlr parser` exceptions => only one entity knows what the problem is and I can't talk to them since I'm an atheist.
   (problem could be in the java code, antlr grammar, ssc code being transpiled or any number of other reasons)
 - Any other exception is entirely on me
 
-#### Formatting
+## C++
+
+This language is ***NOT*** a subset of C++ with a strange keyword for structs/classes.
+This language, as opposed to C++, supports
+
+- `void *` genericness
+- references to non-static member functions (`SSName::methodname`)
+- redefinition of member as different kind of symbol (you can have both a function and a field with the same identifier)
+- VLAs
+- the `embed` directive (not in C++ yet as of writing this)
+- field designators specified in arbitrary order or not at all
+- `enum` "integer-ness"
+
+and more!
+
+---
+
+## Formatting
 
 ```yml
 AttributeMacros:
@@ -77,8 +114,9 @@ Run `run.sh` or execute the `sscc.jar` with java directly.
 |-------------------|-----------------------------------------------------|
 | `-v`              | verbose -- print all stages                         |
 | `-s`              | stop if transpilation of any file fails             |
+| `--lib     ‹dir›` | process all files in the given directory            |
+| `--compile ‹bin›` | compile the output of all given files into a binary |
 | `--debug`         | print debug info                                    |
-| `--compile ‹arg›` | compile the output of all given files into a binary |
 
 #### Example
 

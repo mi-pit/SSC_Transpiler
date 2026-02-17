@@ -46,6 +46,7 @@ primaryExpression
     | '__builtin_va_arg' '(' unaryExpression ',' typeName ')'
     | '__builtin_offsetof' '(' typeName ',' unaryExpression ')'
     | VersionNumber // For attributes only (dirty hack)
+    | typeName      /* in macros (va_arg doesn't expand) */
     ;
 
 genericSelection
@@ -61,15 +62,19 @@ genericAssociation
     ;
 
 postfixExpression
-    : (primaryExpression | '__extension__'? '(' typeName ')' '{' initializerList ','? '}') (
+    :
+    (
+        primaryExpression
+         | '__extension__'? '(' typeName ')' '{' initializerList ','? '}'
+    ) (
         '[' expression ']'
-        | '(' argumentExpressionList? ')'
-        | '::'          Identifier '(' argumentExpressionList? ')' // Static superstruct function call
-        | '::'          Identifier                                 // Static superstruct function reference
-        | ('.' | '->')  Identifier '(' argumentExpressionList? ')' // Object method call
-        | ('.' | '->')  Identifier                                 // Attribute access (plain C)
-        | '++'
-        | '--'
+         | '(' argumentExpressionList? ')'                           /* function call / macro invocation */
+         | '::'          Identifier '(' argumentExpressionList? ')'  // Static superstruct function call
+         | '::'          Identifier                                  // Static superstruct function reference
+         | ('.' | '->')  Identifier '(' argumentExpressionList? ')'  // Object method call
+         | ('.' | '->')  Identifier                                  // Attribute access (plain C) TODO: CHECK reference
+         | '++'
+         | '--'
     )*
     ;
 
@@ -142,7 +147,17 @@ logicalOrExpression
     ;
 
 conditionalExpression
-    : logicalOrExpression ('?' expression ':' conditionalExpression)?
+    : logicalOrExpression (ternaryExpressionThen expression ternaryExpressionElse conditionalExpression)?
+    ;
+
+ternaryExpressionThen
+    : '?'
+    | 'then'
+    ;
+
+ternaryExpressionElse
+    : ':'
+    | 'else'
     ;
 
 assignmentExpression
@@ -233,7 +248,7 @@ typeSpecifier
     | superStructSpecifier
     | enumSpecifier
     | typedefName
-    | '__typeof__' '(' constantExpression ')' // GCC extension
+    | Typeof '(' constantExpression ')' // c23
     ;
 
 /* my stuff */
@@ -296,7 +311,9 @@ enumeratorList
     ;
 
 enumerator
-    : enumerationConstant ('=' constantExpression)?
+    : enumerationConstant
+      gccAttributeSpecifier* /* fixme? */
+      ('=' constantExpression)?
     ;
 
 enumerationConstant
@@ -309,11 +326,13 @@ atomicTypeSpecifier
 
 typeQualifier
     : 'const'
-    | 'restrict'
+    | Restrict
     | 'volatile'
     | '_Atomic'
     | '_Nonnull'
     | '_Nullable'
+    // TODO?
+    //| '[[' Identifier ']]'
     ;
 
 functionSpecifier
@@ -434,6 +453,7 @@ typedefName
 initializer
     : assignmentExpression
     | '{' initializerList ','? '}'
+    | '{' '}'
     ;
 
 initializerList
@@ -539,11 +559,23 @@ translationUnit
 externalDeclaration
     : functionDefinition
     | declaration
+    | stdIncludeDirective
     | ';' // stray ;
     ;
 
+stdIncludeDirective
+    : SSCDirective DirectiveFileName
+    ;
+
+DirectiveFileName
+    : '<' ~[>" \t\r\n\\]+ '>'
+    ;
+
 functionDefinition
-    : declarationSpecifiers? declarator declarationList? /* K&R decls (deprecated) */ compoundStatement
+    : declarationSpecifiers?
+      declarator
+      declarationList? /* K&R decls (deprecated) */
+      compoundStatement
     ;
 
 declarationList
@@ -640,6 +672,7 @@ Register
 
 Restrict
     : 'restrict'
+    | '__restrict'
     ;
 
 Return
@@ -656,6 +689,11 @@ Signed
 
 Sizeof
     : 'sizeof'
+    ;
+
+Typeof
+    : 'typeof'
+    | '__typeof__'
     ;
 
 Static
@@ -1137,7 +1175,11 @@ fragment SChar
     }
  */
 
-Directive
+SSCDirective
+    : '@sscpreprocessor_include'
+    ;
+
+CDirective
     : '#' (~[\r\n\\] | '\\' [\r\n])* -> channel(HIDDEN)
     ;
 

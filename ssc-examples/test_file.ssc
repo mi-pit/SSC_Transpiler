@@ -1,14 +1,13 @@
 #include "some_defs.h"
+#include "stdio.h"
 
-#include <stdio.h>
 #include <stdlib.h>
 
-typedef superstruct SecondSS
+superstruct SecondSS
 {
     char *str;
     int len;
-}
-String;
+};
 
 superstruct SSName
 {
@@ -30,7 +29,8 @@ superstruct SSName
     {
         struct SSName s;
         superstruct SecondSS ss = ( superstruct SecondSS ) { .len = -1 };
-        String second_ss        = ( String ) { .str = "A", .len = 1 };
+        superstruct SecondSS second_ss =
+                ( superstruct SecondSS ) { .str = "A", .len = 1 };
 
         struct SSName s1, s2;
         superstruct SSName ss1, ss2;
