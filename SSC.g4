@@ -564,11 +564,7 @@ externalDeclaration
     ;
 
 stdIncludeDirective
-    : SSCDirective DirectiveFileName
-    ;
-
-DirectiveFileName
-    : '<' ~[>" \t\r\n\\]+ '>'
+    : SSCDirective
     ;
 
 functionDefinition
@@ -1176,11 +1172,7 @@ fragment SChar
  */
 
 SSCDirective
-    : '@sscpreprocessor_include'
-    ;
-
-CDirective
-    : '#' (~[\r\n\\] | '\\' [\r\n])* -> channel(HIDDEN)
+    : '@sscpreprocessor_include' ~('\r' | '\n')+
     ;
 
 AsmBlock
@@ -1193,12 +1185,4 @@ Whitespace
 
 Newline
     : ('\r' '\n'? | '\n') -> channel(HIDDEN)
-    ;
-
-BlockComment
-    : '/*' .*? '*/' -> channel(HIDDEN)
-    ;
-
-LineComment
-    : '//' ~[\r\n]* -> channel(HIDDEN)
     ;

@@ -543,7 +543,9 @@ public class ExpressionConvertorVisitor extends SSCConvertorVisitor {
 
     @Override
     public String visitStdIncludeDirective(SSCParser.StdIncludeDirectiveContext ctx) {
-        final String directive = String.format("#include %s%n", ctx.DirectiveFileName().getText());
+        final String[] s = ctx.SSCDirective().getText().split("<");
+        assert s.length == 2 : "preprocessor emitted invalid directive";
+        final String directive = lineSeparator() + "#include <" + s[1] + lineSeparator();
         Main.logger.printDebug(() -> "converted directive: " + directive);
         return directive;
     }
