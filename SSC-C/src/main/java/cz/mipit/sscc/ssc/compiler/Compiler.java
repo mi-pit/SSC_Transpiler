@@ -167,18 +167,18 @@ public final class Compiler implements Processor {
         }
 
         {
+            logger.printVerbose("Extracting superstructs...");
             final VisitorData data = VisitorData.fromFile(workingFile);
 
-            logger.printVerbose("Extracting superstructs...");
             if (!extractSuperstructMembers(data.tokens(), data.tree(), workingFileAbsolutePath)) {
                 logger.printVerbose("Failed to extract superstructs.");
                 return Optional.empty();
             }
         }
         {
+            logger.printVerbose("Replacing superstruct references...");
             final VisitorData data = VisitorData.fromFile(workingFile);
 
-            logger.printVerbose("Replacing superstruct references...");
             if (!replaceSuperstructCalls(data.tokens(), data.tree(), workingFileAbsolutePath)) {
                 logger.printVerbose("Failed to replace superstruct references.");
                 return Optional.empty();

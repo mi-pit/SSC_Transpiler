@@ -1,6 +1,6 @@
 # TODO
 
-pre-compile library and link it on compilation
+profile different versions
 
 ---
 
@@ -11,7 +11,6 @@ pre-compile library and link it on compilation
 * add options for:
     - adding files with different suffixes
     - compiling with custom flags
-* ? own macro preprocessor (cpp takes AGES to go through)
 
 ---
 
