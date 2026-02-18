@@ -21,14 +21,11 @@ public abstract class SSCConvertorVisitor extends SSCBaseVisitor<String> {
 
     private boolean hasErrors;
 
-    protected boolean inMacroDefinition;
-
     protected SSCConvertorVisitor(CommonTokenStream tokens, InputFile currentFile) {
         this.tokens = tokens;
         this.currentFile = currentFile;
 
         hasErrors = false;
-        inMacroDefinition = false;
     }
 
     protected SSCSyntaxException getSSCSyntaxException(String message, ParserRuleContext ctx) {
