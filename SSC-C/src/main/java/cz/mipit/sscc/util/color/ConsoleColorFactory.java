@@ -1,6 +1,7 @@
 package cz.mipit.sscc.util.color;
 
 import java.io.PrintStream;
+import java.util.Locale;
 import java.util.function.BiFunction;
 
 public abstract class ConsoleColorFactory {
@@ -32,12 +33,26 @@ public abstract class ConsoleColorFactory {
     private static final ConsoleColorFactory WINDOWS = OTHER;
 
 
-    protected abstract BiFunction<Ground, Color, ConsoleColor> getFactory();
+    abstract protected BiFunction<Ground, Color, ConsoleColor> getFactory();
 
-    protected abstract ConsoleColor defaultColor();
+    abstract protected ConsoleColor defaultColor();
 
 
-    public static final ConsoleColor COLOR_DEFAULT = fromOS().defaultColor();
+    private static final ConsoleColorFactory FROM_OS;
+
+    static {
+        final String lowercase = System.getProperty("os.name").toLowerCase(Locale.ENGLISH);
+
+        if (lowercase.contains("win")) {
+            FROM_OS = WINDOWS;
+        } else if (lowercase.contains("mac") || lowercase.contains("linux")) {
+            FROM_OS = UNIX;
+        } else {
+            FROM_OS = OTHER;
+        }
+    }
+
+    public static final ConsoleColor COLOR_DEFAULT = FROM_OS.defaultColor();
 
     public static ConsoleColor create(final ConsoleColorFactory factory,
                                       final Ground ground,
@@ -46,20 +61,7 @@ public abstract class ConsoleColorFactory {
     }
 
     public static ConsoleColor create(final Ground ground, final Color color) {
-        return create(fromOS(), ground, color);
-    }
-
-    private static ConsoleColorFactory fromOS() {
-        final String property = System.getProperty("os.name");
-        final String lowercase = property.toLowerCase();
-
-        if (property.toLowerCase().contains("windows")) {
-            return WINDOWS;
-        } else if (lowercase.contains("mac") || lowercase.contains("linux")) {
-            return UNIX;
-        } else {
-            return OTHER;
-        }
+        return create(FROM_OS, ground, color);
     }
 
     public enum Ground {
