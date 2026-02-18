@@ -59,8 +59,8 @@ public final class Compiler implements Processor {
             "-Wall",
             "-Wextra",
 
-            "-Wno-extra-semi",  /* transpiler creates extra semicolons */
-            "-Wno-unused",      /* Fixme: remove after implementing preprocessor */
+            "-Wno-extra-semi",      /* sscc creates extra semicolons */
+            "-Wno-unused-function", /* preprocessor includes unused functions */
 
             "-Werror"
     );
@@ -101,10 +101,9 @@ public final class Compiler implements Processor {
             }
 
             for (final Path path : outputtedFiles) {
-                logger.printVerbose("Trying to delete output file '" + path + "'...");
+                logger.printVerbose("Deleting output file '" + path + "'...");
                 try {
                     Files.delete(path);
-                    logger.printVerbose("    success");
                 } catch (IOException e) {
                     warn("Could not delete file '" + path + "'");
                 }
@@ -314,7 +313,7 @@ public final class Compiler implements Processor {
 
         final List<String> args = argsBuilder.build();
 
-        logger.printVerbose("Compiling using `%s`", String.join(" ", args));
+        logger.printDebug("Compiling using `%s`", String.join(" ", args));
 
         /* cc -Werror -Wall -Wextra -pedantic -fsyntax-only "$file" */
         final int exitCode = doProcess(args);

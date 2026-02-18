@@ -34,6 +34,8 @@ public final class ArgumentParser {
 
     public static final String OPTSTR_LIB = "--lib";
 
+    public static final String OPTSTR_STOP_OPTS = "--";
+
     private static final String HELP_STRING = """
             Usage: sscc [options|files]
             Options:
@@ -47,6 +49,8 @@ public final class ArgumentParser {
             Option.of(OPTSTR_STD_C, "Set C standard", "Sets the C standard for compilation/preprocessing", "c standard string (same as in cc)"),
             Option.of(OPTSTR_COMPILE_SHORT, OPTSTR_COMPILE_LONG + " ", "Compile", "Compiles the resulting C code into a binary", "name of the resulting binary"),
             Option.of(OPTSTR_LIB + " ", "Library", "Process all `.c` & `.ssc` files in a directory", "library path")
+            Option.of(OPTSTR_LIB + " ", "Library", "Process all `.c` & `.ssc` files in a directory", "library path"),
+            Option.of(OPTSTR_STOP_OPTS, "Terminate options parsing", "Treats all following strings as file names", null)
     );
 
     private static void printHelpAndExit() {
@@ -56,8 +60,6 @@ public final class ArgumentParser {
         }
         System.exit(0);
     }
-
-    private enum NextOperation {None, CompileTarget, LibPath}
 
     public static SSCCOptions parse(String[] args) throws IOException {
         if (args.length == 0) {
@@ -131,6 +133,8 @@ public final class ArgumentParser {
 
                         case OPTSTR_LIB -> NextOperation.LibPath;
 
+                        case OPTSTR_STOP_OPTS -> NextOperation.FilesOnly;
+
                         default -> {
                             if (arg.startsWith(OPTSTR_STD_C)) {
                                 standard = CCStandard.fromString(arg.substring(OPTSTR_STD_C.length()));
@@ -142,10 +146,18 @@ public final class ArgumentParser {
                         }
                     };
                 }
+
+                case FilesOnly -> {
+                    final Path path = Path.of(arg);
+                    final InputFile inputFile = verifyInputFilePath(path);
+
+                    filesToProcess.add(inputFile);
+                    yield NextOperation.FilesOnly;
+                }
             };
         }
 
-        if (nextOperation != NextOperation.None) {
+        if (nextOperation.requiresArgument()) {
             err(ExitValue.INVALID_ARGUMENTS, "Missing argument for option '" + nextOperation + "'");
         }
 
