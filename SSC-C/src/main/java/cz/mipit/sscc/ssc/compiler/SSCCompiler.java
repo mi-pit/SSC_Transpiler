@@ -28,7 +28,7 @@ import static cz.mipit.sscc.Logger.errNoExit;
 import static cz.mipit.sscc.Logger.warn;
 import static cz.mipit.sscc.Main.logger;
 
-public final class Compiler implements Processor {
+public final class SSCCompiler implements Processor {
     public static final Path SSCLIB_HOME;
 
     static {
@@ -69,7 +69,7 @@ public final class Compiler implements Processor {
 
     private InputFile currentFile = null;
 
-    public Compiler(final SSCCOptions options) {
+    public SSCCompiler(final SSCCOptions options) {
         this.options = options;
 
         final ListBuilder<String> cc = ListBuilder
