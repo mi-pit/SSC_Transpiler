@@ -61,6 +61,7 @@ public final class ArgumentParser {
         System.exit(0);
     }
 
+    @SuppressWarnings("DuplicateExpressions")
     public static SSCCOptions parse(String[] args) throws IOException {
         if (args.length == 0) {
             printHelpAndExit();
