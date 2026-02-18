@@ -17,11 +17,21 @@ import static cz.mipit.sscc.Logger.warn;
 
 public final class ArgumentParser {
     public static final String OPTSTR_STD_C = "--std=";
-    public static final String OPTSTR_VERBOSE = "-v";
-    public static final String OPTSTR_STOP_ON_ERROR = "-s";
+
+    public static final String OPTSTR_VERBOSE_SHORT = "-v";
+    public static final String OPTSTR_VERBOSE_LONG = "--verbose";
+
+    public static final String OPTSTR_STOP_ON_ERROR_SHORT = "-s";
+    public static final String OPTSTR_STOP_ON_ERROR_LONG = "--no-stop-on-error";
+
     public static final String OPTSTR_DEBUG = "--debug";
-    public static final String OPTSTR_HELP = "--help";
-    public static final String OPTSTR_COMPILE = "--compile";
+
+    public static final String OPTSTR_HELP_SHORT = "-h";
+    public static final String OPTSTR_HELP_LONG = "--help";
+
+    public static final String OPTSTR_COMPILE_SHORT = "-c";
+    public static final String OPTSTR_COMPILE_LONG = "--compile";
+
     public static final String OPTSTR_LIB = "--lib";
 
     private static final String HELP_STRING = """
@@ -30,12 +40,12 @@ public final class ArgumentParser {
             """;
 
     private static final List<Option> OPTIONS = List.of(
-            Option.of(OPTSTR_HELP, "Help", "Display this message", null),
-            Option.of(OPTSTR_VERBOSE, "Verbose", "Print information about current stage", null),
+            Option.of(OPTSTR_HELP_SHORT, OPTSTR_HELP_LONG, "Help", "Display this message", null),
+            Option.of(OPTSTR_VERBOSE_SHORT, OPTSTR_VERBOSE_LONG, "Verbose", "Print information about current stage", null),
             Option.of(OPTSTR_DEBUG, "Debug mode", "Print debug information (unstable)", null),
-            Option.of(OPTSTR_STOP_ON_ERROR, "Don't stop on error", "By default, sscc stops processing after encountering an error (this powers through)", null),
+            Option.of(OPTSTR_STOP_ON_ERROR_SHORT, OPTSTR_STOP_ON_ERROR_LONG, "Don't stop on error", "By default, sscc stops processing after encountering an error (this powers through)", null),
             Option.of(OPTSTR_STD_C, "Set C standard", "Sets the C standard for compilation/preprocessing", "c standard string (same as in cc)"),
-            Option.of(OPTSTR_COMPILE + " ", "Compile", "Compiles the resulting C code into a binary", "name of the resulting binary"),
+            Option.of(OPTSTR_COMPILE_SHORT, OPTSTR_COMPILE_LONG + " ", "Compile", "Compiles the resulting C code into a binary", "name of the resulting binary"),
             Option.of(OPTSTR_LIB + " ", "Library", "Process all `.c` & `.ssc` files in a directory", "library path")
     );
 
@@ -62,7 +72,7 @@ public final class ArgumentParser {
         CCStandard standard = SSCCOptions.DEF_C_STANDARD;
 
         NextOperation nextOperation = NextOperation.None;
-        for (String arg : args) {
+        for (final String arg : args) {
             nextOperation = switch (nextOperation) {
                 case CompileTarget -> {
                     final Path asPath = Path.of(arg);
@@ -91,15 +101,18 @@ public final class ArgumentParser {
                     }
 
                     yield switch (arg) {
-                        case OPTSTR_HELP -> {
+                        case OPTSTR_HELP_SHORT,
+                             OPTSTR_HELP_LONG -> {
                             printHelpAndExit();
-                            throw new RuntimeException("Unreachable");
+                            throw new AssertionError("Unreachable");
                         }
-                        case OPTSTR_VERBOSE -> {
+                        case OPTSTR_VERBOSE_SHORT,
+                             OPTSTR_VERBOSE_LONG -> {
                             verbose = true;
                             yield NextOperation.None;
                         }
-                        case OPTSTR_STOP_ON_ERROR -> {
+                        case OPTSTR_STOP_ON_ERROR_SHORT,
+                             OPTSTR_STOP_ON_ERROR_LONG -> {
                             stopOnError = false;
                             yield NextOperation.None;
                         }
@@ -108,14 +121,15 @@ public final class ArgumentParser {
                             yield NextOperation.None;
                         }
 
-                        case OPTSTR_COMPILE -> {
+                        case OPTSTR_COMPILE_SHORT,
+                             OPTSTR_COMPILE_LONG -> {
                             if (compileTarget != null) {
                                 err(ExitValue.INVALID_ARGUMENTS, "Compile target already specified");
                             }
                             yield NextOperation.CompileTarget;
                         }
 
-                        case "--lib" -> NextOperation.LibPath;
+                        case OPTSTR_LIB -> NextOperation.LibPath;
 
                         default -> {
                             if (arg.startsWith(OPTSTR_STD_C)) {
@@ -124,7 +138,7 @@ public final class ArgumentParser {
                             }
 
                             err(ExitValue.INVALID_ARGUMENTS, "Unknown option: " + arg);
-                            throw new RuntimeException("Unreachable");
+                            throw new AssertionError("Unreachable");
                         }
                     };
                 }

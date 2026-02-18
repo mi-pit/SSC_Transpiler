@@ -2,6 +2,7 @@ package cz.mipit.sscc.ssc.compiler.cc;
 
 import cz.mipit.sscc.Logger;
 
+// TODO: remove
 public final class CCStandard {
     public static final CCStandard
             C99 = new CCStandard("c99"),

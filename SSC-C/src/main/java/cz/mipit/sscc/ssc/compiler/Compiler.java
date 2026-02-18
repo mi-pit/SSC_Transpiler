@@ -32,20 +32,20 @@ public final class Compiler implements Processor {
     public static final Path SSCLIB_HOME;
 
     static {
-        final String ssclibHome = System.getenv("SSCLIB_HOME");
-        if (ssclibHome == null) {
+        final String ssclibHomeEnv = System.getenv("SSCLIB_HOME");
+        if (ssclibHomeEnv == null) {
             Logger.err(ExitValue.LIBRARY_NOT_FOUND, "could not find ssc library: SSCLIB_HOME not set");
-            assert false : "unreachable";
+            throw new AssertionError("unreachable");
         }
 
-        final Path asPath = Path.of(ssclibHome);
+        final Path asPath = Path.of(ssclibHomeEnv);
 
         if (!Files.exists(asPath)) {
-            Logger.err(ExitValue.LIBRARY_NOT_FOUND, "could not find ssc library: " + ssclibHome);
+            Logger.err(ExitValue.LIBRARY_NOT_FOUND, "could not find ssc library: " + ssclibHomeEnv);
         }
 
         if (!Files.isDirectory(asPath)) {
-            Logger.err(ExitValue.LIBRARY_NOT_FOUND, "not a directory: " + ssclibHome);
+            Logger.err(ExitValue.LIBRARY_NOT_FOUND, "not a directory: " + ssclibHomeEnv);
         }
 
         SSCLIB_HOME = asPath;

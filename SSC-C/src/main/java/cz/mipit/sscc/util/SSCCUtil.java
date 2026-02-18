@@ -15,6 +15,8 @@ public final class SSCCUtil {
     }
 
     public static class Text {
+        public static final String INDENT = "    ";
+
         /**
          * Returns the exact text corresponding to a ParserRuleContext.
          * Works for any context.
