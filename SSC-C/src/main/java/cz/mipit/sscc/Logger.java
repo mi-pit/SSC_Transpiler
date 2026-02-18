@@ -28,7 +28,7 @@ public final class Logger {
     }
 
     public static void warn(final String message, final Object... args) {
-        log(COLOR_WARN, "warn", System.err, message, args);
+        log(COLOR_WARN, "warning", System.err, message, args);
     }
 
     public static void warn(final String message) {
