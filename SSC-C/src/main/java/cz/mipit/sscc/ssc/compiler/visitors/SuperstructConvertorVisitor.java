@@ -2,14 +2,13 @@ package cz.mipit.sscc.ssc.compiler.visitors;
 
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.file.InputFile;
-import cz.mipit.sscc.ssc.compiler.data.var.TypedVariable;
 import cz.mipit.sscc.ssc.compiler.data.ss.Field;
 import cz.mipit.sscc.ssc.compiler.data.ss.FunctionDefinition;
 import cz.mipit.sscc.ssc.compiler.data.ss.SSMember;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
+import cz.mipit.sscc.ssc.compiler.data.var.TypedVariable;
 import cz.mipit.sscc.util.SSCCUtil;
 import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.RuleContext;
 
 import java.util.ArrayList;
 import java.util.HashSet;

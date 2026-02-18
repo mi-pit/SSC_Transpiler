@@ -4,8 +4,6 @@ import antlr.ssc.SSCParser;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.ssc.exceptions.children.AntlrException;
-import cz.mipit.sscc.util.color.ConsoleColor;
-import cz.mipit.sscc.util.color.ConsoleColorFactory;
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.RecognitionException;

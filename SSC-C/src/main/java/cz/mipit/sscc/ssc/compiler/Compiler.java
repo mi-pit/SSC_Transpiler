@@ -2,7 +2,6 @@ package cz.mipit.sscc.ssc.compiler;
 
 import cz.mipit.sscc.Logger;
 import cz.mipit.sscc.args.SSCCOptions;
-import cz.mipit.sscc.file.DirectoryTreeParser;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.Processor;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
@@ -26,8 +25,8 @@ import java.util.Optional;
 import java.util.Set;
 
 import static cz.mipit.sscc.Logger.errNoExit;
-import static cz.mipit.sscc.Main.logger;
 import static cz.mipit.sscc.Logger.warn;
+import static cz.mipit.sscc.Main.logger;
 
 public final class Compiler implements Processor {
     public static final Path SSCLIB_HOME;

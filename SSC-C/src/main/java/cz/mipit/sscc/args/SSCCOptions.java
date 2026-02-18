@@ -4,8 +4,8 @@ import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.compiler.cc.CCStandard;
 
 import java.util.Collections;
-import java.util.Set;
 import java.util.Optional;
+import java.util.Set;
 
 public final class SSCCOptions {
     public static final boolean DEF_VERBOSE = false;

@@ -1,8 +1,5 @@
 package cz.mipit.sscc.file;
 
-import cz.mipit.sscc.Logger;
-import cz.mipit.sscc.util.ExitValue;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;

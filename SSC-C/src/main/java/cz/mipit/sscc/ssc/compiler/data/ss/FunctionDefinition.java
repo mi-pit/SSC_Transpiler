@@ -3,15 +3,12 @@ package cz.mipit.sscc.ssc.compiler.data.ss;
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.exceptions.children.SSCSyntaxException;
-import cz.mipit.sscc.ssc.exceptions.children.UnknownTranspilationException;
 import cz.mipit.sscc.util.SSCCUtil;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.BiFunction;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class FunctionDefinition {
