@@ -2,7 +2,7 @@ package cz.mipit.sscc.ssc.exceptions;
 
 import cz.mipit.sscc.Main;
 import cz.mipit.sscc.file.InputFile;
-import cz.mipit.sscc.ssc.preprocessor.EnumeratedLine;
+import cz.mipit.sscc.util.EnumeratedLine;
 import cz.mipit.sscc.util.Range;
 import cz.mipit.sscc.util.SSCCUtil;
 import cz.mipit.sscc.util.annotations.Nullable;

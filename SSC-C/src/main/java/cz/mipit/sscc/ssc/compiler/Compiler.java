@@ -1,5 +1,6 @@
 package cz.mipit.sscc.ssc.compiler;
 
+import cz.mipit.sscc.Logger;
 import cz.mipit.sscc.args.SSCCOptions;
 import cz.mipit.sscc.file.DirectoryTreeParser;
 import cz.mipit.sscc.file.InputFile;
@@ -9,7 +10,6 @@ import cz.mipit.sscc.ssc.compiler.visitors.ExpressionConvertorVisitor;
 import cz.mipit.sscc.ssc.compiler.visitors.SSCConvertorVisitor;
 import cz.mipit.sscc.ssc.compiler.visitors.SuperstructConvertorVisitor;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
-import cz.mipit.sscc.ssc.preprocessor.Preprocessor;
 import cz.mipit.sscc.util.ExitValue;
 import cz.mipit.sscc.util.ListBuilder;
 import cz.mipit.sscc.util.VisitorData;
@@ -19,7 +19,6 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.HashSet;
 import java.util.List;
@@ -31,7 +30,27 @@ import static cz.mipit.sscc.Main.logger;
 import static cz.mipit.sscc.Logger.warn;
 
 public final class Compiler implements Processor {
-    public static final Path SSCLIB_HOME = DirectoryTreeParser.getLibraryRoot();
+    public static final Path SSCLIB_HOME;
+
+    static {
+        final String ssclibHome = System.getenv("SSCLIB_HOME");
+        if (ssclibHome == null) {
+            Logger.err(ExitValue.LIBRARY_NOT_FOUND, "could not find ssc library: SSCLIB_HOME not set");
+            assert false : "unreachable";
+        }
+
+        final Path asPath = Path.of(ssclibHome);
+
+        if (!Files.exists(asPath)) {
+            Logger.err(ExitValue.LIBRARY_NOT_FOUND, "could not find ssc library: " + ssclibHome);
+        }
+
+        if (!Files.isDirectory(asPath)) {
+            Logger.err(ExitValue.LIBRARY_NOT_FOUND, "not a directory: " + ssclibHome);
+        }
+
+        SSCLIB_HOME = asPath;
+    }
 
     private final Set<SuperStruct> sss = new HashSet<>();
 
@@ -252,31 +271,18 @@ public final class Compiler implements Processor {
     private boolean preprocessSSCCode(final InputFile inFile,
                                       final Path outputFile)
             throws IOException, InterruptedException {
-        final Processor preprocessor = new Preprocessor(inFile, outputFile);
-        if (preprocessor.run().isFailure()) {
-            return false;
-        }
-        final Path ccOutPathTemp = Files.createTempFile(inFile.dir(), inFile.getFullName(), ".i");
-
-        final int exitCode = doProcess(ListBuilder
+        return 0 == doProcess(ListBuilder
                 .from(ccProcessArgBase)
                 .addAll(
                         "-E",
                         "-P",
                         "-D" + SSC_DEF_MACRO_STRING_NAME,
-                        "-x", "c", outputFile.toString(),
-                        "-o", ccOutPathTemp.toString()
+                        "-Davailability(...)=",
+                        "-x", "c", inFile.absolutePathString(),
+                        "-o", outputFile.toString()
                 )
                 .build()
         );
-
-        if (exitCode != 0) {
-            Files.deleteIfExists(ccOutPathTemp);
-            return false;
-        }
-
-        Files.move(ccOutPathTemp, outputFile, StandardCopyOption.REPLACE_EXISTING);
-        return true;
     }
 
     private int verifyCCode(final Path file) throws IOException, InterruptedException {
@@ -297,16 +303,16 @@ public final class Compiler implements Processor {
                 .add("-o")
                 .add(binaryName)
 
-                .add("-fsanitize=address")
-                .add("-fsanitize=undefined")
-                .add("-fsanitize=integer")
-
                 .add("-L" + SSCLIB_HOME + "/dylib/")
                 .add("-lssclib")
                 .add("-Wl,-rpath," + SSCLIB_HOME + "/dylib/");
         if (options.debug()) {
             argsBuilder.add("-v");
         }
+        //                .add("-fsanitize=address")
+        //                .add("-fsanitize=undefined")
+        //                .add("-fsanitize=integer")
+
         final List<String> args = argsBuilder.build();
 
         logger.printVerbose("Compiling using `%s`", String.join(" ", args));

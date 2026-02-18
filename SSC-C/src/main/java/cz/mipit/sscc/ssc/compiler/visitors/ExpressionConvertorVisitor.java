@@ -7,7 +7,7 @@ import cz.mipit.sscc.ssc.compiler.data.ss.Field;
 import cz.mipit.sscc.ssc.compiler.data.ss.FunctionDefinition;
 import cz.mipit.sscc.ssc.compiler.data.ss.SSMember;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
-import cz.mipit.sscc.ssc.compiler.data.ss.SuperstructVariable;
+import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.util.annotations.Nullable;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -45,10 +45,10 @@ public class ExpressionConvertorVisitor extends SSCConvertorVisitor {
     @Override
     public String visitFunctionDefinition(final SSCParser.FunctionDefinitionContext ctx) {
         // Set currentFunctionName
-        assert ctx.compoundStatement() != null;
+        assert ctx.functionBody().compoundStatement() != null;
 
         if (ctx.declarationList() != null) {
-            throw getSSCSyntaxException("K&R C-style declarations are invalid in SSC", ctx);
+            throw getSSCSyntaxException("K&R C-style declarations are invalid in SSC", ctx.declarationList());
         }
 
         currentFunctionName = FunctionDefinition.parseName(ctx.declarator(), tokens, currentFile);
@@ -62,8 +62,11 @@ public class ExpressionConvertorVisitor extends SSCConvertorVisitor {
     }
 
     private void getFunctionSuperstructArgs(final SSCParser.FunctionDefinitionContext ctx) {
-        final SSCParser.ParameterTypeListContext paramTypeList =
-                ctx.declarator().directDeclarator().parameterTypeList();
+        final List<SSCParser.ParameterTypeListContext> ls = ctx.declarator().directDeclarator().parameterTypeList();
+        if (ls.isEmpty()) {
+            throw getSSCSyntaxException("Function definition has to parameter type list", ctx);
+        }
+        final SSCParser.ParameterTypeListContext paramTypeList = ls.get(0);
         if (paramTypeList == null) {
             throw getSSCSyntaxException("Function definition has no parameter type list", ctx.declarator());
         }
@@ -72,10 +75,10 @@ public class ExpressionConvertorVisitor extends SSCConvertorVisitor {
                 paramTypeList.parameterList().parameterDeclaration();
 
         for (final SSCParser.ParameterDeclarationContext paramDecl : paramList) {
-            if (paramDecl.declarationSpecifiers2() != null) {
-                continue;
-            }
             final var declarator = paramDecl.declarator();
+            if (paramDecl.declarationSpecifiers() == null) {
+                throw getSSCSyntaxException("Parameter declaration has no specifier", paramDecl);
+            }
 
             final Optional<String> maybeSSName = findSSNameInDeclSpecs(
                     paramDecl.declarationSpecifiers().declarationSpecifier()
@@ -132,12 +135,15 @@ public class ExpressionConvertorVisitor extends SSCConvertorVisitor {
             final String ssName,
             final SSCParser.DeclaratorContext declarator
     ) {
+        if (declarator == null) {
+            return Optional.empty();
+        }
         final var directDecl = declarator.directDeclarator();
         if (directDecl.Identifier() == null) {
             return Optional.empty();
         }
 
-        final boolean pointer = declarator.pointer() != null;
+        final int pointer = declarator.pointer().size();
         final String varName = directDecl.Identifier().getText();
 
         final SuperstructVariable ssVar = new SuperstructVariable(ssName, pointer, varName);
@@ -232,8 +238,10 @@ public class ExpressionConvertorVisitor extends SSCConvertorVisitor {
 
         if (ctx.typeName() == null
                 || ctx.typeName().specifierQualifierList() == null
-                || ctx.typeName().specifierQualifierList().typeSpecifier() == null
-                || ctx.typeName().specifierQualifierList().typeSpecifier().superStructSpecifier() == null) {
+                || ctx.typeName().specifierQualifierList().typeSpecifierQualifier().isEmpty()
+                || ctx.typeName().specifierQualifierList().typeSpecifierQualifier(0).typeSpecifier() == null
+                || ctx.typeName().specifierQualifierList().typeSpecifierQualifier(0).typeSpecifier().superStructSpecifier() == null
+        ) {
             return Optional.empty();
         }
 
@@ -383,7 +391,7 @@ public class ExpressionConvertorVisitor extends SSCConvertorVisitor {
         }
         final FunctionDefinition method = maybeMethod.get();
 
-        if (var.isPointer() && arrowOrDot == ArrowOrDot.Dot) {
+        if (var.pointer() == 1 && arrowOrDot == ArrowOrDot.Dot) {
             throw getSSCSyntaxException("Pointer to superstruct must be accessed with `->`", ctx);
         }
 
@@ -542,7 +550,7 @@ public class ExpressionConvertorVisitor extends SSCConvertorVisitor {
     }
 
     @Override
-    public String visitStdIncludeDirective(SSCParser.StdIncludeDirectiveContext ctx) {
+    public String visitSscIncludeDirective(SSCParser.SscIncludeDirectiveContext ctx) {
         final String[] s = ctx.SSCDirective().getText().split("<");
         assert s.length == 2 : "preprocessor emitted invalid directive";
         final String directive = lineSeparator() + "#include <" + s[1] + lineSeparator();

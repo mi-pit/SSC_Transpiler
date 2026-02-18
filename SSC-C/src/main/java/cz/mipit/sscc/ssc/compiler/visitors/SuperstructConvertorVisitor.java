@@ -2,6 +2,7 @@ package cz.mipit.sscc.ssc.compiler.visitors;
 
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.file.InputFile;
+import cz.mipit.sscc.ssc.compiler.data.var.TypedVariable;
 import cz.mipit.sscc.ssc.compiler.data.ss.Field;
 import cz.mipit.sscc.ssc.compiler.data.ss.FunctionDefinition;
 import cz.mipit.sscc.ssc.compiler.data.ss.SSMember;
@@ -13,7 +14,6 @@ import org.antlr.v4.runtime.RuleContext;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 
 
@@ -61,108 +61,115 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
 
         final boolean isPrivate = declSpecs
                 .stream()
-                .map(SSCParser.DeclarationSpecifierContext::Private)
-                .anyMatch(Objects::nonNull);
+                .anyMatch(ds -> ds.functionSpecifier() != null
+                        && ds.functionSpecifier().Private() != null);
 
         final List<SSCParser.DeclarationSpecifierContext> noPrivateSpecs = declSpecs
                 .stream()
-                .filter(spec -> spec.Private() == null)
+                .filter(declSpec -> declSpec.functionSpecifier() == null
+                        || declSpec.functionSpecifier().Private() == null)
+                .toList();
+        if (noPrivateSpecs.isEmpty()) {
+            throw getSSCSyntaxException("No type specifier for superstruct member", memberCtx);
+        }
+
+        if (memberCtx.declaration() == null) {
+            processMemberDeclaration(memberCtx, memberList, thisSSName, declSpecs, noPrivateSpecs, isPrivate);
+            return;
+        }
+
+        processMemberFunction(memberCtx, memberList, noPrivateSpecs, isPrivate);
+    }
+
+    private void processMemberFunction(SSCParser.SuperStructMemberContext memberCtx,
+                                       List<SSMember> memberList,
+                                       List<SSCParser.DeclarationSpecifierContext> noPrivateSpecs,
+                                       boolean isPrivate) {
+        final SSCParser.InitDeclaratorListContext initDeclaratorList =
+                memberCtx.declaration().initDeclaratorList();
+
+        final List<String> type = noPrivateSpecs
+                .stream()
+                .map(s -> SSCCUtil.Text.getLiteral(s, tokens))
                 .toList();
 
-        if (memberCtx.declaration() != null) {
-            final SSCParser.InitDeclaratorListContext initDeclaratorList =
-                    memberCtx.declaration().initDeclaratorList();
-
-            final List<String> type = noPrivateSpecs
-                    .stream()
-                    .map(s -> SSCCUtil.Text.getLiteral(s, tokens))
-                    .toList();
-
-            if (initDeclaratorList == null) {
-                memberList.add(
-                        SSMember.field(
-                                new Field(isPrivate,
-                                        /* assume last "spec" is variable name
-                                         * (parser doesn't know the difference between `typedef`ed name and Identifier) */
-                                        noPrivateSpecs.subList(0, noPrivateSpecs.size() - 1)
-                                                .stream().map(RuleContext::getText).toList(),
-                                        false,
-                                        noPrivateSpecs.get(noPrivateSpecs.size() - 1).getText())
-                        )
-                );
-                return;
-            }
-
-            if (initDeclaratorList.initDeclarator().isEmpty()) {
-                throw getSSCSyntaxException(
-                        "Init declarator empty `" + SSCCUtil.Text.getLiteral(memberCtx, tokens) + "`",
-                        initDeclaratorList
-                );
-            }
-            for (SSCParser.InitDeclaratorContext initDecl : initDeclaratorList.initDeclarator()) {
-                if (initDecl.initializer() != null) {
-                    throw getSSCSyntaxException(
-                            "Cannot initialize superstruct field (must use a constructor)",
-                            initDecl.initializer()
-                    );
-                }
-                final SSCParser.DeclaratorContext declarator = initDecl.declarator();
-                final boolean ptr = declarator.pointer() != null;
-                if (declarator.directDeclarator().Identifier() == null) {
-                    throw getSSCSyntaxException(
-                            "Field has no identifier",
-                            declarator.directDeclarator()
-                    );
-                }
-                final String name = declarator.directDeclarator().Identifier().getText();
-
-                final Field field = new Field(isPrivate, type, ptr, name);
-                memberList.add(SSMember.field(field));
-            }
-        } else if (memberCtx.functionDefinition() != null) {
-            final boolean isStatic = hasStaticDeclSpec(declSpecs);
-            final boolean isPure = hasPureDeclSpec(declSpecs);
-
-            final List<String> withoutCustom = getDeclSpecsWithoutCustom(noPrivateSpecs);
-
-            final FunctionDefinition functionDefinition = FunctionDefinition.fromSemiParsedContext(
-                    isStatic,
-                    isPure,
-                    isPrivate,
-                    withoutCustom,
-                    memberCtx.functionDefinition(),
-                    tokens,
-                    thisSSName,
-                    currentFile
+        if (initDeclaratorList.initDeclarator().isEmpty()) {
+            throw getSSCSyntaxException(
+                    "Init declarator empty `" + SSCCUtil.Text.getLiteral(memberCtx, tokens) + "`",
+                    initDeclaratorList
             );
-
-            memberList.add(SSMember.function(functionDefinition));
         }
+
+        for (SSCParser.InitDeclaratorContext initDecl : initDeclaratorList.initDeclarator()) {
+            if (initDecl.initializer() != null) {
+                throw getSSCSyntaxException(
+                        "Cannot initialize superstruct field (must use a constructor)",
+                        initDecl.initializer()
+                );
+            }
+            final SSCParser.DeclaratorContext declarator = initDecl.declarator();
+            if (declarator.directDeclarator().Identifier() == null) {
+                throw getSSCSyntaxException(
+                        "Field has no identifier",
+                        declarator.directDeclarator()
+                );
+            }
+
+            final int ptrs;
+            if (declarator.pointer().isEmpty()) {
+                ptrs = 0;
+            } else {
+                assert declarator.pointer().size() == 1;
+                ptrs = declarator.pointer().get(0).Star().size();
+            }
+            final String name = declarator.directDeclarator().Identifier().getText();
+
+            final Field field = new Field(isPrivate, new TypedVariable(type, ptrs, name));
+            memberList.add(SSMember.field(field));
+        }
+    }
+
+    private void processMemberDeclaration(SSCParser.SuperStructMemberContext memberCtx, List<SSMember> memberList, String thisSSName, List<SSCParser.DeclarationSpecifierContext> declSpecs, List<SSCParser.DeclarationSpecifierContext> noPrivateSpecs, boolean isPrivate) {
+        assert memberCtx.functionDefinition() != null;
+
+        final boolean isStatic = hasStaticDeclSpec(declSpecs);
+        final boolean isPure = hasPureDeclSpec(declSpecs);
+
+        final List<String> withoutCustom = getDeclSpecsWithoutCustom(noPrivateSpecs);
+
+        final FunctionDefinition functionDefinition = FunctionDefinition.fromSemiParsedContext(
+                isStatic,
+                isPure,
+                isPrivate,
+                withoutCustom,
+                memberCtx.functionDefinition(),
+                tokens,
+                thisSSName,
+                currentFile
+        );
+
+        memberList.add(SSMember.function(functionDefinition));
     }
 
     private static boolean hasPureDeclSpec(List<SSCParser.DeclarationSpecifierContext> declSpecs) {
         for (SSCParser.DeclarationSpecifierContext declSpec : declSpecs) {
-            SSCParser.FunctionSpecifierContext funcSpec = declSpec.functionSpecifier();
-            if (funcSpec != null) {
-                if (funcSpec.Pure() != null) {
-                    return true;
-                }
+            final SSCParser.FunctionSpecifierContext funcSpec = declSpec.functionSpecifier();
+            if (funcSpec != null && funcSpec.Pure() != null) {
+                return true;
             }
         }
         return false;
     }
 
     /**
-     * filter out type names & {@code pure} and {@code static}
+     * filter out types & {@code pure} and {@code static}
      */
     private List<String> getDeclSpecsWithoutCustom(List<SSCParser.DeclarationSpecifierContext> noPrivateSpecs) {
         final List<String> withoutCustom = new ArrayList<>();
         for (SSCParser.DeclarationSpecifierContext declSpec : noPrivateSpecs) {
             if (declSpec.typeSpecifier() == null
-                    && (declSpec.functionSpecifier() == null
-                    || declSpec.functionSpecifier().Pure() == null)
-                    && (declSpec.storageClassSpecifier() == null
-                    || declSpec.storageClassSpecifier().Static() == null)) {
+                    && (declSpec.functionSpecifier() == null || declSpec.functionSpecifier().Pure() == null)
+                    && (declSpec.storageClassSpecifier() == null || declSpec.storageClassSpecifier().Static() == null)) {
                 withoutCustom.add(SSCCUtil.Text.getLiteral(declSpec, tokens));
             }
         }

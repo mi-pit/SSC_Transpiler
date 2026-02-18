@@ -1,4 +1,4 @@
-package cz.mipit.sscc.ssc.preprocessor;
+package cz.mipit.sscc.util;
 
 public record EnumeratedLine(int lineNumber, String line) {
     public EnumeratedLine(int lineNumber, String line) {

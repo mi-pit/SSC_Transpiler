@@ -1,13 +1,11 @@
-package cz.mipit.sscc.ssc.compiler.data.ss;
-
-import cz.mipit.sscc.ssc.compiler.data.Variable;
+package cz.mipit.sscc.ssc.compiler.data.var;
 
 import java.util.Objects;
 
 public class SuperstructVariable extends Variable {
     private final String ssName;
 
-    public SuperstructVariable(String ssName, boolean pointer, String name) {
+    public SuperstructVariable(String ssName, int pointer, String name) {
         super(name, pointer);
         this.ssName = Objects.requireNonNull(ssName, "ssName");
     }
@@ -39,5 +37,10 @@ public class SuperstructVariable extends Variable {
                 "ssName=" + ssName + ", " +
                 "pointer=" + pointer + ", " +
                 "name=" + name + ']';
+    }
+
+    @Override
+    public String getDeclarator() {
+        return "superstruct " + ssName + " " + super.abstractDeclarator();
     }
 }

@@ -2,6 +2,7 @@ package cz.mipit.sscc.ssc.compiler.visitors;
 
 import antlr.ssc.SSCBaseVisitor;
 import antlr.ssc.SSCParser;
+import cz.mipit.sscc.Logger;
 import cz.mipit.sscc.Main;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
@@ -52,6 +53,8 @@ public abstract class SSCConvertorVisitor extends SSCBaseVisitor<String> {
         return sb.toString();
     }
 
+    private int level = 0;
+
     @Override
     public String visitTerminal(TerminalNode node) {
         if (node.getSymbol().getType() == Token.EOF) {
@@ -61,24 +64,27 @@ public abstract class SSCConvertorVisitor extends SSCBaseVisitor<String> {
         if (Main.TOKEN_DEBUG) {
             final Token token = node.getSymbol();
             final String symbolicName = SSCParser.VOCABULARY.getSymbolicName(token.getType());
-            System.out.printf("token %s ~> %s%n", node.getText(), symbolicName);
+            Logger.info("token %s ~> %s", node.getText(), symbolicName);
         }
 
-        return switch (node.getSymbol().getType()) {
-            case SSCParser.Semi,
-                 SSCParser.LeftBrace,
-                 SSCParser.RightBrace -> node.getText() + lineSeparator();
+        final String text = node.getText();
+        final String whitespace = switch (node.getSymbol().getType()) {
+            case SSCParser.Semi -> lineSeparator() + "    ".repeat(level);
+            case SSCParser.LeftBrace -> lineSeparator() + "    ".repeat(++level);
+            case SSCParser.RightBrace -> lineSeparator() + "    ".repeat(level > 0 ? --level : level);
 
-            default -> node.getText() + " ";
+            default -> " ";
         };
+
+        return text + whitespace;
     }
 
     @Override
-    public String visitStdIncludeDirective(SSCParser.StdIncludeDirectiveContext ctx) {
+    public String visitSscIncludeDirective(SSCParser.SscIncludeDirectiveContext ctx) {
         return SSCCUtil.Text.getLiteral(ctx, tokens) + lineSeparator();
     }
 
-    private static void printErrorMessage(final SSCTranspilerException e) {
+    protected static void printErrorMessage(final SSCTranspilerException e) {
         System.err.println(e.getMessage());
     }
 

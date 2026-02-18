@@ -1,32 +1,25 @@
 package cz.mipit.sscc.ssc.compiler.data.ss;
 
-import java.util.List;
+import cz.mipit.sscc.ssc.compiler.data.var.TypedVariable;
+
 import java.util.Objects;
 
 public class Field {
     private final boolean isPrivate;
 
-    private final List<String> type;
-    private final boolean ptr;
-    private final String name;
+    private final TypedVariable variable;
 
-    public Field(boolean isPrivate, List<String> type, boolean ptr, String name) {
+    public Field(boolean isPrivate, TypedVariable variable) {
         this.isPrivate = isPrivate;
-        this.type = Objects.requireNonNull(type);
-        this.ptr = ptr;
-        this.name = Objects.requireNonNull(name);
+        this.variable = Objects.requireNonNull(variable);
     }
 
     public String getWhole() {
-        return String.join(" ", type) + " " + (ptr ? "*" : "") + name;
+        return variable.getDeclarator();
     }
 
     public String getName() {
-        return name;
-    }
-
-    public List<String> getType() {
-        return type;
+        return variable.getName();
     }
 
     public boolean isPrivate() {

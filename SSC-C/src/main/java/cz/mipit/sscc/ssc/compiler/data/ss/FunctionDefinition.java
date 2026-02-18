@@ -6,9 +6,13 @@ import cz.mipit.sscc.ssc.exceptions.children.SSCSyntaxException;
 import cz.mipit.sscc.ssc.exceptions.children.UnknownTranspilationException;
 import cz.mipit.sscc.util.SSCCUtil;
 import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.ParserRuleContext;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class FunctionDefinition {
     private final List<String> specs;
@@ -21,23 +25,30 @@ public class FunctionDefinition {
     private final List<String> statements; /* body */
     private final String superstructMemberOfName;
 
-    private FunctionDefinition(List<String> specs,
-                               boolean isStatic,
-                               boolean isPure,
-                               boolean isPrivate,
-                               String type,
-                               String name,
-                               List<String> args,
-                               List<String> statements,
-                               String superstructMemberOfName) {
-        this.specs = specs;
+    private final InputFile inputFile;
+    private final CommonTokenStream tokens;
+
+    private FunctionDefinition(
+            final boolean isStatic,
+            final boolean isPure,
+            final boolean isPrivate,
+            final List<String> specsWithoutCustom,
+            final SSCParser.FunctionDefinitionContext ctx,
+            final CommonTokenStream tokens,
+            final String superstructMemberOfName,
+            final InputFile currentFile
+    ) {
+        this.inputFile = currentFile;
+        this.tokens = tokens;
+
+        this.specs = specsWithoutCustom;
         this.isStatic = isStatic;
         this.isPure = isPure;
         this.isPrivate = isPrivate;
-        this.type = type;
-        this.name = name;
-        this.args = args;
-        this.statements = statements;
+        this.type = parseType(ctx.declarationSpecifiers(), ctx.declarator(), tokens);
+        this.name = parseName(ctx.declarator(), tokens, currentFile);
+        this.args = parseFunctionArgs(ctx.declarator(), tokens);
+        this.statements = parseFunctionBody(ctx.functionBody(), tokens);
         this.superstructMemberOfName = superstructMemberOfName;
 
         if (!isStatic && args.size() == 1 && args.get(0).equals("void")) {
@@ -58,19 +69,14 @@ public class FunctionDefinition {
         }
 
         return new FunctionDefinition(
-                specsWithoutCustom, isStatic, isPure, isPrivate,
-                parseType(ctx.declarationSpecifiers(), ctx.declarator(), tokens),
-                parseName(ctx.declarator(), tokens, currentFile),
-                parseFunctionArgs(ctx.declarator(), tokens),
-                parseFunctionBody(ctx.compoundStatement(), tokens),
-                superstructMemberOfName
+                isStatic, isPure, isPrivate, specsWithoutCustom, ctx, tokens, superstructMemberOfName, currentFile
         );
     }
 
-    public static String parseType(SSCParser.DeclarationSpecifiersContext declSpecs,
-                                   SSCParser.DeclaratorContext decl,
-                                   CommonTokenStream tokens) {
-        List<String> builder = new ArrayList<>();
+    public String parseType(SSCParser.DeclarationSpecifiersContext declSpecs,
+                            SSCParser.DeclaratorContext decl,
+                            CommonTokenStream tokens) {
+        final List<String> builder = new ArrayList<>();
 
         for (var spec : declSpecs.declarationSpecifier()) {
             if (spec.typeSpecifier() != null) {
@@ -79,7 +85,12 @@ public class FunctionDefinition {
         }
 
         if (decl.pointer() != null) {
-            builder.add(SSCCUtil.Text.getLiteral(decl.pointer(), tokens));
+            builder.add(decl
+                    .pointer()
+                    .stream()
+                    .map(ptrCtx -> SSCCUtil.Text.getLiteral(ptrCtx, tokens))
+                    .collect(Collectors.joining(" "))
+            );
         }
 
         return String.join(" ", builder);
@@ -101,45 +112,53 @@ public class FunctionDefinition {
             return directDecl.Identifier().getText();
         }
 
-        if (directDecl.LeftParen() == null) {
-            /* How could this be parsed as a function definition? */
-            throw new UnknownTranspilationException("Parser \"found\" function definition without parentheses",
-                    ctx, tokens, currentFile);
-        }
+        assert directDecl.LeftParen() != null : "Parser \"found\" function definition without parentheses";
 
         if (directDecl.RightParen() == null) {
             throw new SSCSyntaxException("Direct declarator has left parenthesis, but not a matching right one",
                     ctx, tokens, currentFile);
         }
-        if (directDecl.directDeclarator() == null) {
-            throw new SSCSyntaxException("Missing direct declarator (perhaps missing a variable name?)",
+        if (directDecl.Identifier() == null) {
+            throw new SSCSyntaxException("Missing declarator identifier (perhaps missing a variable name?)",
                     directDecl, tokens, currentFile);
         }
 
-        return SSCCUtil.Text.getLiteral(directDecl.directDeclarator(), tokens);
+        return directDecl.Identifier().getText();
     }
 
-    private static List<String> parseFunctionArgs(final SSCParser.DeclaratorContext ctx,
-                                                  final CommonTokenStream tokens) {
+    private List<String> parseFunctionArgs(final SSCParser.DeclaratorContext ctx,
+                                           final CommonTokenStream tokens) {
         final List<String> args = new ArrayList<>();
-        if (ctx.directDeclarator().parameterTypeList() == null) {
-            /* function declaration without a prototype -- let cc deal with it */
-            return args;
-        }
-        for (var param : ctx.directDeclarator().parameterTypeList().parameterList().parameterDeclaration()) {
-            args.add(SSCCUtil.Text.getLiteral(param, tokens));
+        final var directDecl = ctx.directDeclarator();
+        final List<SSCParser.ParameterTypeListContext> paramTypeList = directDecl.parameterTypeList();
+        if (paramTypeList.size() > 1) {
+            throw getException("Parameter type list has more than one parameter type", directDecl);
         }
 
-        if (ctx.directDeclarator().parameterTypeList().Ellipsis() != null) {
+        final SSCParser.ParameterTypeListContext paramType = paramTypeList.get(0);
+        for (var param : paramType.parameterList().parameterDeclaration()) {
+            final String paramStr = SSCCUtil.Text.getLiteral(param, tokens);
+            if (!paramStr.isBlank())
+                args.add(paramStr);
+        }
+        if (paramType.Ellipsis() != null) {
             args.add("...");
+        }
+
+        if (args.isEmpty()) {
+            throw getException("Function declaration without a prototype", directDecl);
         }
 
         return args;
     }
 
-    private static List<String> parseFunctionBody(SSCParser.CompoundStatementContext ctx, CommonTokenStream tokens) {
-        List<String> statements = new ArrayList<>();
-        for (var statement : ctx.blockItemList().blockItem()) {
+    private static List<String> parseFunctionBody(SSCParser.FunctionBodyContext fb, CommonTokenStream tokens) {
+        final var compoundStatement = fb.compoundStatement();
+        if (compoundStatement.blockItemList() == null) {
+            return List.of();
+        }
+        final List<String> statements = new ArrayList<>();
+        for (var statement : compoundStatement.blockItemList().blockItem()) {
             statements.add(SSCCUtil.Text.getLiteral(statement, tokens));
         }
         return statements;
@@ -201,5 +220,9 @@ public class FunctionDefinition {
     @Override
     public String toString() {
         return "FunctionDefinition{" + getDeclaration(true) + "}";
+    }
+
+    private SSCSyntaxException getException(String message, ParserRuleContext ctx) {
+        return new SSCSyntaxException(message, ctx, tokens, inputFile);
     }
 }

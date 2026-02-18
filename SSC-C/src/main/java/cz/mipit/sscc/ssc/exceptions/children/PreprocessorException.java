@@ -2,7 +2,7 @@ package cz.mipit.sscc.ssc.exceptions.children;
 
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
-import cz.mipit.sscc.ssc.preprocessor.EnumeratedLine;
+import cz.mipit.sscc.util.EnumeratedLine;
 import cz.mipit.sscc.util.Range;
 
 import java.util.List;
