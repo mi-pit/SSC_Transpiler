@@ -48,31 +48,6 @@ public final class SSCCUtil {
 
             return ls;
         }
-
-        public static List<String> splitLogicalLines(String input) {
-            final List<String> lines = new ArrayList<>();
-            final StringBuilder currentLineBuilder = new StringBuilder();
-
-            final String[] physicalLines = input.split("\\R", -1);
-
-            for (final String line : physicalLines) {
-                if (line.endsWith("\\")) {
-                    /* remove the trailing backslash and continue */
-                    currentLineBuilder.append(line, 0, line.length() - 1);
-                    continue;
-                }
-                currentLineBuilder.append(line);
-
-                lines.add(currentLineBuilder.toString());
-                currentLineBuilder.setLength(0);
-            }
-
-            if (!currentLineBuilder.isEmpty()) {
-                lines.add(currentLineBuilder.toString());
-            }
-
-            return lines;
-        }
     }
 
     public static class Maths {
