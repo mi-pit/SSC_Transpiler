@@ -6,6 +6,7 @@ import cz.mipit.sscc.ssc.preprocessor.EnumeratedLine;
 import cz.mipit.sscc.util.Range;
 
 import java.util.List;
+import java.util.Set;
 
 public class PreprocessorException extends SSCTranspilerException {
     public PreprocessorException(final SSCTranspilerException e, InputFile currentFile) {
@@ -24,13 +25,14 @@ public class PreprocessorException extends SSCTranspilerException {
 
     public PreprocessorException(String message,
                                  List<EnumeratedLine> lines,
-                                 int[] errorNodes, InputFile currentFile) {
+                                 Set<Integer> errorNodes,
+                                 InputFile currentFile) {
         this(message, lines, getLocator(getLast(lines), errorNodes), currentFile);
     }
 
     public PreprocessorException(String message, List<EnumeratedLine> enumeratedLines,
                                  Range range, InputFile currentFile) {
-        this(message, enumeratedLines, range.array(), currentFile);
+        this(message, enumeratedLines, Set.copyOf(range), currentFile);
     }
 
 

@@ -13,8 +13,8 @@ import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 
 import java.io.PrintStream;
-import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 import static cz.mipit.sscc.util.SSCCUtil.Maths.digitsOf;
 import static cz.mipit.sscc.util.color.ConsoleColorFactory.COLOR_DEFAULT;
@@ -166,13 +166,13 @@ public abstract class SSCTranspilerException extends RuntimeException {
     }
 
     /// Error nodes must be sorted.
-    protected static String getLocator(EnumeratedLine enumeratedLine, int[] errorNodes) {
+    protected static String getLocator(EnumeratedLine enumeratedLine, Set<Integer> errorNodes) {
         final int offset = getLineNumberOffset(enumeratedLine.lineNumber());
 
         final StringBuilder sb = new StringBuilder(" ".repeat(offset));
 
         for (int i = 0; i < enumeratedLine.line().length(); i++) {
-            if (Arrays.binarySearch(errorNodes, i) >= 0) {
+            if (errorNodes.contains(i)) {
                 sb.append("^");
             } else {
                 sb.append(" ");
@@ -184,14 +184,13 @@ public abstract class SSCTranspilerException extends RuntimeException {
 
     /// Creates a locator for the whole line
     protected static String getLocator(EnumeratedLine line) {
-        return getLocator(line, 0, line.line().length());
+        return getLocator(line, new Range(0, line.line().length()));
     }
 
     /// Creates a locator for a given range of columns
     protected static String getLocator(final EnumeratedLine line,
-                                       @SuppressWarnings("SameParameterValue") int from,
-                                       final int to) {
-        return getLocator(line, Range.array(from, to));
+                                       final Range range) {
+        return getLocator(line, Set.copyOf(range));
     }
 
     /// Creates a locator highlighting a single token
@@ -205,7 +204,18 @@ public abstract class SSCTranspilerException extends RuntimeException {
 
     /// Creates a locator highlighting a context
     protected static String getLocator(ParserRuleContext ctx) {
-        return getLocator(ctx.getStart());
+        final int line = ctx.getStart().getLine();
+        final int offset = getLineNumberOffset(line);
+
+        final int start = ctx.getStart().getCharPositionInLine();
+        final int stop = ctx.getStop().getCharPositionInLine();
+
+        final String spaces = " ".repeat(offset + start);
+        final String carets = ctx.getStop().getLine() == line
+                ? "^".repeat(Math.max(stop - start, 1))
+                : "^".repeat(ctx.getSourceInterval().length());
+
+        return spaces + carets + " here";
     }
 
     private static int getLineNumberOffset(final int lineNumber) {

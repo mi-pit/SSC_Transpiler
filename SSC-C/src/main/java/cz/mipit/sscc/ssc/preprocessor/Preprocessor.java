@@ -21,6 +21,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 public final class Preprocessor implements Processor {
     public static final String SSC_PREPROCESSOR_INCLUDE_REPLACEMENT = "@sscpreprocessor_include";
@@ -279,10 +280,10 @@ public final class Preprocessor implements Processor {
             throw new PreprocessorException(
                     String.format("Include argument `%s` is not terminated properly", withoutInclude),
                     lastLines,
-                    new int[]{
+                    Set.of(
                             currentLine.indexOf(firstChar),
                             currentLine.lastIndexOf(lastChar)
-                    },
+                    ),
                     inputFile
             );
         }
