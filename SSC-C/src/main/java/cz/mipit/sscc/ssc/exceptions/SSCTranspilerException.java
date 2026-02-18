@@ -3,7 +3,6 @@ package cz.mipit.sscc.ssc.exceptions;
 import cz.mipit.sscc.Main;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.util.EnumeratedLine;
-import cz.mipit.sscc.util.Range;
 import cz.mipit.sscc.util.SSCCUtil;
 import cz.mipit.sscc.util.annotations.Nullable;
 import cz.mipit.sscc.util.color.ConsoleColor;
@@ -14,7 +13,6 @@ import org.antlr.v4.runtime.Token;
 
 import java.io.PrintStream;
 import java.util.List;
-import java.util.Set;
 
 import static cz.mipit.sscc.util.SSCCUtil.Maths.digitsOf;
 import static cz.mipit.sscc.util.color.ConsoleColorFactory.COLOR_DEFAULT;
@@ -110,14 +108,6 @@ public abstract class SSCTranspilerException extends RuntimeException {
         this(type, message, formatLines(lines), locator, currentFile);
     }
 
-    protected SSCTranspilerException(
-            final Type type,
-            final SSCTranspilerException e,
-            final InputFile currentFile
-    ) {
-        this(type, null, e.getMessage(), null, currentFile);
-    }
-
     protected SSCTranspilerException(Type type, String message,
                                      ParserRuleContext ctx, CommonTokenStream tokens,
                                      InputFile currentFile) {
@@ -163,34 +153,6 @@ public abstract class SSCTranspilerException extends RuntimeException {
 
     protected static List<EnumeratedLine> getLinesFromCtx(ParserRuleContext ctx, CommonTokenStream tokens) {
         return getLinesFromToken(ctx.getStart(), tokens);
-    }
-
-    /// Error nodes must be sorted.
-    protected static String getLocator(EnumeratedLine enumeratedLine, Set<Integer> errorNodes) {
-        final int offset = getLineNumberOffset(enumeratedLine.lineNumber());
-
-        final StringBuilder sb = new StringBuilder(" ".repeat(offset));
-
-        for (int i = 0; i < enumeratedLine.line().length(); i++) {
-            if (errorNodes.contains(i)) {
-                sb.append("^");
-            } else {
-                sb.append(" ");
-            }
-        }
-
-        return sb + " here";
-    }
-
-    /// Creates a locator for the whole line
-    protected static String getLocator(EnumeratedLine line) {
-        return getLocator(line, new Range(0, line.line().length()));
-    }
-
-    /// Creates a locator for a given range of columns
-    protected static String getLocator(final EnumeratedLine line,
-                                       final Range range) {
-        return getLocator(line, Set.copyOf(range));
     }
 
     /// Creates a locator highlighting a single token
