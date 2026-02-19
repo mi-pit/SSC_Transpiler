@@ -1,9 +1,0 @@
-#include "../../ssc/ssclib/src/headers/util/ctrlflow.ssch"
-
-int main( void )
-{
-    swex_init_ptr( NULL, 0 )
-    {
-    }
-    swex_finish();
-}
