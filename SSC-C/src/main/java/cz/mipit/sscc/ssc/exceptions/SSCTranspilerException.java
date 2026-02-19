@@ -127,8 +127,8 @@ public abstract class SSCTranspilerException extends RuntimeException {
         final StringBuilder sBuilder = new StringBuilder(256)
                 .append(COLOR_CODE_BOLD);
 
-        final int fst = lines.get(0).lineNumber();
-        final int last = lines.get(lines.size() - 1).lineNumber();
+        final int fst = lines.getFirst().lineNumber();
+        final int last = lines.getLast().lineNumber();
         final String fmtstr = "%" + getLineNumberLength(fst, last) + "d";
 
         for (int i = 0; i < lines.size(); i++) {

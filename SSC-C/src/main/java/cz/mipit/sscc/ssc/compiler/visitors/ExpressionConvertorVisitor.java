@@ -66,7 +66,7 @@ public class ExpressionConvertorVisitor extends SSCConvertorVisitor {
         if (ls.isEmpty()) {
             throw getSSCSyntaxException("Function definition has to parameter type list", ctx);
         }
-        final SSCParser.ParameterTypeListContext paramTypeList = ls.get(0);
+        final SSCParser.ParameterTypeListContext paramTypeList = ls.getFirst();
         if (paramTypeList == null) {
             throw getSSCSyntaxException("Function definition has no parameter type list", ctx.declarator());
         }
@@ -267,7 +267,7 @@ public class ExpressionConvertorVisitor extends SSCConvertorVisitor {
         if (ctx.Identifier().isEmpty()) {
             throw getSSCSyntaxException("Double colon expression has no right side (function) expression", ctx);
         }
-        final String methodName = ctx.Identifier().get(0).toString();
+        final String methodName = ctx.Identifier().getFirst().toString();
 
         verifyStaticCall(ctx, ctxFunctionName, className, methodName);
 
@@ -507,7 +507,7 @@ public class ExpressionConvertorVisitor extends SSCConvertorVisitor {
             );
         }
 
-        final Field field = allMatching.get(0);
+        final Field field = allMatching.getFirst();
 
         if (field.isPrivate()) {
             Main.logger.printDebug(() -> "Field `" + fieldName + "` is private. Going to check if it may be used here...");

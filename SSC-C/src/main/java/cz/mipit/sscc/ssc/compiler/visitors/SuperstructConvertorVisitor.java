@@ -119,7 +119,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
                 ptrs = 0;
             } else {
                 assert declarator.pointer().size() == 1;
-                ptrs = declarator.pointer().get(0).Star().size();
+                ptrs = declarator.pointer().getFirst().Star().size();
             }
             final String name = declarator.directDeclarator().Identifier().getText();
 

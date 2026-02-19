@@ -48,8 +48,8 @@ public class FunctionDefinition {
         this.statements = parseFunctionBody(ctx.functionBody(), tokens);
         this.superstructMemberOfName = superstructMemberOfName;
 
-        if (!isStatic && args.size() == 1 && args.get(0).equals("void")) {
-            this.args.remove(0);
+        if (!isStatic && args.size() == 1 && args.getFirst().equals("void")) {
+            this.args.removeFirst();
         }
     }
 
@@ -132,7 +132,7 @@ public class FunctionDefinition {
             throw getException("Parameter type list has more than one parameter type", directDecl);
         }
 
-        final SSCParser.ParameterTypeListContext paramType = paramTypeList.get(0);
+        final SSCParser.ParameterTypeListContext paramType = paramTypeList.getFirst();
         for (var param : paramType.parameterList().parameterDeclaration()) {
             final String paramStr = SSCCUtil.Text.getLiteral(param, tokens);
             if (!paramStr.isBlank())
