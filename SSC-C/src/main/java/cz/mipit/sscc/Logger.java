@@ -16,15 +16,14 @@ public final class Logger {
     public static final ConsoleColor COLOR_WARN = create(Ground.FORE, Color.YELLOW);
     public static final ConsoleColor COLOR_ERROR = create(Ground.FORE, Color.RED);
 
-    public static void err(final ExitValue exitCode, String fmt, Object... args) {
-        log(COLOR_ERROR, "error", System.err, fmt, args);
-        log(COLOR_ERROR, "error", System.err,
-                "Exiting with code %d (%s)", exitCode.ordinal(), exitCode.toString());
+    public static void errExit(final ExitValue exitCode, String fmt, Object... args) {
+        errReturn(exitCode, fmt, args);
+        errReturn(exitCode, "Exiting with code %d", exitCode.ordinal());
         System.exit(exitCode.ordinal());
     }
 
-    public static void err(final ExitValue exitCode, String message) {
-        err(exitCode, "%s", message);
+    public static void errExit(final ExitValue exitCode, String message) {
+        errExit(exitCode, "%s", message);
     }
 
     public static void warn(final String message, final Object... args) {
@@ -43,9 +42,13 @@ public final class Logger {
         log(COLOR_DEFAULT, "info", System.out, format, args);
     }
 
-    public static ExitValue errNoExit(final ExitValue exitValue, String message) {
-        log(COLOR_ERROR, exitValue.toString(), System.err, "%s", message);
+    public static ExitValue errReturn(final ExitValue exitValue, String fmt, Object... args) {
+        log(COLOR_ERROR, "error: " + exitValue.humanReadable(), System.err, fmt, args);
         return exitValue;
+    }
+
+    public static ExitValue errReturn(final ExitValue exitValue, String message) {
+        return errReturn(exitValue, "%s", message);
     }
 
     private static void log(final ConsoleColor color,
@@ -65,7 +68,7 @@ public final class Logger {
     }
 
     public Logger() {
-        this(SSCCOptions.DEFAULT);
+        this(SSCCOptions.withDefaults());
     }
 
     public void setOptions(final SSCCOptions options) {

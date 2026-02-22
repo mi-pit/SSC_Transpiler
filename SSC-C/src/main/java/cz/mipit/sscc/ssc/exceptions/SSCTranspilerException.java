@@ -21,18 +21,17 @@ import static cz.mipit.sscc.util.color.ConsoleColorFactory.Ground;
 import static java.lang.System.lineSeparator;
 import static java.util.Objects.requireNonNull;
 
-public abstract class SSCTranspilerException extends RuntimeException {
-    private static final int LINES_BEFORE = 4;
-    private static final int LINES_AFTER = 0;
+public class SSCTranspilerException extends RuntimeException {
+    public static final int LINES_BEFORE = 4;
+    public static final int LINES_AFTER = 0;
 
-    protected static final ConsoleColor COLOR_ERR_MESSAGE = ConsoleColorFactory.create(Ground.FORE, Color.RED);
-    protected static final ConsoleColor COLOR_WARNING = ConsoleColorFactory.create(Ground.FORE, Color.YELLOW);
-    protected static final ConsoleColor COLOR_OTHER = ConsoleColorFactory.create(Ground.BACK, Color.YELLOW);
+    protected static final ConsoleColor COLOR_FATAL = ConsoleColorFactory.create(Ground.FORE, Color.RED);
+    protected static final ConsoleColor COLOR_ANTLR = ConsoleColorFactory.create(Ground.FORE, Color.MAGENTA);
 
     protected static final ConsoleColor COLOR_CODE = ConsoleColorFactory.create(Ground.FORE, Color.WHITE);
     protected static final ConsoleColor COLOR_LOCATOR = ConsoleColorFactory.create(Ground.FORE, Color.CYAN);
 
-    private static final ConsoleColor COLOR_CODE_BOLD = new ConsoleColor() {
+    protected static final ConsoleColor COLOR_CODE_BOLD = new ConsoleColor() {
         private static final String r = "\u001B[1m" + COLOR_CODE;
 
         @Override
@@ -197,15 +196,14 @@ public abstract class SSCTranspilerException extends RuntimeException {
 
 
     protected enum Type {
-        Syntax, Antlr_parser, Preprocessor, Other;
+        Syntax,
+        Antlr_parser,
+        ;
 
         public final ConsoleColor toColor() {
             return switch (this) {
-                case Syntax, Preprocessor -> COLOR_ERR_MESSAGE;
-
-                case Antlr_parser -> COLOR_WARNING;
-
-                case Other -> COLOR_OTHER;
+                case Syntax -> COLOR_FATAL;
+                case Antlr_parser -> COLOR_ANTLR;
             };
         }
 
@@ -215,7 +213,7 @@ public abstract class SSCTranspilerException extends RuntimeException {
 
         @Override
         public String toString() {
-            return "enum Type{ " + name() + " }";
+            return "SSCExceptionType{ " + name() + " }";
         }
     }
 }

@@ -1,83 +1,60 @@
 package cz.mipit.sscc.args;
 
-import cz.mipit.sscc.util.ListBuilder;
-import cz.mipit.sscc.util.annotations.NotNull;
 import cz.mipit.sscc.util.annotations.Nullable;
 
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 import static cz.mipit.sscc.util.SSCCUtil.Text.INDENT;
 
-public final class Option {
-    private final String optStringShort;
-    private final String optStringLong;
+public final class Option<T> {
+    final OptionString strings;
     private final String name, description;
+    private final @Nullable String argumentDescription;
 
-    private final String argument;
+    public final Class<T> type;
+    public final T defaultValue;
+    private T value;
 
-    private Option(String optStringShort, String optStringLong,
-                   String name, String description, String arguments) {
-        if (optStringShort == null && optStringLong == null) {
-            throw new IllegalArgumentException("No option string provided");
-        }
+    final NextOperation nextOperation;
 
-        this.optStringShort = optStringShort;
-        this.optStringLong = optStringLong;
+    Option(OptionString optstr, String name,
+           String description, String argument,
+           Class<T> type, T defaultValue,
+           NextOperation nextOperation) {
+        this.strings = Objects.requireNonNull(optstr);
         this.name = Objects.requireNonNull(name);
         this.description = Objects.requireNonNull(description);
+        this.argumentDescription = argument;
 
-        this.argument = arguments;
-    }
+        this.type = type;
+        this.defaultValue = defaultValue;
+        value = defaultValue;
 
-    public static Option of(@Nullable String optStringShort, @Nullable String optStringLong,
-                            @NotNull String name, @NotNull String description,
-                            @Nullable String argument) {
-        return new Option(optStringShort, optStringLong, name, description, argument);
-    }
-
-    public static Option of(@Nullable String optString, @NotNull String name,
-                            @NotNull String description, @Nullable String argument) {
-        return new Option(optString, null, name, description, argument);
+        this.nextOperation = nextOperation;
     }
 
     public String formatted() {
-        final StringBuilder sBuilder = new StringBuilder();
-
-        sBuilder.append(INDENT)
+        final StringBuilder sBuilder = new StringBuilder()
+                .append(INDENT)
                 .append(name)
                 .append(System.lineSeparator())
-                .append(INDENT);
 
-        sBuilder.append(
-                ListBuilder.<String>withCapacity(2)
-                        .add(optStringShort)
-                        .add(optStringLong)
-                        .build()
-                        .stream()
-                        .filter(Objects::nonNull)
-                        .collect(Collectors.joining(", "))
-        );
-
-        if (argument != null) {
-            sBuilder.append("‹arg›");
-        }
-
-        sBuilder
+                .append(INDENT)
+                .append(strings.formatted(argumentDescription != null))
                 .append(System.lineSeparator())
+
                 .append(INDENT)
                 .append(INDENT)
                 .append("> ")
                 .append(description)
                 .append(System.lineSeparator());
 
-        if (argument != null) {
+        if (argumentDescription != null) {
             sBuilder
                     .append(INDENT)
                     .append(INDENT)
-                    .append("> arg='")
-                    .append(argument)
-                    .append("'")
+                    .append("> arg: ")
+                    .append(argumentDescription)
                     .append(System.lineSeparator());
         }
 
@@ -86,5 +63,13 @@ public final class Option {
 
     public void print() {
         System.out.println(formatted());
+    }
+
+    public T value() {
+        return value;
+    }
+
+    public void setValue(Object value) {
+        this.value = (T) value;
     }
 }

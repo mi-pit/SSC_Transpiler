@@ -8,8 +8,9 @@ public enum ExitValue {
     LIBRARY_NOT_FOUND,
     ;
 
-    @Override
-    public String toString() {
-        return super.toString().replaceAll("_", " ");
+    public String humanReadable() {
+        return name()
+                .replaceAll("_", " ")
+                .toLowerCase();
     }
 }

@@ -25,12 +25,14 @@ public class SSCErrorListener extends BaseErrorListener {
                             int charPositionInLine,
                             String msg,
                             RecognitionException e) {
-        Token token = (Token) offendingSymbol;
+        final Token token = (Token) offendingSymbol;
 
-        final String symbolicName = SSCParser.VOCABULARY.getSymbolicName(token.getType());
+        final String symbolicName = msg.contains("expected")
+                ? System.lineSeparator() + "    got " + SSCParser.VOCABULARY.getSymbolicName(token.getType())
+                : "";
 
         print(new AntlrException(
-                msg + System.lineSeparator() + "    got " + symbolicName,
+                msg + symbolicName,
                 token,
                 (CommonTokenStream) recognizer.getInputStream(),
                 inputFile

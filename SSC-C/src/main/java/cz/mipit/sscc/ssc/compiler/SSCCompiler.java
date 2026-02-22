@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import static cz.mipit.sscc.Logger.errNoExit;
+import static cz.mipit.sscc.Logger.errReturn;
 import static cz.mipit.sscc.Logger.warn;
 import static cz.mipit.sscc.Main.logger;
 
@@ -34,18 +34,18 @@ public final class SSCCompiler implements Processor {
     static {
         final String ssclibHomeEnv = System.getenv("SSCLIB_HOME");
         if (ssclibHomeEnv == null) {
-            Logger.err(ExitValue.LIBRARY_NOT_FOUND, "could not find ssc library: SSCLIB_HOME not set");
+            Logger.errExit(ExitValue.LIBRARY_NOT_FOUND, "could not find ssc library: SSCLIB_HOME not set");
             throw new AssertionError("unreachable");
         }
 
         final Path asPath = Path.of(ssclibHomeEnv);
 
         if (!Files.exists(asPath)) {
-            Logger.err(ExitValue.LIBRARY_NOT_FOUND, "could not find ssc library: " + ssclibHomeEnv);
+            Logger.errExit(ExitValue.LIBRARY_NOT_FOUND, "could not find ssc library: " + ssclibHomeEnv);
         }
 
         if (!Files.isDirectory(asPath)) {
-            Logger.err(ExitValue.LIBRARY_NOT_FOUND, "not a directory: " + ssclibHomeEnv);
+            Logger.errExit(ExitValue.LIBRARY_NOT_FOUND, "not a directory: " + ssclibHomeEnv);
         }
 
         SSCLIB_HOME = asPath;
@@ -76,14 +76,14 @@ public final class SSCCompiler implements Processor {
                 .from("cc")
                 .add("-I" + SSCLIB_HOME + "/include/")
                 .addAll(CC_OPTIONS)
-                .add(options.cStandard().ccOptionString());
+                .add("--std=c2x");
 
         ccProcessArgBase = cc.build();
     }
 
     public ExitValue run() throws IOException, InterruptedException, SSCTranspilerException {
         if (options.filesToProcess().isEmpty()) {
-            return errNoExit(ExitValue.INVALID_ARGUMENTS, "No files given to process");
+            return errReturn(ExitValue.INVALID_ARGUMENTS, "No files given to process");
         }
 
         final Set<Path> outputtedFiles = new HashSet<>();
@@ -91,12 +91,12 @@ public final class SSCCompiler implements Processor {
 
         final int totalFailed = goThroughAllFiles(filesToCompile, outputtedFiles);
         if (totalFailed != 0) {
-            return errNoExit(ExitValue.TRANSPILATION_FAIL, "Could not process " + totalFailed + " file(s)");
+            return errReturn(ExitValue.TRANSPILATION_FAIL, "Could not process " + totalFailed + " file(s)");
         }
 
-        if (options.compileTargetFilename().isPresent()) {
+        if (options.compileTarget().isPresent()) {
             logger.printVerbose("Compiling...");
-            if (!compileCBatch(options.compileTargetFilename().get(), filesToCompile)) {
+            if (!compileCBatch(options.compileTarget().get(), filesToCompile)) {
                 return ExitValue.C_COMPILATION_FAIL;
             }
 
@@ -208,7 +208,7 @@ public final class SSCCompiler implements Processor {
             }
         }
 
-        if (options.compileTargetFilename().isPresent()) {
+        if (options.compileTarget().isPresent()) {
             /* don't verify if you're going to compile the files anyway */
             return Optional.of(workingFileAbsolutePath);
         }
@@ -318,7 +318,7 @@ public final class SSCCompiler implements Processor {
         /* cc -Werror -Wall -Wextra -pedantic -fsyntax-only "$file" */
         final int exitCode = doProcess(args);
         if (exitCode != 0) {
-            errNoExit(ExitValue.C_COMPILATION_FAIL, "Compilation failed with exit code: " + exitCode);
+            errReturn(ExitValue.C_COMPILATION_FAIL, "Compilation failed with exit code: " + exitCode);
             return false;
         }
         return true;
