@@ -8,7 +8,6 @@ import cz.mipit.sscc.util.ExitValue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Objects;
 
 import static cz.mipit.sscc.Logger.warn;
 import static cz.mipit.sscc.args.SSCCOptions.OPTION_HELP;
@@ -16,12 +15,10 @@ import static cz.mipit.sscc.args.SSCCOptions.OPTION_HELP;
 public final class ArgumentParser {
     private final SSCCOptions options;
 
-    private static final String PROGNAME =
-            Objects.requireNonNullElse(System.getProperty("sun.java.command"), "sscc");
-
-    private static final String HELP_STRING =
-            "Usage: " + PROGNAME + " [options|files]" + System.lineSeparator()
-                    + "Options:";
+    private static final String HELP_STRING = """
+            Usage: sscc [options|files]
+            Options:
+            """;
 
     private static void printHelpAndExit() {
         System.out.print(HELP_STRING);
