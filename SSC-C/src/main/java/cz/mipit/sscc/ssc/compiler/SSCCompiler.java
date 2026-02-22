@@ -101,7 +101,7 @@ public final class SSCCompiler implements Processor {
             }
 
             for (final Path path : outputtedFiles) {
-                logger.printVerbose("Deleting output file '" + path + "'...");
+                logger.printVerbose("Deleting output file '%s'...", path);
                 try {
                     Files.delete(path);
                 } catch (IOException e) {
@@ -147,7 +147,7 @@ public final class SSCCompiler implements Processor {
                     break;
                 }
             } finally {
-                logger.printVerbose("Processed '" + fileArg.absolutePathString() + "'");
+                logger.printVerbose("Processed '%s'", fileArg.absolutePathString());
                 sss.clear();
             }
         }

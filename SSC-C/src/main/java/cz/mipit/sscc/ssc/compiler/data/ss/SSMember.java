@@ -2,32 +2,23 @@ package cz.mipit.sscc.ssc.compiler.data.ss;
 
 import cz.mipit.sscc.util.Either;
 
-import java.util.Objects;
-import java.util.function.Function;
+public class SSMember {
+    private final Either<Field, FunctionDefinition> data;
 
-public record SSMember(Either<Field, FunctionDefinition> data) {
+    private SSMember(final Either<Field, FunctionDefinition> data) {
+        this.data = data;
+    }
+
     public static SSMember field(final Field value) {
-        return factory(false, value);
+        return new SSMember(Either.left(value));
     }
 
     public static SSMember function(final FunctionDefinition value) {
-        return factory(true, value);
+        return new SSMember(Either.right(value));
     }
 
-    private static SSMember factory(final boolean isFunction,
-                                    final Object value) {
-        Objects.requireNonNull(value);
-        return new SSMember(
-                new Either<>() {
-                    @Override
-                    public <T> T map(Function<? super Field, ? extends T> lFunc,
-                                     Function<? super FunctionDefinition, ? extends T> rFunc) {
-                        return isFunction
-                                ? rFunc.apply((FunctionDefinition) value)
-                                : lFunc.apply((Field) value);
-                    }
-                }
-        );
+    public Either<Field, FunctionDefinition> data() {
+        return data;
     }
 
     @Override

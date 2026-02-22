@@ -38,8 +38,8 @@ public final class Range implements Collection<Integer> {
     }
 
     public boolean contains(Object o) {
-        if (o instanceof Integer i) {
-            return i >= start && i < end;
+        if (o instanceof Number n) {
+            return n.doubleValue() >= start && n.doubleValue() <= end;
         }
         return false;
     }
@@ -91,6 +91,7 @@ public final class Range implements Collection<Integer> {
             return curr++;
         }
     }
+
 
     @Override
     public boolean isEmpty() {
