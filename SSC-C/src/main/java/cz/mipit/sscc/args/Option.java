@@ -69,7 +69,13 @@ public final class Option<T> {
         return value;
     }
 
+    @SuppressWarnings("unchecked")
     public void setValue(Object value) {
+        if (value != null && value.getClass() != type) {
+            throw new IllegalArgumentException(
+                    "Cannot assign value of type '%s' to a field of type '%s'".formatted(value.getClass(), type)
+            );
+        }
         this.value = (T) value;
     }
 }
