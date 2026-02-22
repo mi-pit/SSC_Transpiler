@@ -6,17 +6,19 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public record SuperStruct(String name, List<SSMember> members) {
-    public SuperStruct(@NotNull final String name,
-                       @NotNull final List<SSMember> members) {
+public class SuperStruct {
+    private final String name;
+    private final List<SSMember> members;
+
+    public SuperStruct(@NotNull final String name) {
         this.name = Objects.requireNonNull(name);
-        this.members = Objects.requireNonNull(members);
+        this.members = new ArrayList<>();
     }
 
     public String convert() {
         final StringBuilder result = new StringBuilder();
 
-        result.append(String.format("superstruct %s {\n", name));
+        result.append(String.format("struct %s {\n", name));
         for (SSMember member : members) {
             member.data().getLeft().ifPresent(field -> result
                     /* do a little bit of formatting for mid-compilation error messages */
@@ -51,5 +53,17 @@ public record SuperStruct(String name, List<SSMember> members) {
             }
         }
         return result;
+    }
+
+    public String name() {
+        return name;
+    }
+
+    public List<SSMember> members() {
+        return members;
+    }
+
+    public void addMember(SSMember member) {
+        members.add(member);
     }
 }

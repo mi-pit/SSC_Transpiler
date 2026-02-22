@@ -4,9 +4,6 @@ import cz.mipit.sscc.Logger;
 import cz.mipit.sscc.args.SSCCOptions;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.Processor;
-import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
-import cz.mipit.sscc.ssc.compiler.visitors.ExpressionConvertorVisitor;
-import cz.mipit.sscc.ssc.compiler.visitors.SSCConvertorVisitor;
 import cz.mipit.sscc.ssc.compiler.visitors.SuperstructConvertorVisitor;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.util.ExitValue;
@@ -50,8 +47,6 @@ public final class SSCCompiler implements Processor {
 
         SSCLIB_HOME = asPath;
     }
-
-    private final Set<SuperStruct> sss = new HashSet<>();
 
     private final SSCCOptions options;
 
@@ -148,7 +143,6 @@ public final class SSCCompiler implements Processor {
                 }
             } finally {
                 logger.printVerbose("Processed '%s'", fileArg.absolutePathString());
-                sss.clear();
             }
         }
         return totalFailed;
@@ -192,21 +186,6 @@ public final class SSCCompiler implements Processor {
                 return Optional.empty();
             }
         }
-        {
-            logger.printVerbose("Replacing superstruct references...");
-            final VisitorData data = VisitorData.fromFile(workingFile);
-
-            if (!replaceSuperstructCalls(data.tokens(), data.tree(), workingFileAbsolutePath)) {
-                logger.printVerbose("Failed to replace superstruct references.");
-                return Optional.empty();
-            }
-        }
-
-        if (options.debug()) {
-            for (var ss : sss) {
-                logger.printDebug(ss::toString);
-            }
-        }
 
         if (options.compileTarget().isPresent()) {
             /* don't verify if you're going to compile the files anyway */
@@ -237,23 +216,8 @@ public final class SSCCompiler implements Processor {
             throws IOException {
         final SuperstructConvertorVisitor visitor = new SuperstructConvertorVisitor(tokens, currentFile);
         final String result = visitor.visit(tree);
-        sss.addAll(visitor.getSuperStructs());
 
         Files.writeString(outputFile, result, StandardOpenOption.TRUNCATE_EXISTING);
-
-        return visitor.hasNoErrors();
-    }
-
-    private boolean replaceSuperstructCalls(final CommonTokenStream tokens,
-                                            final ParseTree tree,
-                                            final Path outputFile)
-            throws IOException {
-        final SSCConvertorVisitor visitor = new ExpressionConvertorVisitor(tokens, sss, currentFile);
-        final String result = visitor.visit(tree) + "\n";
-
-        try (final var bw = Files.newBufferedWriter(outputFile, StandardOpenOption.TRUNCATE_EXISTING)) {
-            bw.write(result);
-        }
 
         return visitor.hasNoErrors();
     }

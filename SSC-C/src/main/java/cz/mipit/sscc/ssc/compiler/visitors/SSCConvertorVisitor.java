@@ -1,7 +1,7 @@
 package cz.mipit.sscc.ssc.compiler.visitors;
 
-import antlr.ssc.SSCBaseVisitor;
 import antlr.ssc.SSCParser;
+import antlr.ssc.SSCParserBaseVisitor;
 import cz.mipit.sscc.Logger;
 import cz.mipit.sscc.Main;
 import cz.mipit.sscc.file.InputFile;
@@ -16,7 +16,7 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 
 import static java.lang.System.lineSeparator;
 
-public abstract class SSCConvertorVisitor extends SSCBaseVisitor<String> {
+public abstract class SSCConvertorVisitor extends SSCParserBaseVisitor<String> {
     protected final CommonTokenStream tokens;
     protected final InputFile currentFile;
 

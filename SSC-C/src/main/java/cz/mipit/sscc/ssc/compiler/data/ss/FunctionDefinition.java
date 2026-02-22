@@ -2,16 +2,25 @@ package cz.mipit.sscc.ssc.compiler.data.ss;
 
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.file.InputFile;
+import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
+import cz.mipit.sscc.ssc.compiler.visitors.SuperstructConvertorVisitor;
 import cz.mipit.sscc.ssc.exceptions.children.SSCSyntaxException;
 import cz.mipit.sscc.util.SSCCUtil;
+import cz.mipit.sscc.util.annotations.Nullable;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class FunctionDefinition {
+    private final SuperstructConvertorVisitor convertor;
+    private final Map<String, Set<SuperstructVariable>> functionVariables;
+
     private final List<String> specs;
     private final boolean isStatic;
     private final boolean isPure;
@@ -19,13 +28,15 @@ public class FunctionDefinition {
     private final String type;
     private final String name;
     private final List<String> args;
-    private final List<String> statements; /* body */
+    private final String statements; /* body */
     private final String superstructMemberOfName;
 
     private final InputFile inputFile;
     private final CommonTokenStream tokens;
 
     private FunctionDefinition(
+            final SuperstructConvertorVisitor convertor,
+            final Map<String, Set<SuperstructVariable>> functionVariables,
             final boolean isStatic,
             final boolean isPure,
             final boolean isPrivate,
@@ -35,6 +46,9 @@ public class FunctionDefinition {
             final String superstructMemberOfName,
             final InputFile currentFile
     ) {
+        this.convertor = convertor;
+        this.functionVariables = functionVariables;
+
         this.inputFile = currentFile;
         this.tokens = tokens;
 
@@ -43,9 +57,15 @@ public class FunctionDefinition {
         this.isPure = isPure;
         this.isPrivate = isPrivate;
         this.type = parseType(ctx.declarationSpecifiers(), ctx.declarator(), tokens);
+
         this.name = parseName(ctx.declarator(), tokens, currentFile);
+        functionVariables.put(name, new HashSet<>());
+        if (!isStatic) {
+            functionVariables.get(name).add(new SuperstructVariable(convertor.getCurrentSSName(), 1, "this"));
+        }
+
         this.args = parseFunctionArgs(ctx.declarator(), tokens);
-        this.statements = parseFunctionBody(ctx.functionBody(), tokens);
+        this.statements = parseFunctionBody(ctx.functionBody());
         this.superstructMemberOfName = superstructMemberOfName;
 
         if (!isStatic && args.size() == 1 && args.getFirst().equals("void")) {
@@ -53,7 +73,9 @@ public class FunctionDefinition {
         }
     }
 
-    public static FunctionDefinition fromSemiParsedContext(final boolean isStatic,
+    public static FunctionDefinition fromSemiParsedContext(final SuperstructConvertorVisitor convertor,
+                                                           final Map<String, Set<SuperstructVariable>> functionVariables,
+                                                           final boolean isStatic,
                                                            final boolean isPure,
                                                            final boolean isPrivate,
                                                            final List<String> specsWithoutCustom,
@@ -66,7 +88,9 @@ public class FunctionDefinition {
         }
 
         return new FunctionDefinition(
-                isStatic, isPure, isPrivate, specsWithoutCustom, ctx, tokens, superstructMemberOfName, currentFile
+                convertor, functionVariables,
+                isStatic, isPure, isPrivate, specsWithoutCustom, ctx,
+                tokens, superstructMemberOfName, currentFile
         );
     }
 
@@ -76,9 +100,16 @@ public class FunctionDefinition {
         final List<String> builder = new ArrayList<>();
 
         for (var spec : declSpecs.declarationSpecifier()) {
-            if (spec.typeSpecifier() != null) {
-                builder.add(SSCCUtil.Text.getLiteral(spec.typeSpecifier(), tokens));
+            if (spec.typeSpecifier() == null) {
+                continue;
             }
+            final SSCParser.TypeSpecifierContext typeSpec = spec.typeSpecifier();
+            if (typeSpec.superStructSpecifier() == null) {
+                builder.add(SSCCUtil.Text.getLiteral(spec.typeSpecifier(), tokens));
+                continue;
+            }
+            final SSCParser.SuperStructSpecifierContext superStructSpec = typeSpec.superStructSpecifier();
+            builder.add("struct " + superStructSpec.Identifier().getText());
         }
 
         if (decl.pointer() != null) {
@@ -134,31 +165,53 @@ public class FunctionDefinition {
 
         final SSCParser.ParameterTypeListContext paramType = paramTypeList.getFirst();
         for (var param : paramType.parameterList().parameterDeclaration()) {
-            final String paramStr = SSCCUtil.Text.getLiteral(param, tokens);
-            if (!paramStr.isBlank())
-                args.add(paramStr);
-        }
-        if (paramType.Ellipsis() != null) {
-            args.add("...");
-        }
+            @Nullable String ssName = null;
 
+            final List<String> curr = new ArrayList<>();
+            for (var declSpec : param.declarationSpecifiers().declarationSpecifier()) {
+                if (declSpec.typeSpecifier() == null) {
+                    curr.add(SSCCUtil.Text.getLiteral(declSpec, tokens));
+                    continue;
+                }
+                final var typeSpecCtx = declSpec.typeSpecifier();
+                if (typeSpecCtx.superStructSpecifier() == null) {
+                    curr.add(SSCCUtil.Text.getLiteral(typeSpecCtx, tokens));
+                    continue;
+                }
+                final var superStructSpecCtx = typeSpecCtx.superStructSpecifier();
+                ssName = superStructSpecCtx.Identifier().getText();
+                curr.add("struct " + ssName);
+            }
+            final var declarator = param.declarator();
+            if (declarator != null) {
+                final int pointer = SSCCUtil.getPointerLevel(declarator);
+                if (declarator.directDeclarator().Identifier() == null) {
+                    continue;
+                }
+
+                final String varName = declarator.directDeclarator().Identifier().getText();
+                functionVariables.get(this.name).add(new SuperstructVariable(convertor.getCurrentSSName(), pointer, varName));
+                curr.add("*".repeat(pointer) + varName);
+            }
+
+            final String paramStr = String.join(" ", curr);
+            if (!paramStr.isBlank()) {
+                args.add(paramStr);
+            }
+        }
         if (args.isEmpty()) {
             throw getException("Function declaration without a prototype", directDecl);
+        }
+
+        if (paramType.Ellipsis() != null) {
+            args.add("...");
         }
 
         return args;
     }
 
-    private static List<String> parseFunctionBody(SSCParser.FunctionBodyContext fb, CommonTokenStream tokens) {
-        final var compoundStatement = fb.compoundStatement();
-        if (compoundStatement.blockItemList() == null) {
-            return List.of();
-        }
-        final List<String> statements = new ArrayList<>();
-        for (var statement : compoundStatement.blockItemList().blockItem()) {
-            statements.add(SSCCUtil.Text.getLiteral(statement, tokens));
-        }
-        return statements;
+    private String parseFunctionBody(SSCParser.FunctionBodyContext fb) {
+        return convertor.visitFunctionBody(fb);
     }
 
     public String getDeclaration() {
@@ -176,7 +229,7 @@ public class FunctionDefinition {
                 selfRef.append("const ");
             }
             selfRef
-                    .append("superstruct ")
+                    .append("struct ")
                     .append(superstructMemberOfName)
                     .append(" *");
 
@@ -200,7 +253,7 @@ public class FunctionDefinition {
 
     private String getBody() {
         return "{\n" +
-                "    " + String.join("\n    ", statements) + "\n" +
+                statements +
                 "}\n";
     }
 
