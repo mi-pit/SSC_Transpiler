@@ -1,9 +1,11 @@
 package cz.mipit.sscc.ssc.compiler;
 
 import cz.mipit.sscc.Logger;
+import cz.mipit.sscc.Main;
 import cz.mipit.sscc.args.SSCCOptions;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.Processor;
+import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.visitors.SuperstructConvertorVisitor;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.util.ExitValue;
@@ -216,6 +218,20 @@ public final class SSCCompiler implements Processor {
             throws IOException {
         final SuperstructConvertorVisitor visitor = new SuperstructConvertorVisitor(tokens, currentFile);
         final String result = visitor.visit(tree);
+        if (options.debug()) {
+            for (var entry : visitor.functionVariables.entrySet()) {
+                final String funcName = entry.getKey();
+                final Set<SuperstructVariable> variables = entry.getValue();
+                if (variables.isEmpty()) {
+                    continue;
+                }
+
+                Main.logger.printDebug("For scope " + (funcName == null ? "global" : "'" + funcName + "'"));
+                for (final SuperstructVariable variable : variables) {
+                    Main.logger.printDebug("        " + variable);
+                }
+            }
+        }
 
         Files.writeString(outputFile, result, StandardOpenOption.TRUNCATE_EXISTING);
 
