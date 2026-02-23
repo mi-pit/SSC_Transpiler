@@ -41,6 +41,6 @@ public class SuperstructVariable extends Variable {
 
     @Override
     public String getDeclarator() {
-        return "superstruct " + ssName + " " + super.abstractDeclarator();
+        return "struct " + ssName + " " + super.abstractDeclarator();
     }
 }
