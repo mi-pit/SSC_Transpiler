@@ -1,8 +1,14 @@
 package antlr.ssc;
 
-import org.antlr.v4.runtime.*;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.Parser;
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.TokenStream;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public abstract class SSCParserBase extends Parser {
     private SymbolTable _st;
@@ -36,7 +42,7 @@ public abstract class SSCParserBase extends Parser {
 
     private static boolean hasArg(String[] args, String arg) {
         for (String a : args) {
-            if (a.toLowerCase().contains(arg.toLowerCase())) {
+            if (a.equalsIgnoreCase(arg)) {
                 return true;
             }
         }
@@ -598,6 +604,27 @@ public abstract class SSCParserBase extends Parser {
             Token t = ts.get(j);
             if (t == null)
                 break;
+            if (t.getType() == SSCLexer.LineDirective) {
+                // Found it
+                String txt = t.getText();
+                String[] parts = txt.split("\\s+");
+                if (parts.length >= 3) {
+                    try {
+                        int dirLine = Integer.parseInt(parts[1]);
+                        int lineDirective = t.getLine();
+                        int lineDiff = line - lineDirective;
+                        lineAdjusted = lineDiff + dirLine - 1;
+                        fileName = parts[2].trim();
+                        // Remove quotes if present
+                        if (fileName.startsWith("\"") && fileName.endsWith("\"")) {
+                            fileName = fileName.substring(1, fileName.length() - 1);
+                        }
+                    } catch (NumberFormatException ex) {
+                        // Ignore parse errors
+                    }
+                }
+                break;
+            }
         }
 
         return new SourceLocation(fileName, lineAdjusted, column);
