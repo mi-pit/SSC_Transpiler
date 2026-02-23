@@ -98,7 +98,7 @@ public final class SSCCompiler implements Processor {
             }
 
             for (final Path path : outputtedFiles) {
-                logger.printVerbose("Deleting output file '%s'...", path);
+                logger.printVerboseFilename("Deleting output file", path.toString());
                 try {
                     Files.delete(path);
                 } catch (IOException e) {
@@ -168,7 +168,7 @@ public final class SSCCompiler implements Processor {
 
     private Optional<Path> transpileFile(final InputFile inputFile)
             throws IOException, InterruptedException {
-        logger.printVerboseFilename("Processing file: ", inputFile.absolutePathString());
+        logger.printVerboseFilename("Processing file", inputFile.absolutePathString());
 
         final InputFile workingFile = inputFile.getChangedSuffix("c");
         final Path workingFileAbsolutePath = workingFile.toAbsolutePath();
@@ -179,27 +179,18 @@ public final class SSCCompiler implements Processor {
             return Optional.empty();
         }
 
-        {
-            logger.printVerbose("Extracting superstructs...");
-            final VisitorData data = VisitorData.fromFile(workingFile);
+        logger.printVerbose("Parsing preprocessed code...");
+        final VisitorData data = VisitorData.fromFile(workingFile);
 
-            if (!extractSuperstructMembers(data.tokens(), data.tree(), workingFileAbsolutePath)) {
-                logger.printVerbose("Failed to extract superstructs.");
-                return Optional.empty();
-            }
+        logger.printVerbose("Extracting superstructs...");
+        if (!extractSuperstructMembers(data.tokens(), data.tree(), workingFileAbsolutePath)) {
+            logger.printVerbose("Failed to extract superstructs.");
+            return Optional.empty();
         }
 
         if (options.compileTarget().isPresent()) {
             /* don't verify if you're going to compile the files anyway */
             return Optional.of(workingFileAbsolutePath);
-        }
-
-        if (options.debug()) {
-            doProcess(List.of(
-                    "/opt/homebrew/bin/clang-format",
-                    "-i",
-                    workingFileAbsolutePath.toString())
-            );
         }
 
         logger.printVerbose("Verifying...");
