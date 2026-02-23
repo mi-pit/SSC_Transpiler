@@ -1,31 +1,17 @@
-*
+SSC-C/src/main/java/antlr/**/*.java
 
-# Git stuff
-!.gitignore
+!SSC-C/src/main/java/antlr/**/SSCLexerBase.java
+!SSC-C/src/main/java/antlr/**/SSCParserBase.java
+!SSC-C/src/main/java/antlr/**/Symbol.java
+!SSC-C/src/main/java/antlr/**/SymbolTable.java
+!SSC-C/src/main/java/antlr/**/TypeClassification.java
 
-!README.md
-!LICENSE
 
-# Antlr stuff
-!third-party
-!third-party/**
+SSC-C/target
 
-# The OFFICIAL SSC format
-!_clang-format
+.idea
+.DS_Store
 
-# For execution
-!refresh-grammar.sh
-!build.sh
-!run.sh
+ssc-examples/*
 
-# SSC Grammar
-!SSC.g4
-
-# Java
-!SSC-C/src/main/**
-## Generatable -- don't include
-SSC-C/src/main/java/antlr
-
-# SSC example code
-!ssc-examples
-!*.ssc
+*.jar
