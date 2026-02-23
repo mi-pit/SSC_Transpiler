@@ -33,9 +33,6 @@
 
 lexer grammar SSCLexer;
 
-options {
-    superClass = SSCLexerBase;
-}
 
 // Insert here @header for lexer.
 
