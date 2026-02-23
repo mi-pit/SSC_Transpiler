@@ -2,8 +2,6 @@ package cz.mipit.sscc.ssc.compiler.visitors;
 
 import antlr.ssc.SSCParser;
 import antlr.ssc.SSCParserBaseVisitor;
-import cz.mipit.sscc.Logger;
-import cz.mipit.sscc.Main;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.ssc.exceptions.children.SSCSyntaxException;
@@ -18,6 +16,12 @@ import java.util.StringJoiner;
 
 import static java.lang.System.lineSeparator;
 
+/**
+ * Abstract class for low-level visitor stuff.
+ * <p>
+ * Other visitors should extend this one.
+ * </p>
+ */
 public abstract class SSCConvertorVisitor extends SSCParserBaseVisitor<String> {
     protected final CommonTokenStream tokens;
     protected final InputFile currentFile;
@@ -47,7 +51,7 @@ public abstract class SSCConvertorVisitor extends SSCParserBaseVisitor<String> {
         for (int i = 0; i < n; i++) {
             try {
                 builder.add(node.getChild(i).accept(this));
-            } catch (SSCSyntaxException e) {
+            } catch (final SSCSyntaxException e) {
                 printErrorMessage(e);
                 hasErrors = true;
             }
@@ -57,17 +61,13 @@ public abstract class SSCConvertorVisitor extends SSCParserBaseVisitor<String> {
 
     @Override
     public String visitTerminal(TerminalNode node) {
-        if (node.getSymbol().getType() == Token.EOF) {
-            return "";
-        }
+        return switch (node.getSymbol().getType()) {
+            case Token.EOF -> "";
 
-        if (Main.TOKEN_DEBUG) {
-            final Token token = node.getSymbol();
-            final String symbolicName = SSCParser.VOCABULARY.getSymbolicName(token.getType());
-            Logger.info("token %s ~> %s", node.getText(), symbolicName);
-        }
+            case SSCParser.Superstruct -> "struct";
 
-        return node.getText();
+            default -> node.getText();
+        };
     }
 
     @Override
@@ -75,7 +75,7 @@ public abstract class SSCConvertorVisitor extends SSCParserBaseVisitor<String> {
         return SSCCUtil.Text.getLiteral(ctx, tokens) + lineSeparator();
     }
 
-    protected static void printErrorMessage(final SSCTranspilerException e) {
+    private static void printErrorMessage(final SSCTranspilerException e) {
         System.err.println(e.getMessage());
     }
 
