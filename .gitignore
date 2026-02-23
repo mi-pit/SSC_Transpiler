@@ -1,3 +1,13 @@
+
+.idea
+.DS_Store
+
+ssc-examples/*
+
+*.interp
+*.tokens
+*.jar
+
 SSC-C/src/main/java/antlr/**/*.java
 
 !SSC-C/src/main/java/antlr/**/SSCLexerBase.java
@@ -6,12 +16,4 @@ SSC-C/src/main/java/antlr/**/*.java
 !SSC-C/src/main/java/antlr/**/SymbolTable.java
 !SSC-C/src/main/java/antlr/**/TypeClassification.java
 
-
 SSC-C/target
-
-.idea
-.DS_Store
-
-ssc-examples/*
-
-*.jar
