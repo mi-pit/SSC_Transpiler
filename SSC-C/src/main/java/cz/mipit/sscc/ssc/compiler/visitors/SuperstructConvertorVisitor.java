@@ -23,7 +23,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import static cz.mipit.sscc.util.SSCCUtil.Text.getLiteral;
 import static java.lang.System.lineSeparator;
 
 
@@ -103,7 +102,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
 
         final List<String> type = noPrivateSpecs
                 .stream()
-                .map(s -> SSCCUtil.Text.getLiteral(s, tokens))
+                .map(this::visitDeclarationSpecifier)
                 .toList();
 
         if (initDeclaratorList.initDeclarator().isEmpty()) {
@@ -189,7 +188,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
             if (declSpec.typeSpecifier() == null
                     && (declSpec.functionSpecifier() == null || declSpec.functionSpecifier().Pure() == null)
                     && (declSpec.storageClassSpecifier() == null || declSpec.storageClassSpecifier().Static() == null)) {
-                withoutCustom.add(SSCCUtil.Text.getLiteral(declSpec, tokens));
+                withoutCustom.add(visitDeclarationSpecifier(declSpec));
             }
         }
         return withoutCustom;
@@ -218,7 +217,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
             throw getSSCSyntaxException("K&R C-style declarations are invalid in SSC", ctx.declarationList());
         }
 
-        currentFunctionName = FunctionDefinition.parseName(ctx.declarator(), tokens, currentFile);
+        currentFunctionName = ctx.declarator().directDeclarator().Identifier().getText();
         functionVariables.put(currentFunctionName, new HashSet<>());
 
         getFunctionSuperstructArgs(ctx);
@@ -351,7 +350,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
             return super.visitPostfixExpression(ctx);
         }
         final SSCParser.FunctionDefinitionContext funcCtx = parent.get();
-        final String functionName = FunctionDefinition.parseName(funcCtx.declarator(), tokens, currentFile);
+        final String functionName = funcCtx.declarator().directDeclarator().Identifier().getText();
 
         if (!ctx.Arrow().isEmpty() || !ctx.Dot().isEmpty()) {
             return convertMethodCall(ctx, functionName);
@@ -412,11 +411,10 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
             return Optional.empty();
         }
 
-        final String res = getLiteral(ctx, tokens)
-                .replaceFirst("\\(\\s*superstruct\\s+", "( struct ");
+        final String res = visitPostfixExpression(ctx);
 
         Main.logger.printDebug(() -> "superStructSpecifier in: "
-                + getLiteral(ctx, tokens).replace(lineSeparator(), " ")
+                + SSCCUtil.Text.getLiteral(ctx, tokens).replace(lineSeparator(), " ")
                 + lineSeparator() + "\t\tReturning: " + res.replace(lineSeparator(), " "));
 
         return Optional.of(res);
@@ -424,12 +422,12 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
 
     public String convertStaticFunctionCall(final SSCParser.PostfixExpressionContext ctx,
                                             final String ctxFunctionName) {
-        Main.logger.printDebug(() -> "Double colon in: " + getLiteral(ctx, tokens));
+        Main.logger.printDebug(() -> "Double colon in: " + SSCCUtil.Text.getLiteral(ctx, tokens));
 
         if (ctx.primaryExpression() == null) {
             throw getSSCSyntaxException("Double colon expression has no left side (Superstruct name) expression", ctx);
         }
-        final String className = getLiteral(ctx.primaryExpression(), tokens);
+        final String className = visitPrimaryExpression(ctx.primaryExpression());
 
         if (ctx.Identifier().isEmpty()) {
             throw getSSCSyntaxException("Double colon expression has no right side (function) expression", ctx);
@@ -515,10 +513,10 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
                         : !ctx.Dot().isEmpty() ? ArrowOrDot.Dot
                         : ArrowOrDot.Neither;
 
-        Main.logger.printDebug(() -> arrowOrDot + " in: " + getLiteral(ctx, tokens));
+        Main.logger.printDebug(() -> arrowOrDot + " in: " + SSCCUtil.Text.getLiteral(ctx, tokens));
         assert arrowOrDot != ArrowOrDot.Neither;
 
-        final String objectName = getLiteral(ctx.primaryExpression(), tokens);
+        final String objectName = visitPrimaryExpression(ctx.primaryExpression());
         if (ctx.Identifier().isEmpty())
             throw getSSCSyntaxException(arrowOrDot + " expression has no right side expression", ctx);
 
@@ -526,7 +524,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
         if (maybeVar.isEmpty()) {
             Main.logger.printDebug(() -> "\tVariable is not superstruct");
             Main.logger.printDebug(() -> "\t\tlocal vars: " + functionVariables.get(functionName));
-            return getLiteral(ctx, tokens);
+            return super.visitPostfixExpression(ctx);
         }
         final SuperstructVariable var = maybeVar.get();
 
@@ -544,16 +542,15 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
 
         if (maybeMethod.isEmpty()) {
             Main.logger.printDebug(() -> "Variable does not have such a method");
-            //noinspection OptionalGetWithoutIsPresent
-            if (superstruct.members()
-                    .stream()
-                    .filter(mem -> mem.data().getLeft().isPresent())
-                    .map(mem -> mem.data().getLeft().get())
-                    .noneMatch(decl -> decl.getName().equals(methodName))) {
-                throw getSSCSyntaxException(
-                        "superstruct '" + superstruct.name() + "' has no member called `" + methodName + "`", ctx);
-            }
-            return getLiteral(ctx, tokens);
+//            if (superstruct.members()
+//                    .stream()
+//                    .filter(mem -> mem.data().getLeft().isPresent())
+//                    .map(mem -> mem.data().getLeft().get())
+//                    .noneMatch(decl -> decl.getName().equals(methodName))) {
+//                throw getSSCSyntaxException(
+//                        "superstruct '" + superstruct.name() + "' has no member called `" + methodName + "`", ctx);
+//            }
+            return super.visitPostfixExpression(ctx);
         }
         final FunctionDefinition method = maybeMethod.get();
 
@@ -656,7 +653,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
                                         SuperStruct superstruct) {
         final String fieldName = ctx.Identifier(0).getText();
 
-        final var allMatching = superstruct.members()
+        final List<Field> allMatching = superstruct.members()
                 .stream()
                 .map(SSMember::data)
                 .filter(either -> either.getLeft().isPresent())
@@ -686,7 +683,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
             }
         }
 
-        return getLiteral(ctx, tokens);
+        return super.visitPostfixExpression(ctx);
     }
 
     private boolean notInSuperstructMethod(String primaryExpression) {
