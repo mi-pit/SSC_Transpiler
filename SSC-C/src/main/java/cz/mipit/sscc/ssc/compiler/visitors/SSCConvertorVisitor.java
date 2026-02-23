@@ -14,6 +14,8 @@ import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.RuleNode;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
+import java.util.StringJoiner;
+
 import static java.lang.System.lineSeparator;
 
 public abstract class SSCConvertorVisitor extends SSCParserBaseVisitor<String> {
@@ -40,11 +42,11 @@ public abstract class SSCConvertorVisitor extends SSCParserBaseVisitor<String> {
 
     @Override
     public String visitChildren(RuleNode node) {
-        final StringBuilder sb = new StringBuilder();
+        final StringJoiner sb = new StringJoiner(" ");
         final int n = node.getChildCount();
         for (int i = 0; i < n; i++) {
             try {
-                sb.append(node.getChild(i).accept(this));
+                sb.add(node.getChild(i).accept(this));
             } catch (SSCSyntaxException e) {
                 printErrorMessage(e);
                 hasErrors = true;
@@ -52,8 +54,6 @@ public abstract class SSCConvertorVisitor extends SSCParserBaseVisitor<String> {
         }
         return sb.toString();
     }
-
-    private int level = 0;
 
     @Override
     public String visitTerminal(TerminalNode node) {
@@ -67,16 +67,7 @@ public abstract class SSCConvertorVisitor extends SSCParserBaseVisitor<String> {
             Logger.info("token %s ~> %s", node.getText(), symbolicName);
         }
 
-        final String text = node.getText();
-        final String whitespace = switch (node.getSymbol().getType()) {
-            case SSCParser.Semi -> lineSeparator() + "    ".repeat(level);
-            case SSCParser.LeftBrace -> lineSeparator() + "    ".repeat(++level);
-            case SSCParser.RightBrace -> lineSeparator() + "    ".repeat(level > 0 ? --level : level);
-
-            default -> " ";
-        };
-
-        return text + whitespace;
+        return node.getText();
     }
 
     @Override
