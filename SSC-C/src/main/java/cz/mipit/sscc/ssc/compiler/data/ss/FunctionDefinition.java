@@ -26,7 +26,10 @@ public class FunctionDefinition {
     private final boolean isPure;
     private final boolean isPrivate;
     private final String type;
-    private final String name;
+
+    private final String originalName;
+    private final String qualifiedName;
+
     private final List<String> args;
     private final String statements; /* body */
     private final String superstructMemberOfName;
@@ -34,6 +37,7 @@ public class FunctionDefinition {
     private final InputFile inputFile;
     private final CommonTokenStream tokens;
 
+    /* TODO: parse in visitor */
     private FunctionDefinition(
             final SuperstructConvertorVisitor convertor,
             final Map<String, Set<SuperstructVariable>> functionVariables,
@@ -58,10 +62,13 @@ public class FunctionDefinition {
         this.isPrivate = isPrivate;
         this.type = parseType(ctx.declarationSpecifiers(), ctx.declarator());
 
-        this.name = parseName(ctx.declarator());
-        functionVariables.put(name, new HashSet<>());
+        this.originalName = parseName(ctx.declarator());
+        this.qualifiedName = convertor.getCurrentSSName() + "__" + originalName;
+
+        convertor.currentFunctionName = qualifiedName;
+        functionVariables.put(qualifiedName, new HashSet<>());
         if (!isStatic) {
-            functionVariables.get(name).add(new SuperstructVariable(convertor.getCurrentSSName(), 1, "this"));
+            functionVariables.get(qualifiedName).add(new SuperstructVariable(convertor.getCurrentSSName(), 1, "this"));
         }
 
         this.args = parseFunctionArgs(ctx.declarator());
@@ -71,6 +78,8 @@ public class FunctionDefinition {
         if (!isStatic && args.size() == 1 && args.getFirst().equals("void")) {
             this.args.removeFirst();
         }
+
+        convertor.currentFunctionName = null;
     }
 
     public static FunctionDefinition fromSemiParsedContext(final SuperstructConvertorVisitor convertor,
@@ -157,10 +166,6 @@ public class FunctionDefinition {
             throw getException("Parameter type list has more than one parameter type", directDecl);
         }
 
-        if (this.name.equals("sort")) {
-            System.out.println();
-        }
-
         final SSCParser.ParameterTypeListContext paramType = paramTypeList.getFirst();
         for (final var param : paramType.parameterList().parameterDeclaration()) {
             @Nullable String ssName = null;
@@ -191,7 +196,7 @@ public class FunctionDefinition {
                 if (declarator.directDeclarator().Identifier() != null) {
                     final String varName = declarator.directDeclarator().Identifier().getText();
                     if (ssName != null) {
-                        functionVariables.get(this.name).add(new SuperstructVariable(ssName, pointer, varName));
+                        functionVariables.get(qualifiedName).add(new SuperstructVariable(ssName, pointer, varName));
                     }
                 }
 
@@ -247,7 +252,7 @@ public class FunctionDefinition {
         return specsString
                 + (specsString.isBlank() ? "" : " ")
                 + type
-                + " " + superstructMemberOfName + "__" + name
+                + " " + superstructMemberOfName + "__" + originalName
                 + "(" + selfRef + String.join(", ", args) + ")";
     }
 
@@ -255,8 +260,8 @@ public class FunctionDefinition {
         return statements;
     }
 
-    public String getName() {
-        return name;
+    public String getOriginalName() {
+        return originalName;
     }
 
     public boolean isPrivate() {

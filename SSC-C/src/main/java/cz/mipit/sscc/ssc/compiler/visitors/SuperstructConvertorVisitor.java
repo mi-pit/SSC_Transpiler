@@ -9,10 +9,10 @@ import cz.mipit.sscc.ssc.compiler.data.ss.SSMember;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.data.var.TypedVariable;
+import cz.mipit.sscc.util.Either;
 import cz.mipit.sscc.util.SSCCUtil;
 import cz.mipit.sscc.util.annotations.Nullable;
 import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.ArrayList;
@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -31,8 +32,8 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
     private SuperStruct currentSS = null;
 
     /* ExpressionConvertorVisitor */
-    private final Map<@Nullable String /* Function name */, Set<SuperstructVariable>> functionVariables;
-    private String currentFunctionName = null; /* null => no function => global */
+    public final Map<@Nullable String /* Function name */, Set<SuperstructVariable>> functionVariables;
+    public String currentFunctionName = null; /* null => no function => global */
 
     public SuperstructConvertorVisitor(CommonTokenStream tokens, InputFile currentFile) {
         super(tokens, currentFile);
@@ -217,7 +218,8 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
             throw getSSCSyntaxException("K&R C-style declarations are invalid in SSC", ctx.declarationList());
         }
 
-        currentFunctionName = ctx.declarator().directDeclarator().Identifier().getText();
+        final String origFuncName = ctx.declarator().directDeclarator().Identifier().getText();
+        currentFunctionName = currentSS == null ? origFuncName : currentSS.name() + "__" + origFuncName;
         functionVariables.put(currentFunctionName, new HashSet<>());
 
         getFunctionSuperstructArgs(ctx);
@@ -254,7 +256,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
             }
             final String ssName = maybeSSName.get();
 
-            tryGetSuperstructVariableFromDeclarator(ssName, declarator)
+            tryCreateSuperstructVariableFromDeclarator(ssName, declarator)
                     .ifPresent(ssVar -> functionVariables.get(currentFunctionName).add(ssVar));
         }
     }
@@ -292,12 +294,18 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
         for (final SSCParser.InitDeclaratorContext initDeclarator : initDeclList) {
             final var declarator = initDeclarator.declarator();
 
-            tryGetSuperstructVariableFromDeclarator(ssName, declarator)
-                    .ifPresent(ssVar -> functionVariables.get(currentFunctionName).add(ssVar));
+            final Optional<SuperstructVariable> maybeSSVar =
+                    tryCreateSuperstructVariableFromDeclarator(ssName, declarator);
+
+            if (maybeSSVar.isEmpty()) {
+                continue;
+            }
+
+            functionVariables.get(currentFunctionName).add(maybeSSVar.get());
         }
     }
 
-    private Optional<SuperstructVariable> tryGetSuperstructVariableFromDeclarator(
+    private Optional<SuperstructVariable> tryCreateSuperstructVariableFromDeclarator(
             final String ssName,
             final SSCParser.DeclaratorContext declarator
     ) {
@@ -345,63 +353,17 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
             return res.get();
         }
 
-        Optional<SSCParser.FunctionDefinitionContext> parent = getFunctionDefinitionParent(ctx);
-        if (parent.isEmpty()) {
-            return super.visitPostfixExpression(ctx);
-        }
-        final SSCParser.FunctionDefinitionContext funcCtx = parent.get();
-        final String functionName = funcCtx.declarator().directDeclarator().Identifier().getText();
-
         if (!ctx.Arrow().isEmpty() || !ctx.Dot().isEmpty()) {
-            return convertMethodCall(ctx, functionName);
+            return convertMethodCall(ctx);
         }
         if (!ctx.DoubleColon().isEmpty()) {
-            return convertStaticFunctionCall(ctx, functionName);
+            return convertStaticFunctionCall(ctx);
         }
         return super.visitPostfixExpression(ctx);
     }
 
-    private static Optional<SSCParser.FunctionDefinitionContext> getFunctionDefinitionParent(
-            final SSCParser.PostfixExpressionContext ctx
-    ) {
-        ParserRuleContext parent = ctx;
-        while (parent != null) {
-            if (parent instanceof SSCParser.FunctionDefinitionContext func) {
-                return Optional.of(func);
-            }
-            parent = parent.getParent();
-        }
-        return Optional.empty();
-    }
-
     private Optional<String> getCompoundLiteralReplaced(SSCParser.PostfixExpressionContext ctx) {
-        /* TODO */
-//        if (ctx.typeName() == null) {
-//            return Optional.empty();
-//        }
-//        final var typeName = ctx.typeName();
-//        final var initializerList = ctx.initializerList();
-//        final var specifierQualifierList = typeName.specifierQualifierList();
-//
-//        final List<String> typeSpecs = new ArrayList<>();
-//        final List<String> typeQuals = new ArrayList<>();
-//        for (var specOrQual = specifierQualifierList;
-//             specOrQual.specifierQualifierList() != null;
-//             specOrQual = specOrQual.specifierQualifierList()) {
-//
-//            if (specOrQual.typeSpecifier() != null) {
-//                final SSCParser.TypeSpecifierContext typeSpec = specOrQual.typeSpecifier();
-//                if (typeSpec.superStructSpecifier() != null) {
-//                    typeSpecs.add("struct");
-//                } else {
-//                    typeSpecs.add(typeSpec.getText());
-//                }
-//            } else {
-//                assert specOrQual.typeQualifier() != null;
-//                typeQuals.add(specOrQual.typeQualifier().getText());
-//            }
-//        }
-
+        /* postfixExpression.typeName implies compound literal */
         if (ctx.typeName() == null
                 || ctx.typeName().specifierQualifierList() == null
                 || ctx.typeName().specifierQualifierList().typeSpecifierQualifier().isEmpty()
@@ -420,8 +382,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
         return Optional.of(res);
     }
 
-    public String convertStaticFunctionCall(final SSCParser.PostfixExpressionContext ctx,
-                                            final String ctxFunctionName) {
+    public String convertStaticFunctionCall(final SSCParser.PostfixExpressionContext ctx) {
         Main.logger.printDebug(() -> "Double colon in: " + SSCCUtil.Text.getLiteral(ctx, tokens));
 
         if (ctx.primaryExpression() == null) {
@@ -434,7 +395,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
         }
         final String methodName = ctx.Identifier().getFirst().toString();
 
-        verifyStaticCall(ctx, ctxFunctionName, className, methodName);
+        verifyStaticCall(ctx, className, methodName);
 
         final String namespacedMethodName = className + "__" + methodName;
 
@@ -446,7 +407,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
         final List<String> args = new ArrayList<>();
         for (SSCParser.ArgumentExpressionListContext argListCtx : ctx.argumentExpressionList()) {
             for (SSCParser.AssignmentExpressionContext assExprCtx : argListCtx.assignmentExpression()) {
-                args.add(visit(assExprCtx));
+                args.add(visitAssignmentExpression(assExprCtx));
             }
         }
 
@@ -456,7 +417,6 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
     }
 
     private void verifyStaticCall(final SSCParser.PostfixExpressionContext ctx,
-                                  final String ctxFunctionName,
                                   final String className,
                                   final String methodName) {
         final Optional<SuperStruct> maybeSS = findSuperstructByName(className);
@@ -476,7 +436,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
 
         if (method.isPrivate()) {
             Main.logger.printDebug(() -> "Method '" + methodName + "' is private. Going to check if it may be used here...");
-            if (notInSuperstructMethod(ctxFunctionName)) {
+            if (currentSS == null || !currentSS.name().equals(className)) {
                 throw getSSCSyntaxException(
                         "Cannot access private static method `" + methodName + "` from outside the superstruct", ctx
                 );
@@ -489,7 +449,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
         for (SSMember mem : ss.members()) {
             final Optional<FunctionDefinition> maybeFunc = mem.data().getRight();
             if (maybeFunc.isPresent()
-                    && methodName.equals(maybeFunc.get().getName())) {
+                    && methodName.equals(maybeFunc.get().getOriginalName())) {
                 return maybeFunc;
             }
         }
@@ -505,8 +465,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
         return Optional.empty();
     }
 
-    public String convertMethodCall(final SSCParser.PostfixExpressionContext ctx,
-                                    final String functionName) {
+    public String convertMethodCall(final SSCParser.PostfixExpressionContext ctx) {
         enum ArrowOrDot {Arrow, Dot, Neither}
         final ArrowOrDot arrowOrDot =
                 !ctx.Arrow().isEmpty() ? ArrowOrDot.Arrow
@@ -520,10 +479,13 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
         if (ctx.Identifier().isEmpty())
             throw getSSCSyntaxException(arrowOrDot + " expression has no right side expression", ctx);
 
-        final Optional<SuperstructVariable> maybeVar = findSuperstructVariable(functionName, objectName);
+        final Optional<SuperstructVariable> maybeVar = findSuperstructVariable(currentFunctionName, objectName);
         if (maybeVar.isEmpty()) {
             Main.logger.printDebug(() -> "\tVariable is not superstruct");
-            Main.logger.printDebug(() -> "\t\tlocal vars: " + functionVariables.get(functionName));
+            if (currentFunctionName == null) {
+                throw getSSCSyntaxException("Accessing superstruct method from global scope", ctx);
+            }
+            Main.logger.printDebug(() -> "\t\tlocal vars: " + functionVariables.get(currentFunctionName));
             return super.visitPostfixExpression(ctx);
         }
         final SuperstructVariable var = maybeVar.get();
@@ -542,29 +504,37 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
 
         if (maybeMethod.isEmpty()) {
             Main.logger.printDebug(() -> "Variable does not have such a method");
-//            if (superstruct.members()
-//                    .stream()
-//                    .filter(mem -> mem.data().getLeft().isPresent())
-//                    .map(mem -> mem.data().getLeft().get())
-//                    .noneMatch(decl -> decl.getName().equals(methodName))) {
-//                throw getSSCSyntaxException(
-//                        "superstruct '" + superstruct.name() + "' has no member called `" + methodName + "`", ctx);
-//            }
-            return super.visitPostfixExpression(ctx);
+            if (superstruct
+                    .members()
+                    .stream()
+                    .map(SSMember::data)
+                    .map(Either::getLeft)
+                    .filter(Optional::isPresent)
+                    .map(Optional::get)
+                    .anyMatch(decl -> decl.getName().equals(methodName))
+            ) {
+                return super.visitPostfixExpression(ctx);
+            }
+
+            Main.logger.printDebug(() ->
+                    "Did not find method `" + methodName + "`. " +
+                            "Converting anyway and hoping it gets defined later"
+            );
         }
-        final FunctionDefinition method = maybeMethod.get();
 
         if (var.pointer() == 1 && arrowOrDot == ArrowOrDot.Dot) {
             throw getSSCSyntaxException("Pointer to superstruct must be accessed with `->`", ctx);
         }
 
-        if (method.isPrivate()) {
-            Main.logger.printDebug(() -> "Method '" + methodName + "' is private. Going to check if it may be used here...");
-            if (notInSuperstructMethod(functionName)) {
-                throw getSSCSyntaxException(
-                        "Cannot access private method `" + methodName + "` from outside the superstruct", ctx);
+        maybeMethod.ifPresent(functionDefinition -> {
+            if (functionDefinition.isPrivate()) {
+                Main.logger.printDebug(() -> "Method '" + methodName + "' is private. Going to check if it may be used here...");
+                if (currentSS == null || !currentSS.name().equals(superstruct.name())) {
+                    throw getSSCSyntaxException(
+                            "Cannot access private method `" + methodName + "` from outside the superstruct", ctx);
+                }
             }
-        }
+        });
 
         final String ssName = superstruct.name();
 
@@ -675,8 +645,11 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
 
         final String primaryExpression = visitPrimaryExpression(ctx.primaryExpression());
         if (field.isPrivate()) {
-            Main.logger.printDebug(() -> "Field `" + fieldName + "` is private. Going to check if it may be used here...");
-            if (notInSuperstructMethod(primaryExpression)) {
+            final boolean inSSMethod = findSuperstructVariable(currentFunctionName, primaryExpression).isPresent();
+            Main.logger.printDebug(() -> "Field `" + fieldName
+                    + "` is private. Going to check if it may be used here...");
+
+            if (!inSSMethod) {
                 throw getSSCSyntaxException(
                         "Cannot access private field `" + fieldName + "` from outside the superstruct", ctx
                 );
@@ -686,20 +659,10 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
         return super.visitPostfixExpression(ctx);
     }
 
-    private boolean notInSuperstructMethod(String primaryExpression) {
-        for (final SuperstructVariable ssVar : functionVariables.get(currentFunctionName)) {
-            if (ssVar.getName().equals(primaryExpression)) {
-                final var ss = superStructs.get(ssVar.getName());
-                return ss != null;
-            }
-        }
-        return false;
-    }
-
     private Optional<FunctionDefinition> findMethodInSuperstruct(final SuperStruct ssr,
                                                                  final String methodName) {
         for (final FunctionDefinition func : ssr.getFunctions()) {
-            if (func.getName().equals(methodName)) {
+            if (func.getOriginalName().equals(methodName)) {
                 return Optional.of(func);
             }
         }
