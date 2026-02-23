@@ -42,17 +42,17 @@ public abstract class SSCConvertorVisitor extends SSCParserBaseVisitor<String> {
 
     @Override
     public String visitChildren(RuleNode node) {
-        final StringJoiner sb = new StringJoiner(" ");
+        final StringJoiner builder = new StringJoiner(lineSeparator());
         final int n = node.getChildCount();
         for (int i = 0; i < n; i++) {
             try {
-                sb.add(node.getChild(i).accept(this));
+                builder.add(node.getChild(i).accept(this));
             } catch (SSCSyntaxException e) {
                 printErrorMessage(e);
                 hasErrors = true;
             }
         }
-        return sb.toString();
+        return builder.toString();
     }
 
     @Override
