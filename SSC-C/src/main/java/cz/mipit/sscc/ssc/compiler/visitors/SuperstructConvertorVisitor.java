@@ -20,7 +20,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -373,7 +372,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
             return Optional.empty();
         }
 
-        final String res = visitPostfixExpression(ctx);
+        final String res = super.visitPostfixExpression(ctx);
 
         Main.logger.printDebug(() -> "superStructSpecifier in: "
                 + SSCCUtil.Text.getLiteral(ctx, tokens).replace(lineSeparator(), " ")
