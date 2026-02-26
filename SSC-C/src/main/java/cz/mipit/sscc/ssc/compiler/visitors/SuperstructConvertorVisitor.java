@@ -641,6 +641,12 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
         if (var.pointer() == 1 && arrowOrDot == ArrowOrDot.Dot) {
             throw getSSCSyntaxException("Pointer to superstruct must be accessed with `->`", ctx);
         }
+        if (var.pointer() == 0 && arrowOrDot == ArrowOrDot.Arrow) {
+            throw getSSCSyntaxException("Local superstruct must be accessed with `.`", ctx);
+        }
+        if (var.pointer() > 1) {
+            throw getSSCSyntaxException("not implemented yet", ctx);
+        }
 
         maybeMethod.ifPresent(functionDefinition -> {
             if (functionDefinition.isPrivate()) {
