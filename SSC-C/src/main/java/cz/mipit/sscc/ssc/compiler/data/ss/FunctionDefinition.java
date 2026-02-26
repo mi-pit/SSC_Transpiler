@@ -1,21 +1,29 @@
 package cz.mipit.sscc.ssc.compiler.data.ss;
 
+import cz.mipit.sscc.util.ListBuilder;
+
+import java.util.ArrayList;
 import java.util.List;
 
 public class FunctionDefinition {
-    private final List<String> specs;
+    private final String unqualifiedName;
+
     private final boolean isStatic;
     private final boolean isPure;
     private final boolean isPrivate;
+    private final List<String> cDeclarationSpecifiers;
     private final String type;
 
-    private final String unqualifiedName;
-
     private final List<String> params;
-    private final String body; /* TODO?: List<String> for cc error messages */
+    private final String body;
+
     private final String superstructMemberOfName;
 
-    /* TODO: parse in visitor */
+    /**
+     * Declaration is cached since it's queried multiple times and immutable.
+     */
+    private final String declaration;
+
     public FunctionDefinition(
             final boolean isStatic,
             final boolean isPure,
@@ -27,36 +35,32 @@ public class FunctionDefinition {
             final String body,
             final String superstructMemberOfName
     ) {
-        this.specs = specsWithoutCustom;
+        this.cDeclarationSpecifiers = specsWithoutCustom;
         this.isStatic = isStatic;
         this.isPure = isPure;
         this.isPrivate = isPrivate;
-        //this.type = parseType(ctx.declarationSpecifiers(), ctx.declarator());
         this.type = type;
-
         this.unqualifiedName = unqualifiedName;
-        // this.originalName = parseName(ctx.declarator());
-
-        //this.params = parseFunctionArgs(ctx.declarator());
-        this.params = params;
+        this.params = new ArrayList<>(params);
         this.body = body;
-        //this.body = convertor.visitFunctionBody(ctx.functionBody());
         this.superstructMemberOfName = superstructMemberOfName;
 
         if (!isStatic && params.size() == 1 && params.getFirst().equals("void")) {
             this.params.removeFirst();
         }
+
+        declaration = createDeclaration();
     }
 
     public String getDeclaration() {
-        return getDeclaration(false) + ";";
+        return declaration + ";";
     }
 
     public String getDefinition() {
-        return getDeclaration(true) + " " + getBody();
+        return declaration + System.lineSeparator() + getBody();
     }
 
-    private String getDeclaration(boolean willHaveBody) {
+    private String createDeclaration() {
         final StringBuilder selfRef = new StringBuilder();
         if (!isStatic) {
             if (isPure) {
@@ -67,22 +71,20 @@ public class FunctionDefinition {
                     .append(superstructMemberOfName)
                     .append(" *");
 
-            if (willHaveBody) {
-                selfRef.append("const this");
-            }
+            selfRef.append("const this");
 
             if (!params.isEmpty()) {
                 selfRef.append(", ");
             }
         }
 
-        final String specsString = "static " + String.join(" ", specs);
+        final ListBuilder<String> tokensBuilder = ListBuilder
+                .from("static")
+                .addAll(cDeclarationSpecifiers)
+                .add(type)
+                .add(superstructMemberOfName + "__" + unqualifiedName + "(" + selfRef + String.join(", ", params) + ")");
 
-        return specsString
-                + (specsString.isBlank() ? "" : " ")
-                + type
-                + " " + superstructMemberOfName + "__" + unqualifiedName
-                + "(" + selfRef + String.join(", ", params) + ")";
+        return String.join(" ", tokensBuilder);
     }
 
     private String getBody() {
@@ -100,6 +102,6 @@ public class FunctionDefinition {
 
     @Override
     public String toString() {
-        return "FunctionDefinition{" + getDeclaration(true) + "}";
+        return "FunctionDefinition{" + declaration + "}";
     }
 }
