@@ -47,7 +47,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
 
         if (ctx.superStructBody() == null) {
             // Usage in expression (e.g. `sizeof( superstruct )`)
-            return "struct " + thisSSName + " ";
+            return "struct " + thisSSName;
         }
 
         if (superStructs.containsKey(thisSSName)) {

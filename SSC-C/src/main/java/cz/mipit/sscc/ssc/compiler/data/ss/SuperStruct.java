@@ -5,6 +5,7 @@ import cz.mipit.sscc.util.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
 
 public class SuperStruct {
     private final String name;
@@ -16,32 +17,36 @@ public class SuperStruct {
     }
 
     public String convert() {
-        final StringBuilder result = new StringBuilder();
+        final StringBuilder resultBuilder = new StringBuilder();
 
-        result.append(String.format("struct %s {\n", name));
+        resultBuilder.append(String.format("struct %s {%n", name));
         for (SSMember member : members) {
-            member.data().getLeft().ifPresent(field -> result
+            member.data().getLeft().ifPresent(field -> resultBuilder
                     /* do a little bit of formatting for mid-compilation error messages */
                     .append("    ")
                     .append(field.getWhole())
-                    .append(";\n"));
+                    .append(";")
+                    .append(System.lineSeparator())
+            );
         }
-        result.append("};\n");
+        resultBuilder
+                .append("};")
+                .append(System.lineSeparator());
 
-        getForwardDeclarations(result);
+        appendFunctions(resultBuilder, FunctionDefinition::getDeclaration);
+        appendFunctions(resultBuilder, FunctionDefinition::getDefinition);
 
-        for (SSMember member : members) {
-            member.data().getRight().ifPresent(functionDefinition ->
-                    result.append(functionDefinition.getDefinition()));
-        }
-
-        return result.toString();
+        return resultBuilder.toString();
     }
 
-    private void getForwardDeclarations(final StringBuilder result) {
-        for (SSMember member : members) {
+    private void appendFunctions(final StringBuilder resultBuilder,
+                                 final Function<FunctionDefinition, String> function) {
+        for (final SSMember member : members) {
             member.data().getRight().ifPresent(fnDef ->
-                    result.append(fnDef.getDeclaration()).append(System.lineSeparator()));
+                    resultBuilder
+                            .append(function.apply(fnDef))
+                            .append(System.lineSeparator())
+            );
         }
     }
 
