@@ -1,6 +1,6 @@
 package cz.mipit.sscc.ssc.compiler.data.ss;
 
-import cz.mipit.sscc.util.ListBuilder;
+import cz.mipit.sscc.util.collection.builder.ListBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -80,9 +80,9 @@ public class FunctionDefinition {
 
         final ListBuilder<String> tokensBuilder = ListBuilder
                 .from("static")
-                .addAll(cDeclarationSpecifiers)
-                .add(type)
-                .add(superstructMemberOfName + "__" + unqualifiedName + "(" + selfRef + String.join(", ", params) + ")");
+                .plusMany(cDeclarationSpecifiers)
+                .plus(type)
+                .plus(superstructMemberOfName + "__" + unqualifiedName + "(" + selfRef + String.join(", ", params) + ")");
 
         return String.join(" ", tokensBuilder);
     }

@@ -9,8 +9,8 @@ import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.visitors.SuperstructConvertorVisitor;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.util.ExitValue;
-import cz.mipit.sscc.util.ListBuilder;
 import cz.mipit.sscc.util.VisitorData;
+import cz.mipit.sscc.util.collection.builder.ListBuilder;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 
@@ -71,9 +71,9 @@ public final class SSCCompiler implements Processor {
 
         final ListBuilder<String> cc = ListBuilder
                 .from("cc")
-                .add("-I" + SSCLIB_HOME + "/include/")
-                .addAll(CC_OPTIONS)
-                .add("--std=c2x");
+                .plus("-I" + SSCLIB_HOME + "/include/")
+                .plusMany(CC_OPTIONS)
+                .plus("--std=c2x");
 
         ccProcessArgBase = cc.build();
     }
@@ -242,7 +242,7 @@ public final class SSCCompiler implements Processor {
             throws IOException, InterruptedException {
         return 0 == doProcess(ListBuilder
                 .from(ccProcessArgBase)
-                .addAll(
+                .plusMany(
                         "-E",
                         "-P",
                         "-D" + SSC_DEF_MACRO_STRING_NAME,
@@ -257,8 +257,8 @@ public final class SSCCompiler implements Processor {
     private int verifyCCode(final Path file) throws IOException, InterruptedException {
         return doProcess(ListBuilder
                 .from(ccProcessArgBase)
-                .add("-fsyntax-only")
-                .add(file.toString())
+                .plus("-fsyntax-only")
+                .plus(file.toString())
                 .build()
         );
     }
@@ -267,16 +267,16 @@ public final class SSCCompiler implements Processor {
             throws IOException, InterruptedException {
         final ListBuilder<String> argsBuilder = ListBuilder
                 .from(ccProcessArgBase)
-                .addMapped(files, Path::toString)
+                .plusMapped(files, Path::toString)
 
-                .add("-o")
-                .add(binaryName)
+                .plus("-o")
+                .plus(binaryName)
 
-                .add("-L" + SSCLIB_HOME + "/dylib/")
-                .add("-lssclib")
-                .add("-Wl,-rpath," + SSCLIB_HOME + "/dylib/");
+                .plus("-L" + SSCLIB_HOME + "/dylib/")
+                .plus("-lssclib")
+                .plus("-Wl,-rpath," + SSCLIB_HOME + "/dylib/");
         if (options.debug()) {
-            argsBuilder.add("-v");
+            argsBuilder.plus("-v");
         }
         //                .add("-fsanitize=address")
         //                .add("-fsanitize=undefined")

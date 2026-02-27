@@ -38,7 +38,7 @@ public final class InputFile {
         }
 
         return new InputFile(
-                dir == null ? Path.of(".") : dir,
+                dir == null ? Path.of(".").toAbsolutePath() : dir,
                 fullName.substring(0, dotIndex),
                 fullName.substring(dotIndex + 1)
         );
@@ -74,5 +74,31 @@ public final class InputFile {
 
     public String suffix() {
         return suffix;
+    }
+
+
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof InputFile inputFile)) {
+            return false;
+        }
+        return Objects.equals(dir, inputFile.dir)
+                && Objects.equals(name, inputFile.name)
+                && Objects.equals(suffix, inputFile.suffix);
+    }
+
+    public boolean equals(Path path) {
+        assert Objects.equals(this.path, this.absolutePath);
+        return Objects.equals(path, this.path);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(dir, name, suffix);
+    }
+
+    @Override
+    public String toString() {
+        return absolutePath.toString();
     }
 }
