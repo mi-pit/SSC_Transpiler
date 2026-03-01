@@ -64,7 +64,9 @@ KW__func__: '__func__';
 KW__FUNCTION__: '__FUNCTION__';
 KW__PRETTY_FUNCTION__: '__PRETTY_FUNCTION__';
 
+// Apple
 A__uint128_t: '__uint128_t';
+A__builtin_va_list: '__builtin_va_list';
 
 
 Alignas

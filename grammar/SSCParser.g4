@@ -272,12 +272,13 @@ logicalOrExpression
 // ISO C: conditional-expression (6.5.16)
 // ISO C: conditional-expression (6.5.16)
 conditionalExpression
-    : logicalOrExpression (
+    : logicalOrExpression
+    | If? /* SSC */
+            logicalOrExpression
             ternaryExpressionThen /* SSC */
             expression
             ternaryExpressionElse /* SSC */
             conditionalExpression
-    )?
     ;
 
 // SSC
@@ -289,7 +290,7 @@ ternaryExpressionThen
 // SSC
 ternaryExpressionElse
     : ':'
-    | Else
+    | 'else'
     ;
 
 // ISO C: assignment-expression (6.5.17.1)
@@ -384,6 +385,7 @@ typeSpecifier
     | enumSpecifier
     | '__extension__'? typedefName
     | typeofSpecifier
+    | '__builtin_va_list'
     ;
 
 // SSC: superstruct
