@@ -17,6 +17,6 @@ antlr \
       -o "$ANTLR_OUT_BASE"             \
       -package "antlr.ssc"
 
-mv grammar/*.java SSC-C/src/main/java/antlr/ssc
+mv "$BASE_DIR"/grammar/*.java "$BASE_DIR"/SSC-C/src/main/java/antlr/ssc
 
 echo "ANTLR grammars refreshed successfully."
