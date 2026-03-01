@@ -36,14 +36,14 @@ public final class SSCCOptions implements Iterable<Option<?>> {
             null, Boolean.class, true, NextOperation.None
     );
 
-    public static final String OPTSTR_NORMAL_DEBUG = "--debug!";
+    public static final String OPTSTR_NORMAL_DEBUG = "--debug";
     private final Option<Boolean> OPTION_DEBUG = new Option<>(
             new OptionString(OPTSTR_NORMAL_DEBUG),
             "Debug mode", "Print debug information (unstable)",
             null, Boolean.class, false, NextOperation.None
     );
 
-    public static final String OPTSTR_ANTLR_DEBUG = "--debug";
+    public static final String OPTSTR_ANTLR_DEBUG = "--debug!";
     private final Option<Boolean> OPTION_ANTLR_DEBUG = new Option<>(
             new OptionString(OPTSTR_ANTLR_DEBUG),
             "Token debug mode", "Print antlr debug information (unstable)",

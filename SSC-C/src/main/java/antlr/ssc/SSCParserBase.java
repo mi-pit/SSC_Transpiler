@@ -1,5 +1,6 @@
 package antlr.ssc;
 
+import cz.mipit.sscc.args.SSCCOptions;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.Parser;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -34,7 +35,7 @@ public abstract class SSCParserBase extends Parser {
         String cmdLine = System.getProperty("sun.java.command");
         String[] args = cmdLine != null ? cmdLine.split("\\s+") : new String[0];
         noSemantics = parseNoSemantics(args);
-        debug = hasArg(args, "--debug");
+        debug = hasArg(args, SSCCOptions.OPTSTR_ANTLR_DEBUG);
         outputSymbolTable = hasArg(args, "--output-symbol-table");
         outputAppliedOccurrences = hasArg(args, "--output-applied-occurrences");
         _st = new SymbolTable();
@@ -42,7 +43,7 @@ public abstract class SSCParserBase extends Parser {
 
     private static boolean hasArg(String[] args, String arg) {
         for (String a : args) {
-            if (a.equalsIgnoreCase(arg)) {
+            if (a.equals(arg)) {
                 return true;
             }
         }
