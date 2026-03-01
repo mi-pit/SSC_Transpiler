@@ -19,8 +19,6 @@ public abstract class Variable {
         return pointer;
     }
 
-    public abstract String getDeclarator();
-
     protected final String abstractDeclarator() {
         return "*".repeat(pointer) + name;
     }

@@ -7,13 +7,13 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
- * Abstract base for other collection builders
+ * Abstract base for other collection builders. Not instantiable or visible outside the package.
  *
  * @param <ITEM> element type
- * @param <COLL> collection type
+ * @param <COLL> collection type (e.g. {@code List<ITEM>})
  * @param <SELF> self
  */
-class AbstractCollectionBuilder<
+abstract class AbstractCollectionBuilder<
         SELF extends AbstractCollectionBuilder<SELF, COLL, ITEM>,
         COLL extends Collection<ITEM>,
         ITEM
@@ -28,25 +28,15 @@ class AbstractCollectionBuilder<
         this.builder = builder;
     }
 
-    public COLL build() {
-        return collect(builder);
-    }
-
     /**
-     * Collects items from this builder to one of another type.
+     * Returns the underlying collection after it's passed through the
+     * {@link AbstractCollectionBuilder#builder} {@link Function} passed in the constructor.
      *
-     * @return a collection of the same type of item
+     * @return The built collection
      */
     @SuppressWarnings("unchecked")
-    public <OTHER_COLL extends Collection<ITEM>>
-    OTHER_COLL collect(
-            final Function<COLL, OTHER_COLL> getter
-    ) {
-        /* ad `@SuppressWarnings("unchecked")`:
-         * COLL extends Collection<ITEM>
-         * type of coll is Collection<ITEM>
-         */
-        return getter.apply((COLL) coll);
+    public COLL build() {
+        return builder.apply((COLL) coll);
     }
 
     /**

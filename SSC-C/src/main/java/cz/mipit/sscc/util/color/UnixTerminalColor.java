@@ -5,7 +5,7 @@ import java.io.PrintStream;
 import static cz.mipit.sscc.util.color.ConsoleColorFactory.Color;
 import static cz.mipit.sscc.util.color.ConsoleColorFactory.Ground;
 
-public final class UnixTerminalColor extends ConsoleColor {
+public class UnixTerminalColor extends ConsoleColor {
     private static final String RESET = "\u001B[0m";
     public static final UnixTerminalColor DEFAULT = new UnixTerminalColor(RESET);
 
@@ -15,7 +15,7 @@ public final class UnixTerminalColor extends ConsoleColor {
 
     private final String repre;
 
-    private UnixTerminalColor(String repre) {
+    public UnixTerminalColor(String repre) {
         this.repre = repre;
     }
 

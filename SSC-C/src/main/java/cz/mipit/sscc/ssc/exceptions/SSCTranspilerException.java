@@ -7,11 +7,11 @@ import cz.mipit.sscc.util.SSCCUtil;
 import cz.mipit.sscc.util.annotations.Nullable;
 import cz.mipit.sscc.util.color.ConsoleColor;
 import cz.mipit.sscc.util.color.ConsoleColorFactory;
+import cz.mipit.sscc.util.color.UnixTerminalColor;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 
-import java.io.PrintStream;
 import java.util.List;
 
 import static cz.mipit.sscc.util.SSCCUtil.Maths.digitsOf;
@@ -31,19 +31,15 @@ public class SSCTranspilerException extends RuntimeException {
     protected static final ConsoleColor COLOR_CODE = ConsoleColorFactory.create(Ground.FORE, Color.WHITE);
     protected static final ConsoleColor COLOR_LOCATOR = ConsoleColorFactory.create(Ground.FORE, Color.CYAN);
 
-    protected static final ConsoleColor COLOR_CODE_BOLD = new ConsoleColor() {
-        private static final String r = "\u001B[1m" + COLOR_CODE;
+    protected static final ConsoleColor COLOR_CODE_BOLD;
 
-        @Override
-        public void setConsoleColor(PrintStream stream) {
-            stream.print(r);
+    static {
+        if (System.getProperty("os.name").toLowerCase().startsWith("windows")) {
+            COLOR_CODE_BOLD = ConsoleColorFactory.WINDOWS.defaultColor();
+        } else {
+            COLOR_CODE_BOLD = new UnixTerminalColor("\u001B[1m" + COLOR_CODE);
         }
-
-        @Override
-        public String toString() {
-            return r;
-        }
-    };
+    }
 
     public static final String LINENO_SEPARATOR = " | ";
 
@@ -108,18 +104,22 @@ public class SSCTranspilerException extends RuntimeException {
     }
 
     protected SSCTranspilerException(Type type, String message,
-                                     ParserRuleContext ctx, CommonTokenStream tokens,
+                                     ParserRuleContext offendingCtx, CommonTokenStream tokens,
                                      InputFile currentFile) {
         this(type, message, getLinesFromCtx(
-                        requireNonNull(ctx, "Context"),
+                        requireNonNull(offendingCtx, "Context"),
                         requireNonNull(tokens, "Token stream")),
-                getLocator(ctx),
+                getLocator(offendingCtx),
                 currentFile);
     }
 
-    protected SSCTranspilerException(Type type, String message, Token token,
+    protected SSCTranspilerException(Type type, String message, Token offendingToken,
                                      CommonTokenStream tokens, InputFile currentFile) {
-        this(type, message, getLinesFromToken(token, tokens), getLocator(token), currentFile);
+        this(type,
+                message,
+                getLinesFromToken(offendingToken, tokens),
+                getLocator(offendingToken),
+                currentFile);
     }
 
     protected static String formatLines(final List<EnumeratedLine> lines) {

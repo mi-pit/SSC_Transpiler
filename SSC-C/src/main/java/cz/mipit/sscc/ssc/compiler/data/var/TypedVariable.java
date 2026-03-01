@@ -10,7 +10,6 @@ public class TypedVariable extends Variable {
         this.type = type;
     }
 
-    @Override
     public String getDeclarator() {
         return String.join(" ", type) + " " + abstractDeclarator();
     }

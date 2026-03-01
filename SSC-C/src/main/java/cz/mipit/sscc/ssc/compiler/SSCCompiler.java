@@ -4,7 +4,7 @@ import cz.mipit.sscc.Logger;
 import cz.mipit.sscc.Main;
 import cz.mipit.sscc.args.SSCCOptions;
 import cz.mipit.sscc.file.InputFile;
-import cz.mipit.sscc.ssc.Processor;
+import cz.mipit.sscc.ssc.Compiler;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.visitors.SuperstructConvertorVisitor;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
@@ -27,20 +27,20 @@ import static cz.mipit.sscc.Logger.errReturn;
 import static cz.mipit.sscc.Logger.warn;
 import static cz.mipit.sscc.Main.logger;
 
-public final class SSCCompiler implements Processor {
+public final class SSCCompiler implements Compiler {
     public static final Path SSCLIB_HOME;
 
     static {
         final String ssclibHomeEnv = System.getenv("SSCLIB_HOME");
         if (ssclibHomeEnv == null) {
-            Logger.errExit(ExitValue.LIBRARY_NOT_FOUND, "could not find ssc library: SSCLIB_HOME not set");
+            Logger.errExit(ExitValue.LIBRARY_NOT_FOUND, "SSCLIB_HOME not set");
             throw new AssertionError("unreachable");
         }
 
         final Path asPath = Path.of(ssclibHomeEnv);
 
         if (!Files.exists(asPath)) {
-            Logger.errExit(ExitValue.LIBRARY_NOT_FOUND, "could not find ssc library: " + ssclibHomeEnv);
+            Logger.errExit(ExitValue.LIBRARY_NOT_FOUND, "file doesn't exist: " + ssclibHomeEnv);
         }
 
         if (!Files.isDirectory(asPath)) {
@@ -144,7 +144,7 @@ public final class SSCCompiler implements Processor {
                     break;
                 }
             } finally {
-                logger.printVerbose("Processed '%s'", fileArg.absolutePathString());
+                logger.printVerboseFilename("Processed", fileArg.absolutePathString());
             }
         }
         return totalFailed;
@@ -231,7 +231,7 @@ public final class SSCCompiler implements Processor {
 
     private static int doProcess(final List<String> args)
             throws IOException, InterruptedException {
-        logger.printDebug(args::toString);
+        logger.printDebug(() -> String.join(" ", args));
         return new ProcessBuilder(args).inheritIO().start().waitFor();
     }
 
@@ -244,9 +244,8 @@ public final class SSCCompiler implements Processor {
                 .from(ccProcessArgBase)
                 .plusMany(
                         "-E",
-                        "-P",
                         "-D" + SSC_DEF_MACRO_STRING_NAME,
-                        "-Davailability(...)=",
+                        "-Davailability(...)=", // TODO? remove
                         "-x", "c", inFile.absolutePathString(),
                         "-o", outputFile.toString()
                 )

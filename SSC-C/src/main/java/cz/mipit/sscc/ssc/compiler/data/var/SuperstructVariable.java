@@ -7,7 +7,7 @@ public class SuperstructVariable extends Variable {
 
     public SuperstructVariable(String ssName, int pointer, String name) {
         super(name, pointer);
-        this.ssName = Objects.requireNonNull(ssName, "ssName");
+        this.ssName = Objects.requireNonNull(ssName);
     }
 
     public String ssName() {
@@ -37,10 +37,5 @@ public class SuperstructVariable extends Variable {
                 "ssName=" + ssName + ", " +
                 "pointer=" + pointer + ", " +
                 "name=" + name + ']';
-    }
-
-    @Override
-    public String getDeclarator() {
-        return "struct " + ssName + " " + super.abstractDeclarator();
     }
 }

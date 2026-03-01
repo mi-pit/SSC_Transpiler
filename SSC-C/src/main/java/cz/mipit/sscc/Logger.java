@@ -68,7 +68,7 @@ public final class Logger {
     }
 
     public Logger() {
-        this(SSCCOptions.withDefaults());
+        this(SSCCOptions.newWithDefaults());
     }
 
     public void setOptions(final SSCCOptions options) {

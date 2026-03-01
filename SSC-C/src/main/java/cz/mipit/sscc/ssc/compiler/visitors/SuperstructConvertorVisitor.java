@@ -9,6 +9,7 @@ import cz.mipit.sscc.ssc.compiler.data.ss.SSMember;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.data.var.TypedVariable;
+import cz.mipit.sscc.ssc.compiler.data.var.Typedef;
 import cz.mipit.sscc.util.Either;
 import cz.mipit.sscc.util.SSCCUtil;
 import cz.mipit.sscc.util.annotations.Nullable;
@@ -19,6 +20,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -30,6 +32,7 @@ import static java.lang.System.lineSeparator;
 public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
     private final Map<String, SuperStruct> superStructs;
     private SuperStruct currentSS = null;
+    private final Map<String /* typedef name */, Typedef<SuperStruct>> superstructTypedefs = new HashMap<>();
 
     public final Map<@Nullable String /* Function name */, Set<SuperstructVariable>> functionVariables;
     public String currentFunctionName = null; /* null => no function => global */
@@ -46,8 +49,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
         final String thisSSName = ctx.Identifier().getText();
 
         if (ctx.superStructBody() == null) {
-            // Usage in expression (e.g. `sizeof( superstruct )`)
-            return "struct " + thisSSName;
+            return super.visitSuperStructSpecifier(ctx);
         }
 
         if (superStructs.containsKey(thisSSName)) {
@@ -168,7 +170,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
             unqualifiedName = directDecl.Identifier().getText();
         } else if (directDecl.LeftParen() == null || directDecl.RightParen() == null) {
             Main.logger.printDebug("No declarator parentheses. Trying to parse declarator.");
-            unqualifiedName = visitDeclarator(functionCtx.declarator());
+            unqualifiedName = this.visitDeclarator(functionCtx.declarator());
         } else {
             throw getSSCSyntaxException("Missing declarator identifier in function definition", directDecl);
         }
@@ -182,9 +184,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
             final SuperstructVariable selfReferenceVariable =
                     new SuperstructVariable(currentSS.name(), 1, "this");
 
-            functionVariables
-                    .get(currentFunctionName)
-                    .add(selfReferenceVariable);
+            functionVariables.get(currentFunctionName).add(selfReferenceVariable);
         }
 
         final FunctionDefinition functionDefinition = new FunctionDefinition(
@@ -248,6 +248,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
                 break;
             }
             @Nullable String ssName = null;
+            int pointer = 0;
 
             final List<String> curr = new ArrayList<>();
             for (final var declSpec : param.declarationSpecifiers().declarationSpecifier()) {
@@ -257,8 +258,14 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
                 }
                 final var typeSpecCtx = declSpec.typeSpecifier();
                 if (typeSpecCtx.superStructSpecifier() == null) {
-                    curr.add(this.visitTypeSpecifier(typeSpecCtx));
-                    continue;
+                    final Typedef<SuperStruct> val = superstructTypedefs.get(this.visitTypeSpecifier(typeSpecCtx));
+                    if (val == null) {
+                        curr.add(this.visitTypeSpecifier(typeSpecCtx));
+                        continue;
+                    }
+
+                    pointer += val.pointer();
+                    ssName = val.getName();
                 }
 
                 if (ssName != null) {
@@ -270,7 +277,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
             }
             final var declarator = param.declarator();
             if (declarator != null) {
-                final int pointer = SSCCUtil.getPointerLevel(declarator);
+                pointer += SSCCUtil.getPointerLevel(declarator);
 
                 if (declarator.directDeclarator().Identifier() != null) {
                     final String varName = declarator.directDeclarator().Identifier().getText();
@@ -335,6 +342,10 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
     @Override
     public String visitFunctionDefinition(final SSCParser.FunctionDefinitionContext ctx) {
         // Set currentFunctionName
+        if (ctx.functionBody() == null) {
+            throw getSSCSyntaxException("Function definition without body", ctx);
+        }
+        assert ctx.functionBody() != null;
         assert ctx.functionBody().compoundStatement() != null;
 
         if (ctx.declarationList() != null) {
@@ -376,65 +387,157 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
                 break;
             }
 
-            final Optional<String> maybeSSName = findSSNameInDeclSpecs(
+            final Optional<Either<String, Typedef<SuperStruct>>> maybeSSName = findSSNameInDeclSpecs(
                     paramDecl.declarationSpecifiers().declarationSpecifier()
             );
             if (maybeSSName.isEmpty()) {
                 continue;
             }
-            final String ssName = maybeSSName.get();
-
-            tryCreateSuperstructVariableFromDeclarator(ssName, declarator)
-                    .ifPresent(ssVar -> functionVariables.get(currentFunctionName).add(ssVar));
+            maybeSSName.get().map(
+                    string -> tryCreateSuperstructVariableFromDeclarator(string, declarator),
+                    typedef -> tryCreateSuperstructVariableFromDeclarator(typedef, declarator)
+            ).ifPresent(ssVar -> functionVariables.get(currentFunctionName).add(ssVar));
         }
     }
 
     @Override
     public String visitDeclaration(SSCParser.DeclarationContext ctx) {
-        collectSuperstructVariablesFromDeclaration(ctx);
+        if (ctx.staticAssertDeclaration() != null) {
+            assert ctx.declarationSpecifiers() == null;
+            return super.visitDeclaration(ctx);
+        }
+        assert ctx.declarationSpecifiers() != null;
+        final var declSpecsLs = ctx.declarationSpecifiers().declarationSpecifier();
+        assert declSpecsLs != null;
+
+        final boolean isTypedef = declSpecsLs
+                .stream()
+                .map(SSCParser.DeclarationSpecifierContext::storageClassSpecifier)
+                .filter(Objects::nonNull)
+                .map(SSCParser.StorageClassSpecifierContext::Typedef)
+                .anyMatch(Objects::nonNull);
+
+        if (isTypedef) {
+            collectSuperstructTypedefsFromDeclaration(ctx, declSpecsLs);
+        } else {
+            collectSuperstructVariablesFromDeclaration(ctx);
+        }
+
         return super.visitDeclaration(ctx);
+    }
+
+    private void collectSuperstructTypedefsFromDeclaration(
+            final SSCParser.DeclarationContext ctx,
+            final List<SSCParser.DeclarationSpecifierContext> declSpecsLs
+    ) {
+        final var initDeclListCtx = ctx.initDeclaratorList();
+        if (initDeclListCtx == null) {
+//            final List<SSCParser.TypeSpecifierContext> typeSpecs = declSpecsLs
+//                    .stream()
+//                    .map(SSCParser.DeclarationSpecifierContext::typeSpecifier)
+//                    .filter(Objects::nonNull)
+//                    .toList();
+//            if (typeSpecs.size() > 1) {
+//                throw getSSCSyntaxException("Multiple types in declaration specifiers list", ctx);
+//            }
+//
+//            throw getSSCSyntaxException("Typedef requires a name", declSpecsCtx);
+            /* Todo? deal with this kind of stuff
+             *  typedef __builtin_va_list __darwin_va_list;
+             *  typedef __darwin_va_list va_list;
+             *  typedef __builtin_va_list va_list;
+             *
+             * for now at least, let cc deal with it
+             */
+            return;
+        }
+
+        final var declaratorsList = initDeclListCtx
+                .initDeclarator()
+                .stream()
+                .map(SSCParser.InitDeclaratorContext::declarator)
+                .toList();
+
+        final List<SSCParser.SuperStructSpecifierContext> ssSpecs = declSpecsLs
+                .stream()
+                .map(SSCParser.DeclarationSpecifierContext::typeSpecifier)
+                .filter(Objects::nonNull)
+                .map(SSCParser.TypeSpecifierContext::superStructSpecifier)
+                .filter(Objects::nonNull)
+                .toList();
+        if (ssSpecs.isEmpty()) {
+            return;
+        }
+        if (ssSpecs.size() > 1) {
+            throw getSSCSyntaxException("Multiple superstruct types found in typedef", ctx);
+        }
+
+        final SSCParser.SuperStructSpecifierContext ssSpec = ssSpecs.getFirst();
+        if (ssSpec.superStructBody() != null) {
+            // todo?
+            throw getSSCSyntaxException("Cannot define superstruct within a typedef", ctx);
+        }
+
+        final String ssName = ssSpec.Identifier().getText();
+
+        final SuperStruct ss = findSuperstructByName(ssName).orElse(new SuperStruct(ssName));
+        for (final SSCParser.DeclaratorContext typedefDeclarator : declaratorsList) {
+            final String typedeffedName = typedefDeclarator.directDeclarator().Identifier().getText();
+            final int pointer = typedefDeclarator.pointer().size();
+            final Typedef<SuperStruct> typedef = new Typedef<>(typedeffedName, pointer, ss);
+            superstructTypedefs.put(typedeffedName, typedef);
+        }
     }
 
     private void collectSuperstructVariablesFromDeclaration(
             final SSCParser.DeclarationContext ctx
     ) {
-        if (ctx.staticAssertDeclaration() != null) {
-            assert ctx.declarationSpecifiers() == null;
-            return;
-        }
         assert ctx.declarationSpecifiers() != null;
         assert !ctx.declarationSpecifiers().declarationSpecifier().isEmpty();
 
         if (ctx.initDeclaratorList() == null) {
-            // e.g. `struct s;`
+            // e.g. `int;`
             return;
         }
 
         final List<SSCParser.DeclarationSpecifierContext> declSpecs = ctx.declarationSpecifiers().declarationSpecifier();
-        final Optional<String> maybeSSName = findSSNameInDeclSpecs(declSpecs);
-        if (maybeSSName.isEmpty()) {
+        final Optional<Either<String, Typedef<SuperStruct>>> maybeEither = findSSNameInDeclSpecs(declSpecs);
+        if (maybeEither.isEmpty()) {
             return;
         }
-        final String ssName = maybeSSName.get();
+        final Either<String, Typedef<SuperStruct>> ssNameOrTypedef = maybeEither.get();
 
-        final List<SSCParser.InitDeclaratorContext> initDeclList = ctx.initDeclaratorList().initDeclarator();
-
-        for (final SSCParser.InitDeclaratorContext initDeclarator : initDeclList) {
+        for (final var initDeclarator : ctx.initDeclaratorList().initDeclarator()) {
             final var declarator = initDeclarator.declarator();
 
-            final Optional<SuperstructVariable> maybeSSVar =
-                    tryCreateSuperstructVariableFromDeclarator(ssName, declarator);
-
-            if (maybeSSVar.isEmpty()) {
-                continue;
-            }
-
-            functionVariables.get(currentFunctionName).add(maybeSSVar.get());
+            ssNameOrTypedef.map(
+                    str -> tryCreateSuperstructVariableFromDeclarator(str, declarator),
+                    typedef -> tryCreateSuperstructVariableFromDeclarator(typedef, declarator)
+            ).ifPresent(ssVar -> functionVariables.get(currentFunctionName).add(ssVar));
         }
     }
 
     private Optional<SuperstructVariable> tryCreateSuperstructVariableFromDeclarator(
             final String ssName,
+            final SSCParser.DeclaratorContext declarator
+    ) {
+        return tryCreateSuperstructVariableFromDeclarator(ssName, 0, declarator);
+    }
+
+    private Optional<SuperstructVariable> tryCreateSuperstructVariableFromDeclarator(
+            final Typedef<SuperStruct> typedef,
+            final SSCParser.DeclaratorContext declarator
+    ) {
+        return tryCreateSuperstructVariableFromDeclarator(
+                typedef.getRepresentedType().name(),
+                typedef.pointer(),
+                declarator
+        );
+    }
+
+    private Optional<SuperstructVariable> tryCreateSuperstructVariableFromDeclarator(
+            final String ssName,
+            final int pointerBase,
             final SSCParser.DeclaratorContext declarator
     ) {
         if (declarator == null) {
@@ -445,14 +548,14 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
             return Optional.empty();
         }
 
-        final int pointer = SSCCUtil.getPointerLevel(declarator);
+        final int declaratorPointer = SSCCUtil.getPointerLevel(declarator);
         final String varName = directDecl.Identifier().getText();
 
-        final SuperstructVariable ssVar = new SuperstructVariable(ssName, pointer, varName);
+        final SuperstructVariable ssVar = new SuperstructVariable(ssName, pointerBase + declaratorPointer, varName);
         return Optional.of(ssVar);
     }
 
-    private Optional<String> findSSNameInDeclSpecs(
+    private Optional<Either<String, Typedef<SuperStruct>>> findSSNameInDeclSpecs(
             final List<SSCParser.DeclarationSpecifierContext> declSpecs
     ) {
         for (final var declSpec : declSpecs) {
@@ -462,12 +565,16 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
 
             final var typeSpec = declSpec.typeSpecifier();
             if (typeSpec.superStructSpecifier() == null) {
-                continue;
+                final Typedef<SuperStruct> typedef = superstructTypedefs.get(this.visitTypeSpecifier(typeSpec));
+                if (typedef == null) {
+                    continue;
+                }
+                return Optional.of(Either.right(typedef));
             }
 
             final var ssCtx = typeSpec.superStructSpecifier();
             final String ssName = ssCtx.Identifier().getText();
-            return Optional.of(ssName);
+            return Optional.of(Either.left(ssName));
         }
 
         return Optional.empty();
@@ -516,7 +623,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
         if (ctx.primaryExpression() == null) {
             throw getSSCSyntaxException("Double colon expression has no left side (Superstruct name) expression", ctx);
         }
-        final String className = visitPrimaryExpression(ctx.primaryExpression());
+        final String className = this.visitPrimaryExpression(ctx.primaryExpression());
 
         if (ctx.Identifier().isEmpty()) {
             throw getSSCSyntaxException("Double colon expression has no right side (function) expression", ctx);
@@ -535,7 +642,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
         final List<String> args = new ArrayList<>();
         for (SSCParser.ArgumentExpressionListContext argListCtx : ctx.argumentExpressionList()) {
             for (SSCParser.AssignmentExpressionContext assExprCtx : argListCtx.assignmentExpression()) {
-                args.add(visitAssignmentExpression(assExprCtx));
+                args.add(this.visitAssignmentExpression(assExprCtx));
             }
         }
 
@@ -573,12 +680,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
     }
 
     private Optional<SuperStruct> findSuperstructByName(final String className) {
-        for (SuperStruct s : superStructs.values()) {
-            if (s.name().equals(className)) {
-                return Optional.of(s);
-            }
-        }
-        return Optional.empty();
+        return Optional.ofNullable(superStructs.get(className));
     }
 
     public String convertMethodCall(final SSCParser.PostfixExpressionContext ctx) {
@@ -591,7 +693,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
         Main.logger.printDebug(() -> arrowOrDot + " in: " + SSCCUtil.Text.getLiteral(ctx, tokens));
         assert arrowOrDot != ArrowOrDot.Neither;
 
-        final String objectName = visitPrimaryExpression(ctx.primaryExpression());
+        final String objectName = this.visitPrimaryExpression(ctx.primaryExpression());
         if (ctx.Identifier().isEmpty())
             throw getSSCSyntaxException(arrowOrDot + " expression has no right side expression", ctx);
 
@@ -660,34 +762,35 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
 
         final String ssName = superstruct.name();
 
-        final StringBuilder finalExpression =
+        final StringBuilder expressionBuilder =
                 new StringBuilder(ssName)
                         .append("__")
                         .append(methodName)
                         .append("(");
 
         if (arrowOrDot == ArrowOrDot.Dot) {
-            finalExpression.append("&");
+            expressionBuilder.append("&");
         }
-        finalExpression.append(objectName);
+        expressionBuilder.append(objectName);
 
         if (!ctx.argumentExpressionList().isEmpty()) {
-            finalExpression.append(", ");
+            expressionBuilder.append(", ");
         }
 
         final List<String> args = new ArrayList<>();
         for (SSCParser.ArgumentExpressionListContext argListCtx : ctx.argumentExpressionList()) {
             for (SSCParser.AssignmentExpressionContext assExprCtx : argListCtx.assignmentExpression()) {
-                args.add(visit(assExprCtx));
+                args.add(this.visitAssignmentExpression(assExprCtx));
             }
         }
 
-        finalExpression
+        expressionBuilder
                 .append(String.join(", ", args))
                 .append(")");
 
+        final String finalExpression = expressionBuilder.toString();
         Main.logger.printDebug(() -> "\tFinal Expression: " + finalExpression);
-        return finalExpression.toString();
+        return finalExpression;
     }
 
     private Optional<SuperstructVariable> findSuperstructVariable(String functionName, String objectName) {
@@ -765,7 +868,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
 
         final Field field = allMatching.getFirst();
 
-        final String primaryExpression = visitPrimaryExpression(ctx.primaryExpression());
+        final String primaryExpression = this.visitPrimaryExpression(ctx.primaryExpression());
         if (field.isPrivate()) {
             final boolean inSSMethod = findSuperstructVariable(currentFunctionName, primaryExpression).isPresent();
             Main.logger.printDebug(() -> "Field `" + fieldName
@@ -790,14 +893,5 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
         }
 
         return Optional.empty();
-    }
-
-    @Override
-    public String visitSscIncludeDirective(SSCParser.SscIncludeDirectiveContext ctx) {
-        final String[] s = ctx.SSCDirective().getText().split("<");
-        assert s.length == 2 : "preprocessor emitted invalid directive";
-        final String directive = lineSeparator() + "#include <" + s[1] + lineSeparator();
-        Main.logger.printDebug(() -> "converted directive: " + directive);
-        return directive;
     }
 }

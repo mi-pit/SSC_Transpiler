@@ -89,7 +89,7 @@ public final class SSCCOptions implements Iterable<Option<?>> {
     private SSCCOptions() {
     }
 
-    public static SSCCOptions withDefaults() {
+    public static SSCCOptions newWithDefaults() {
         return new SSCCOptions();
     }
 

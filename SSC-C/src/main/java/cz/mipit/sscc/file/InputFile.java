@@ -1,5 +1,7 @@
 package cz.mipit.sscc.file;
 
+import cz.mipit.sscc.util.annotations.Nullable;
+
 import java.nio.file.Path;
 import java.util.Objects;
 
@@ -12,7 +14,7 @@ import java.util.Objects;
 public final class InputFile {
     private final Path dir;
     private final String name;
-    private final String suffix;
+    private final @Nullable String suffix;
 
     private final String fullName;
     private final Path path;
@@ -56,7 +58,7 @@ public final class InputFile {
         return fullName;
     }
 
-    public InputFile getChangedSuffix(final String newSuffix) {
+    public InputFile getChangedSuffix(final @Nullable String newSuffix) {
         return new InputFile(dir, name, newSuffix);
     }
 

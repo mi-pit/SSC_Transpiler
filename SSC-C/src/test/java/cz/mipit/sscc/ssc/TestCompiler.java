@@ -37,12 +37,12 @@ public class TestCompiler {
 
     @Test
     void test() {
-        final SSCCOptions options = SSCCOptions.withDefaults();
+        final SSCCOptions options = SSCCOptions.newWithDefaults();
         options.addFile(InputFile.fromAbsolutePath(PATH));
-        final Processor processor = new SSCCompiler(options);
+        final Compiler compiler = new SSCCompiler(options);
         final ExitValue returnValue;
         try {
-            returnValue = processor.run();
+            returnValue = compiler.run();
         } catch (Exception e) {
             Assertions.fail(e);
             throw new AssertionError("Unreachable");

@@ -3,12 +3,25 @@ package cz.mipit.sscc.util.collection;
 import java.util.Collection;
 import java.util.Iterator;
 
-public class CollectionAdapter<ITEM> implements Collection<ITEM> {
+/**
+ * Public class for adapting a collection object.
+ * <p>
+ * This class is meant to be extended when the super class wants to implement all the functionality
+ * of a collection by composition instead of inheritance,
+ * basically extending it.
+ * </p>
+ *
+ * @param <ITEM> item type
+ */
+public abstract class CollectionAdapter<ITEM> implements Collection<ITEM> {
     protected final Collection<ITEM> coll;
 
     protected CollectionAdapter(Collection<ITEM> coll) {
         this.coll = coll;
     }
+
+
+    /* The rest is just Collection methods */
 
     @Override
     public int size() {
@@ -65,6 +78,7 @@ public class CollectionAdapter<ITEM> implements Collection<ITEM> {
         return coll.removeAll(c);
     }
 
+    @SuppressWarnings("SuspiciousMethodCalls")
     @Override
     public boolean retainAll(Collection<?> c) {
         return coll.removeAll(c);

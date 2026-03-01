@@ -61,7 +61,7 @@ public class TestBuilder {
                 firstBuilt,
                 "list built earlier should be independent from the builder");
 
-        final HashSet<Integer> secondBuilt = ints.collect(HashSet::new);
+        final HashSet<Integer> secondBuilt = new HashSet<>(ints.build());
         for (final Integer i : ints) {
             Assertions.assertNotNull(i);
             Assertions.assertTrue(secondBuilt.contains(i));

@@ -16,6 +16,9 @@ public final class SSCCUtil {
     }
 
     public static int getPointerLevel(SSCParser.DeclaratorContext declarator) {
+        if (declarator == null) {
+            return 0;
+        }
         return declarator.pointer().size();
     }
 
