@@ -19,7 +19,12 @@ public final class SSCCUtil {
         if (declarator == null) {
             return 0;
         }
-        return declarator.pointer().size();
+
+        int count = 0;
+        for (SSCParser.PointerContext ptrCtx : declarator.pointer()) {
+            count += ptrCtx.Star().size();
+        }
+        return count;
     }
 
     public static class Text {

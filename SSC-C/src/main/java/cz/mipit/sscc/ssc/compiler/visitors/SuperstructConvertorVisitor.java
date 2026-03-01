@@ -509,11 +509,11 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
 
         for (final var initDeclarator : ctx.initDeclaratorList().initDeclarator()) {
             final var declarator = initDeclarator.declarator();
-
-            ssNameOrTypedef.map(
+            final var mapped = ssNameOrTypedef.map(
                     str -> tryCreateSuperstructVariableFromDeclarator(str, declarator),
                     typedef -> tryCreateSuperstructVariableFromDeclarator(typedef, declarator)
-            ).ifPresent(ssVar -> functionVariables.get(currentFunctionName).add(ssVar));
+            );
+            mapped.ifPresent(ssVar -> functionVariables.get(currentFunctionName).add(ssVar));
         }
     }
 
@@ -740,14 +740,11 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
             );
         }
 
-        if (var.pointer() == 1 && arrowOrDot == ArrowOrDot.Dot) {
-            throw getSSCSyntaxException("Pointer to superstruct must be accessed with `->`", ctx);
+        if (arrowOrDot == ArrowOrDot.Dot && var.pointer() != 0) {
+            throw getSSCSyntaxException("Cannot access non-local superstruct variable using `.`", ctx);
         }
-        if (var.pointer() == 0 && arrowOrDot == ArrowOrDot.Arrow) {
-            throw getSSCSyntaxException("Local superstruct must be accessed with `.`", ctx);
-        }
-        if (var.pointer() > 1) {
-            throw getSSCSyntaxException("not implemented yet", ctx);
+        if (arrowOrDot == ArrowOrDot.Arrow && var.pointer() != 1) {
+            throw getSSCSyntaxException("Variable '" + var.getName() + "' is not a pointer to struct", ctx);
         }
 
         maybeMethod.ifPresent(functionDefinition -> {
