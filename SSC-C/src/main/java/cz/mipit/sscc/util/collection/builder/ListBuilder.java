@@ -41,6 +41,7 @@ public final class ListBuilder<T> extends AbstractCollectionBuilder<ListBuilder<
     public <O> ListBuilder<O> map(
             final Function<T, O> mapper
     ) {
-        return ListBuilder.<O>withCapacity(coll.size()).plusMapped(coll, mapper);
+        final ListBuilder<O> lb = ListBuilder.withCapacity(coll.size());
+        return lb.plusMapped(this.coll, mapper);
     }
 }

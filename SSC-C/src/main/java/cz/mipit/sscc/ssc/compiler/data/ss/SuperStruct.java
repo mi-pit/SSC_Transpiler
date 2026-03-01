@@ -5,7 +5,10 @@ import cz.mipit.sscc.util.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class SuperStruct {
     private final String name;
@@ -50,14 +53,12 @@ public class SuperStruct {
         }
     }
 
-    public List<FunctionDefinition> getFunctions() {
-        final List<FunctionDefinition> result = new ArrayList<>();
-        for (SSMember member : members) {
-            if (member.data().getRight().isPresent()) {
-                result.add(member.data().getRight().get());
-            }
-        }
-        return result;
+    public Set<FunctionDefinition> getFunctions() {
+        return members.stream()
+                .map(member -> member.data().getRight())
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .collect(Collectors.toSet());
     }
 
     public String name() {

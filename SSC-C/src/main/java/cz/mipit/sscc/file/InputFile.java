@@ -101,6 +101,6 @@ public final class InputFile {
 
     @Override
     public String toString() {
-        return absolutePath.toString();
+        return absolutePathString();
     }
 }

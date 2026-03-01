@@ -41,7 +41,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
         super(tokens, currentFile);
         superStructs = new HashMap<>();
         functionVariables = new HashMap<>();
-        functionVariables.put(null /* Global variables */, new HashSet<>());
+        functionVariables.put(null, new HashSet<>());
     }
 
     @Override
@@ -53,7 +53,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
         }
 
         if (superStructs.containsKey(thisSSName)) {
-            throw getSSCSyntaxException("Superstruct with name " + thisSSName + " already exists", ctx);
+            throw getSSCSyntaxException("Superstruct with name '" + thisSSName + "' already exists", ctx);
         }
 
         final SuperStruct superStruct = this.currentSS = new SuperStruct(thisSSName);
@@ -815,30 +815,15 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
      */
     private SuperStruct getSuperStructFromVariable(final SSCParser.PostfixExpressionContext ctx,
                                                    final SuperstructVariable var) {
-        final Optional<SuperStruct> optSS = findSuperStructFromVariable(var);
-        if (optSS.isEmpty()) {
+        final SuperStruct optSS = superStructs.get(var.ssName());
+        if (optSS == null) {
             throw getSSCSyntaxException(
                     "`superstruct " + var.ssName() + "` "
                             + "(type of variable \"" + var.getName() + "\") is not properly defined",
                     ctx
             );
         }
-        return optSS.get();
-    }
-
-    /**
-     * Tries finding a valid superstruct
-     *
-     * @param var local variable
-     * @return empty if no ss matches
-     */
-    private Optional<SuperStruct> findSuperStructFromVariable(final SuperstructVariable var) {
-        for (SuperStruct candidate : superStructs.values()) {
-            if (candidate.name().equals(var.ssName())) {
-                return Optional.of(candidate);
-            }
-        }
-        return Optional.empty();
+        return optSS;
     }
 
     private String getFieldAccessString(SSCParser.PostfixExpressionContext ctx,

@@ -8,6 +8,7 @@ import cz.mipit.sscc.ssc.compiler.data.var.TypedVariable;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -22,7 +23,7 @@ public class TestSuperStruct {
 
         assertEquals(SS_NAME, struct.name());
 
-        final List<FunctionDefinition> functions = struct.getFunctions();
+        final Set<FunctionDefinition> functions = struct.getFunctions();
         assertTrue(functions == null || functions.isEmpty());
 
         final List<SSMember> members = struct.members();
