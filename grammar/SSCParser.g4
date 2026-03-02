@@ -383,6 +383,7 @@ typeSpecifier
     | superStructSpecifier // SSC
     | structOrUnionSpecifier
     | enumSpecifier
+    | flagsSpecifier // SSC
     | '__extension__'? typedefName
     | typeofSpecifier
     | '__builtin_va_list'
@@ -390,8 +391,8 @@ typeSpecifier
 
 // SSC: superstruct
 superStructSpecifier
-    : 'superstruct' Identifier '{' superStructBody '}'
-    | 'superstruct' Identifier
+    : Superstruct Identifier '{' superStructBody '}'
+    | Superstruct Identifier
     ;
 
 superStructBody
@@ -457,6 +458,23 @@ memberDeclarator
 enumSpecifier
     : 'enum' attributeSpecifierSequence? gnuAttributes? Identifier? (':' typeName)? enumTypeSpecifier? '{' enumeratorList ','? '}'
     | 'enum' Identifier enumTypeSpecifier?
+    ;
+
+// SSC
+flagsSpecifier
+    : FlagsSet attributeSpecifierSequence? gnuAttributes? Identifier? '{' flagsInitializerList ','? '}'
+    | FlagsSet Identifier
+    ;
+
+// SSC
+flagsInitializerList
+    : flagsInitializer (',' flagsInitializer)*
+    ;
+
+// SSC
+flagsInitializer
+    : Identifier
+    | Identifier '=' Identifier ('|' Identifier)*
     ;
 
 // ISO C: enumerator-list (6.7.3.3)

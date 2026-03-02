@@ -98,6 +98,10 @@ public abstract class SSCConvertorVisitor extends SSCParserBaseVisitor<String> {
         return switch (node.getSymbol().getType()) {
             case Token.EOF -> "";
             case SSCParser.Superstruct -> "struct";
+            case SSCParser.FlagsSet -> "enum";
+
+            case SSCParser.Then -> "?";
+
             default -> node.getText();
         };
     }

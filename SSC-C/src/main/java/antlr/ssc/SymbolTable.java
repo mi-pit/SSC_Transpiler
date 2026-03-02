@@ -24,6 +24,8 @@ public class SymbolTable {
         define(createSymbol("enum", TypeClassification.EnumSpecifier_));
 
         /* SSC */
+        define(createSymbol("flagset", TypeClassification.EnumSpecifier_));
+
         define(createSymbol("superstruct", TypeClassification.StorageClassSpecifier_));
 
         define(createSymbol("struct", TypeClassification.StorageClassSpecifier_));

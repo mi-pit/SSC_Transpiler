@@ -156,6 +156,10 @@ False_
     : 'false'
     ;
 
+FlagsSet
+    : 'flagset'
+    ;
+
 Float
     : 'float'
     ;

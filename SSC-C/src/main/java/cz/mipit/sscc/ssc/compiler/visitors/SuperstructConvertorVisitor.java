@@ -14,6 +14,8 @@ import cz.mipit.sscc.util.Either;
 import cz.mipit.sscc.util.SSCCUtil;
 import cz.mipit.sscc.util.annotations.Nullable;
 import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,6 +25,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -130,13 +133,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
                 );
             }
 
-            final int ptrs;
-            if (declarator.pointer().isEmpty()) {
-                ptrs = 0;
-            } else {
-                assert declarator.pointer().size() == 1;
-                ptrs = declarator.pointer().getFirst().Star().size();
-            }
+            final int ptrs = SSCCUtil.getPointerLevel(declarator);
             final String name = declarator.directDeclarator().Identifier().getText();
 
             final Field field = new Field(isPrivate, new TypedVariable(type, ptrs, name));
@@ -875,5 +872,90 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
         }
 
         return Optional.empty();
+    }
+
+    public long getFlagValue(final Map<String, Long> valuesMap,
+                             List<String> identifiers,
+                             ParserRuleContext ctx) {
+        long total = 0;
+        for (final String identifier : identifiers) {
+            final Long value = valuesMap.get(identifier);
+            if (value == null) {
+                throw getSSCSyntaxException("Undefined flag identifier", ctx);
+            }
+            total |= value;
+        }
+        return total;
+    }
+
+    @Override
+    public String visitFlagsSpecifier(SSCParser.FlagsSpecifierContext ctx) {
+        if (ctx.flagsInitializerList() == null) {
+            return super.visitFlagsSpecifier(ctx);
+        }
+
+        final String identifier = ctx.Identifier() == null ? "" : ctx.Identifier().getText();
+        final var valuesListCtx = ctx.flagsInitializerList();
+
+        /* TreeMap for sorting */
+        final Map<String, Long> valuesMap = new TreeMap<>();
+
+        final byte distinctCount = getDistinctCount(ctx, valuesListCtx, valuesMap);
+
+        final int bitsNeeded = distinctCount <= 8 ? 8
+                : distinctCount <= 16 ? 16
+                : distinctCount <= 32 ? 32
+                : 64;
+        final String type = "uint" + bitsNeeded + "_t";
+
+        final StringBuilder valuesString = new StringBuilder();
+        for (final Map.Entry<String, Long> entry : valuesMap.entrySet()) {
+            valuesString.append(SSCCUtil.Text.INDENT)
+                    .append("%s = 0x%X,".formatted(entry.getKey(), entry.getValue()))
+                    .append(lineSeparator());
+        }
+
+        return String.format("""
+                        enum %s : %s {
+                        %s}
+                        """,
+                identifier,
+                type,
+                valuesString
+        );
+    }
+
+    private byte getDistinctCount(SSCParser.FlagsSpecifierContext ctx,
+                                  SSCParser.FlagsInitializerListContext valuesListCtx,
+                                  Map<String, Long> valuesMap) {
+        byte distinctCount = 0;
+        long nextValue = 1;
+        for (final SSCParser.FlagsInitializerContext initializer : valuesListCtx.flagsInitializer()) {
+            final List<String> identifiers = initializer
+                    .Identifier()
+                    .stream()
+                    .skip(1)
+                    .map(TerminalNode::getText)
+                    .toList();
+
+            final long currValue;
+            if (initializer.Identifier().size() > 1) {
+                currValue = getFlagValue(valuesMap, identifiers, initializer);
+            } else {
+                currValue = nextValue;
+                nextValue *= 2;
+            }
+
+            final Long rv = valuesMap.put(initializer.Identifier(0).getText(), currValue);
+            if (rv != null) {
+                throw getSSCSyntaxException("Duplicate identifier in flags specifier", initializer);
+            }
+
+            ++distinctCount;
+            if (distinctCount > 64) {
+                throw getSSCSyntaxException("Too many flags in flags specifier (max is 64)", ctx);
+            }
+        }
+        return distinctCount;
     }
 }
