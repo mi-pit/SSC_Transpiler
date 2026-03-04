@@ -5,51 +5,71 @@ import cz.mipit.sscc.util.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
-public record SuperStruct(String name, List<SSMember> members) {
-    public SuperStruct(@NotNull final String name,
-                       @NotNull final List<SSMember> members) {
+public class SuperStruct {
+    private final String name;
+    private final List<SSMember> members;
+
+    public SuperStruct(@NotNull final String name) {
         this.name = Objects.requireNonNull(name);
-        this.members = Objects.requireNonNull(members);
+        this.members = new ArrayList<>();
     }
 
     public String convert() {
-        final StringBuilder result = new StringBuilder();
+        final StringBuilder resultBuilder = new StringBuilder();
 
-        result.append(String.format("superstruct %s {\n", name));
+        resultBuilder.append(String.format("struct %s {%n", name));
         for (SSMember member : members) {
-            member.data().getLeft().ifPresent(field -> result
+            member.data().getLeft().ifPresent(field -> resultBuilder
                     /* do a little bit of formatting for mid-compilation error messages */
                     .append("    ")
                     .append(field.getWhole())
-                    .append(";\n"));
+                    .append(";")
+                    .append(System.lineSeparator())
+            );
         }
-        result.append("};\n");
+        resultBuilder
+                .append("};")
+                .append(System.lineSeparator());
 
-        getForwardDeclarations(result);
+        appendFunctions(resultBuilder, FunctionDefinition::getDeclaration);
+        appendFunctions(resultBuilder, FunctionDefinition::getDefinition);
 
-        for (SSMember member : members) {
-            member.data().getRight().ifPresent(functionDefinition ->
-                    result.append(functionDefinition.getDefinition()));
-        }
-
-        return result.toString();
+        return resultBuilder.toString();
     }
 
-    private void getForwardDeclarations(final StringBuilder result) {
-        for (SSMember member : members) {
+    private void appendFunctions(final StringBuilder resultBuilder,
+                                 final Function<FunctionDefinition, String> function) {
+        for (final SSMember member : members) {
             member.data().getRight().ifPresent(fnDef ->
-                    result.append(fnDef.getDeclaration()).append(System.lineSeparator()));
+                    resultBuilder
+                            .append(function.apply(fnDef))
+                            .append(System.lineSeparator())
+            );
         }
     }
 
-    public List<FunctionDefinition> getFunctions() {
-        final List<FunctionDefinition> result = new ArrayList<>();
-        for (SSMember member : members) {
-            if (member.data().getRight().isPresent()) {
-                result.add(member.data().getRight().get());
-            }
-        }
-        return result;
+    public Set<FunctionDefinition> getFunctions() {
+        return members.stream()
+                .map(member -> member.data().getRight())
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .collect(Collectors.toSet());
+    }
+
+    public String name() {
+        return name;
+    }
+
+    public List<SSMember> members() {
+        return members;
+    }
+
+    public void addMember(SSMember member) {
+        members.add(member);
     }
 }

@@ -1,4 +1,4 @@
-package cz.mipit.sscc.util;
+package cz.mipit.sscc.util.collection;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -39,7 +39,7 @@ public final class Range implements Collection<Integer> {
 
     public boolean contains(Object o) {
         if (o instanceof Number n) {
-            return n.doubleValue() >= start && n.doubleValue() <= end;
+            return n.doubleValue() >= start && n.doubleValue() < end;
         }
         return false;
     }
@@ -79,7 +79,7 @@ public final class Range implements Collection<Integer> {
 
 
     private class Iter implements Iterator<Integer> {
-        int curr;
+        int curr = start;
 
         @Override
         public boolean hasNext() {

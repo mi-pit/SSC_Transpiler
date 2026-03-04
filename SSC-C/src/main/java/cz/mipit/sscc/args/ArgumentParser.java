@@ -22,7 +22,7 @@ public final class ArgumentParser {
 
     private static void printHelpAndExit() {
         System.out.print(HELP_STRING);
-        for (final Option<?> option : SSCCOptions.withDefaults()) {
+        for (final Option<?> option : SSCCOptions.newWithDefaults()) {
             option.print();
         }
         System.exit(0);
@@ -122,6 +122,6 @@ public final class ArgumentParser {
     }
 
     private ArgumentParser() {
-        options = SSCCOptions.withDefaults();
+        options = SSCCOptions.newWithDefaults();
     }
 }

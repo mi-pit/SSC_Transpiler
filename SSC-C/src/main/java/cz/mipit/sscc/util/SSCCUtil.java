@@ -1,5 +1,6 @@
 package cz.mipit.sscc.util;
 
+import antlr.ssc.SSCParser;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
@@ -12,6 +13,18 @@ import static java.lang.System.lineSeparator;
 
 public final class SSCCUtil {
     private SSCCUtil() {
+    }
+
+    public static int getPointerLevel(SSCParser.DeclaratorContext declarator) {
+        if (declarator == null) {
+            return 0;
+        }
+
+        int count = 0;
+        for (SSCParser.PointerContext ptrCtx : declarator.pointer()) {
+            count += ptrCtx.Star().size();
+        }
+        return count;
     }
 
     public static class Text {

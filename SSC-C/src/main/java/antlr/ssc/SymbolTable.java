@@ -1,5 +1,6 @@
 package antlr.ssc;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Stack;
 
@@ -23,6 +24,8 @@ public class SymbolTable {
         define(createSymbol("enum", TypeClassification.EnumSpecifier_));
 
         /* SSC */
+        define(createSymbol("flagset", TypeClassification.EnumSpecifier_));
+
         define(createSymbol("superstruct", TypeClassification.StorageClassSpecifier_));
 
         define(createSymbol("struct", TypeClassification.StorageClassSpecifier_));
@@ -35,6 +38,7 @@ public class SymbolTable {
         define(createSymbol("_Nonnull", TypeClassification.TypeQualifier_));
         define(createSymbol("_Atomic", TypeClassification.TypeQualifier_, TypeClassification.AtomicTypeSpecifier_));
 
+        // mac
         define(createSymbol("__uint128_t", TypeClassification.TypeSpecifier_));
 
         define(createSymbol("void", TypeClassification.TypeSpecifier_));
@@ -127,10 +131,7 @@ public class SymbolTable {
     private Symbol createSymbol(String name, TypeClassification... classifications) {
         Symbol symbol = new Symbol();
         symbol.setName(name);
-        HashSet<TypeClassification> classSet = new HashSet<>();
-        for (TypeClassification c : classifications) {
-            classSet.add(c);
-        }
+        HashSet<TypeClassification> classSet = new HashSet<>(Arrays.asList(classifications));
         symbol.setClassification(classSet);
         symbol.setPredefined(true);
         return symbol;

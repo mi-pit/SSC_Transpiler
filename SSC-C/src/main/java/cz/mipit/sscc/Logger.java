@@ -68,7 +68,7 @@ public final class Logger {
     }
 
     public Logger() {
-        this(SSCCOptions.withDefaults());
+        this(SSCCOptions.newWithDefaults());
     }
 
     public void setOptions(final SSCCOptions options) {
@@ -115,6 +115,6 @@ public final class Logger {
     }
 
     public void printVerboseFilename(String a, String b) {
-        printVerbose("%s'" + COLOR_DEFAULT + "%s" + VERBOSE_COLOR + "'", a, b);
+        printVerbose("%s: '" + COLOR_DEFAULT + "%s" + VERBOSE_COLOR + "'", a, b);
     }
 }

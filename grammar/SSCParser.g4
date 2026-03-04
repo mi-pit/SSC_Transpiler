@@ -26,20 +26,23 @@
  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-/** SSC grammar based on the antlr
-  * C 2011 grammar built from the C11 Spec */
+/** C 2011 grammar built from the C11 Spec */
 
+// $antlr-format alignTrailingComments true, columnLimit 150, minEmptyLines 1, maxEmptyLinesToKeep 1, reflowComments false, useTab false
+// $antlr-format allowShortRulesOnASingleLine false, allowShortBlocksOnASingleLine true, alignSemicolons hanging, alignColons hanging
 
-grammar SSC;
+parser grammar SSCParser;
 
 options {
     superClass=SSCParserBase;
+    tokenVocab=SSCLexer;
 }
 
+// Insert here @header for parser.
 
 // compilationUnit
 compilationUnit
-    : translationUnit? EOF
+    : translationUnit? {this.OutputSymbolTable();} EOF
     ;
 
 // ISO C: token (6.4.1) - No ANTLR4 rule
@@ -167,17 +170,16 @@ genericAssociation
 
 // ISO C: postfix-expression (6.5.3.1)
 postfixExpression
-    :
-    (
+    : (
         primaryExpression
          | '__extension__'? '(' typeName ')' '{' initializerList ','? '}'
     ) (
         '[' expression ']'
          | '(' argumentExpressionList? ')'                           /* function call / macro invocation */
-         | '::'          Identifier '(' argumentExpressionList? ')'  // Static superstruct function call
-         | '::'          Identifier                                  // Static superstruct function reference
-         | ('.' | '->')  Identifier '(' argumentExpressionList? ')'  // Object method call
-         | ('.' | '->')  Identifier                                  // Attribute access (plain C) TODO: CHECK reference
+         | '::'          Identifier '(' argumentExpressionList? ')'  // SSC: Static superstruct function call
+         | '::'          Identifier                                  // SSC: Superstruct function reference
+         | ('.' | '->')  Identifier '(' argumentExpressionList? ')'  // SSC: Object method call
+         | ('.' | '->')  Identifier                                  // Attribute access (plain C)
          | '++'
          | '--'
     )*
@@ -268,15 +270,24 @@ logicalOrExpression
     ;
 
 // ISO C: conditional-expression (6.5.16)
+// ISO C: conditional-expression (6.5.16)
 conditionalExpression
-    : logicalOrExpression (ternaryExpressionThen expression ternaryExpressionElse conditionalExpression)?
+    : logicalOrExpression
+    | If? /* SSC */
+            logicalOrExpression
+            ternaryExpressionThen /* SSC */
+            expression
+            ternaryExpressionElse /* SSC */
+            conditionalExpression
     ;
 
+// SSC
 ternaryExpressionThen
     : '?'
-    | 'then'
+    | Then
     ;
 
+// SSC
 ternaryExpressionElse
     : ':'
     | 'else'
@@ -312,7 +323,7 @@ declaration
 
 // ISO C: declaration-specifiers (6.7.1)
 declarationSpecifiers
-    : ({this.IsDeclarationSpecifier()}? declarationSpecifier )+
+    : ({ this.IsDeclarationSpecifier()}? declarationSpecifier )+
     ;
 
 // ISO C: declaration-specifier (6.7.1)
@@ -366,20 +377,22 @@ typeSpecifier
     | '__m128'
     | '__m128d'
     | '__m128i'
-    | '__uint128_t'
+    | A__uint128_t
     | '__extension__' '(' ('__m128' | '__m128d' | '__m128i') ')'
     | atomicTypeSpecifier
+    | superStructSpecifier // SSC
     | structOrUnionSpecifier
-    | superStructSpecifier
     | enumSpecifier
+    | flagsSpecifier // SSC
     | '__extension__'? typedefName
     | typeofSpecifier
+    | '__builtin_va_list'
     ;
 
 // SSC: superstruct
 superStructSpecifier
-    : 'superstruct' Identifier '{' superStructBody '}'
-    | 'superstruct' Identifier
+    : Superstruct Identifier '{' superStructBody '}'
+    | Superstruct Identifier
     ;
 
 superStructBody
@@ -447,6 +460,23 @@ enumSpecifier
     | 'enum' Identifier enumTypeSpecifier?
     ;
 
+// SSC
+flagsSpecifier
+    : FlagsSet attributeSpecifierSequence? gnuAttributes? Identifier? '{' flagsInitializerList ','? '}'
+    | FlagsSet Identifier
+    ;
+
+// SSC
+flagsInitializerList
+    : flagsInitializer (',' flagsInitializer)*
+    ;
+
+// SSC
+flagsInitializer
+    : Identifier
+    | Identifier '=' Identifier ('|' Identifier)*
+    ;
+
 // ISO C: enumerator-list (6.7.3.3)
 enumeratorList
     : enumerator (',' enumerator)*
@@ -484,8 +514,6 @@ typeQualifier
     | Restrict
     | Volatile
     | '_Atomic'
-    | '_Nonnull'
-    | '_Nullable'
     ;
 
 // ISO C: function-specifier (6.7.5)
@@ -498,8 +526,8 @@ functionSpecifier
 		| Restrict // CLANG
 		| 'deprecated' '(' StringLiteral? ')'
 		) ')'
-    | Pure
-    | Private
+    | Pure      // SSC
+    | Private   // SSC
     ;
 
 // ISO C: alignment-specifier (6.7.6)
@@ -549,8 +577,8 @@ typeQualifierList
 
 // ISO C: parameter-type-list (6.7.7.1)
 parameterTypeList
-    : parameterList (',' Ellipsis)?
-    | Ellipsis
+    : parameterList (',' '...')?
+    | '...'
     ;
 
 // ISO C: parameter-list (6.7.7.1)
@@ -788,7 +816,6 @@ externalDeclaration
 	| ';' // stray ;
 	| asmDefinition // GCC
 	)
-	| sscIncludeDirective
     ;
 
 // SSC: internal
@@ -798,9 +825,7 @@ sscIncludeDirective
 
 // ISO C: function-definition (6.9.2)
 functionDefinition
-    : attributeSpecifierSequence? declarationSpecifiers? declarator
-            declarationList? // todo? remove
-     functionBody
+    : attributeSpecifierSequence? declarationSpecifiers? declarator declarationList? functionBody
     ;
 
 // declarationList
@@ -862,7 +887,7 @@ identifierList
 // GNU: gnuArrayDesignator
 // https://github.com/gcc-mirror/gcc/blob/77ab3b07385f23b39a2445011068c04e0872b481/gcc/c/c-parser.cc#L6548-L6549
 gnuArrayDesignator
-    : '[' constantExpression (Ellipsis constantExpression)? ']'
+    : '[' constantExpression ('...' constantExpression)? ']'
     ;
 
 // GNU: gnuIdentifier
@@ -967,698 +992,4 @@ vcSpecificModifer
     | '__fastcall'
     | '__thiscall'
     | '__vectorcall'
-    ;
-
-
-// SSC: internal
-SSCDirective
-    : '@sscpreprocessor_include' ~('\r' | '\n')+
-    ;
-
-Attribute: '__attribute__' | '__attribute' ;
-KW__builtin_offsetof: '__builtin_offsetof';
-KW__builtin_va_arg: '__builtin_va_arg';
-KW__builtin_choose_expr: '__builtin_choose_expr';
-KW__builtin_types_compatible_p: '__builtin_types_compatible_p';
-KW__builtin_tgmath: '__builtin_tgmath';
-KW__builtin_complex: '__builtin_complex';
-KW__cdecl: '__cdecl';
-KW__clrcall: '__clrcall';
-KW__declspec: '__declspec';
-KW__extension__: '__extension__';
-KW__fastcall: '__fastcall';
-KW__m128: '__m128';
-KW__m128d: '__m128d';
-KW__m128i: '__m128i';
-KW__stdcall: '__stdcall';
-KW__thiscall: '__thiscall';
-KW__vectorcall: '__vectorcall';
-KW__real__: '__real__';
-KW__imag__: '__imag__';
-KW__func__: '__func__';
-KW__FUNCTION__: '__FUNCTION__';
-KW__PRETTY_FUNCTION__: '__PRETTY_FUNCTION__';
-
-A__uint128_t: '__uint128_t';
-
-
-Alignas
-    : 'alignas'
-    | '_Alignas'
-    ;
-
-Alignof
-    : 'alignof'
-    | '_Alignof'
-    | '__alignof__' // GNU
-    | '__alignof'
-    ;
-
-Asm
-    : 'asm'
-    | '__asm'
-    | '__asm__'
-    ;
-
-Auto
-    : 'auto'
-    ;
-
-Bool
-    : 'bool'
-    | '_Bool'
-    ;
-
-Break
-    : 'break'
-    ;
-
-Case
-    : 'case'
-    ;
-
-Char
-    : 'char'
-    ;
-
-Const
-    : 'const'
-    ;
-
-Constexpr
-    : 'constexpr'
-    ;
-
-Continue
-    : 'continue'
-    ;
-
-Default
-    : 'default'
-    ;
-
-Deprecated
-    : 'deprecated' // CLANG
-    ;
-
-Do
-    : 'do'
-    ;
-
-Double
-    : 'double'
-    ;
-
-Else
-    : 'else'
-    ;
-
-Enum
-    : 'enum'
-    ;
-
-Extern
-    : 'extern'
-    ;
-
-False_
-    : 'false'
-    ;
-
-Float
-    : 'float'
-    ;
-
-For
-    : 'for'
-    ;
-
-Goto
-    : 'goto'
-    ;
-
-If
-    : 'if'
-    ;
-
-Inline
-    : 'inline'
-    | '__inline__'
-    | '__inline'
-    ;
-
-Int
-    : 'int'
-    ;
-
-Label
-    : '__label__' // gnu
-    ;
-
-Long
-    : 'long'
-    ;
-
-Nulptr
-    : 'nullptr'
-    ;
-
-Private
-    : 'private'
-    ;
-
-Pure
-    : 'pure'
-    ;
-
-Register
-    : 'register'
-    ;
-
-Restrict
-    : 'restrict'
-    | '__restrict__'
-    | '__restrict'
-    ;
-
-Return
-    : 'return'
-    ;
-
-Short
-    : 'short'
-    ;
-
-Signed
-    : 'signed'
-    ;
-
-Sizeof
-    : 'sizeof'
-    ;
-
-Static
-    : 'static'
-    ;
-
-Static_assert
-    : 'static_assert'
-    ;
-
-Struct
-    : 'struct'
-    ;
-
-Superstruct
-    : 'superstruct'
-    ;
-
-Switch
-    : 'switch'
-    ;
-
-True_
-    : 'true'
-    ;
-
-Typedef
-    : 'typedef'
-    ;
-
-Typeof
-    : 'typeof'
-    | '__typeof__' //GNU
-    | '__typeof' // GNU
-    ;
-
-Typeof_unqual
-    : 'typeof_unequal'
-    | '__typeof_unequal__' //GNU
-    ;
-
-Union
-    : 'union'
-    ;
-
-Unsigned
-    : 'unsigned'
-    ;
-
-Void
-    : 'void'
-    ;
-
-Volatile
-    : 'volatile'
-    | '__volatile__'
-    ;
-
-While
-    : 'while'
-    ;
-
-Atomic
-    : '_Atomic'
-    ;
-
-BitInt
-    : '_BitInt'
-    ;
-
-Complex
-    : '_Complex'
-    ;
-
-Decimal128
-    : '_Decimal128'
-    ;
-
-Decimal32
-    : '_Decimal32'
-    ;
-
-Decimal64
-    : '_Decimal64'
-    ;
-
-Generic
-    : '_Generic'
-    ;
-
-Imaginary
-    : '_Imaginary'
-    ;
-
-Noreturn
-    : '_Noreturn'
-    ;
-
-StaticAssert
-    : '_Static_assert'
-    ;
-
-ThreadLocal
-    : '_Thread_local'
-    | 'thread_local'
-    ;
-
-LeftParen
-    : '('
-    ;
-
-RightParen
-    : ')'
-    ;
-
-LeftBracket
-    : '['
-    ;
-
-RightBracket
-    : ']'
-    ;
-
-LeftBrace
-    : '{'
-    ;
-
-RightBrace
-    : '}'
-    ;
-
-Less
-    : '<'
-    ;
-
-LessEqual
-    : '<='
-    ;
-
-Greater
-    : '>'
-    ;
-
-GreaterEqual
-    : '>='
-    ;
-
-LeftShift
-    : '<<'
-    ;
-
-RightShift
-    : '>>'
-    ;
-
-Plus
-    : '+'
-    ;
-
-PlusPlus
-    : '++'
-    ;
-
-Minus
-    : '-'
-    ;
-
-MinusMinus
-    : '--'
-    ;
-
-Star
-    : '*'
-    ;
-
-Div
-    : '/'
-    ;
-
-Mod
-    : '%'
-    ;
-
-And
-    : '&'
-    ;
-
-Or
-    : '|'
-    ;
-
-AndAnd
-    : '&&'
-    ;
-
-OrOr
-    : '||'
-    ;
-
-Caret
-    : '^'
-    ;
-
-Not
-    : '!'
-    ;
-
-Tilde
-    : '~'
-    ;
-
-Question
-    : '?'
-    ;
-
-Colon
-    : ':'
-    ;
-
-Semi
-    : ';'
-    ;
-
-Comma
-    : ','
-    ;
-
-Assign
-    : '='
-    ;
-
-// '*=' | '/=' | '%=' | '+=' | '-=' | '<<=' | '>>=' | '&=' | '^=' | '|='
-StarAssign
-    : '*='
-    ;
-
-DivAssign
-    : '/='
-    ;
-
-ModAssign
-    : '%='
-    ;
-
-PlusAssign
-    : '+='
-    ;
-
-MinusAssign
-    : '-='
-    ;
-
-LeftShiftAssign
-    : '<<='
-    ;
-
-RightShiftAssign
-    : '>>='
-    ;
-
-AndAssign
-    : '&='
-    ;
-
-XorAssign
-    : '^='
-    ;
-
-OrAssign
-    : '|='
-    ;
-
-Equal
-    : '=='
-    ;
-
-NotEqual
-    : '!='
-    ;
-
-Arrow
-    : '->'
-    ;
-
-Dot
-    : '.'
-    ;
-
-DoubleColon
-    : '::'
-    ;
-
-Ellipsis
-    : '...'
-    ;
-
-Identifier
-    : IdentifierNondigit (IdentifierNondigit | Digit)*
-    ;
-
-fragment IdentifierNondigit
-    : Nondigit
-    | UniversalCharacterName
-    //|   // other implementation-defined characters...
-    ;
-
-fragment Nondigit
-    : [a-zA-Z_]
-    ;
-
-fragment Digit
-    : [0-9]
-    ;
-
-fragment UniversalCharacterName
-    : '\\u' HexQuad
-    | '\\U' HexQuad HexQuad
-    ;
-
-fragment HexQuad
-    : HexadecimalDigit HexadecimalDigit HexadecimalDigit HexadecimalDigit
-    ;
-
-IntegerConstant
-    : DecimalConstant IntegerSuffix?
-    | OctalConstant IntegerSuffix?
-    | HexadecimalConstant IntegerSuffix?
-    | BinaryConstant
-    ;
-
-fragment BinaryConstant
-    : '0' [bB] [0-1]+
-    ;
-
-fragment DecimalConstant
-    : NonzeroDigit Digit*
-    ;
-
-fragment OctalConstant
-    : '0' OctalDigit*
-    ;
-
-fragment HexadecimalConstant
-    : HexadecimalPrefix HexadecimalDigit+
-    ;
-
-fragment HexadecimalPrefix
-    : '0' [xX]
-    ;
-
-fragment NonzeroDigit
-    : [1-9]
-    ;
-
-fragment OctalDigit
-    : [0-7]
-    ;
-
-fragment HexadecimalDigit
-    : [0-9a-fA-F]
-    ;
-
-fragment IntegerSuffix
-    : UnsignedSuffix LongSuffix?
-    | UnsignedSuffix LongLongSuffix
-    | LongSuffix UnsignedSuffix?
-    | LongLongSuffix UnsignedSuffix?
-    ;
-
-fragment UnsignedSuffix
-    : [uU]
-    ;
-
-fragment LongSuffix
-    : [lL]
-    ;
-
-fragment LongLongSuffix
-    : 'll'
-    | 'LL'
-    ;
-
-FloatingConstant
-    : DecimalFloatingConstant
-    | HexadecimalFloatingConstant
-    ;
-
-fragment DecimalFloatingConstant
-    : FractionalConstant ExponentPart? FloatingSuffix?
-    | DigitSequence ExponentPart FloatingSuffix?
-    ;
-
-fragment HexadecimalFloatingConstant
-    : HexadecimalPrefix (HexadecimalFractionalConstant | HexadecimalDigitSequence) BinaryExponentPart FloatingSuffix?
-    ;
-
-fragment FractionalConstant
-    : DigitSequence? '.' DigitSequence
-    | DigitSequence '.'
-    ;
-
-fragment ExponentPart
-    : [eE] Sign? DigitSequence
-    ;
-
-fragment Sign
-    : [+-]
-    ;
-
-DigitSequence
-    : Digit+
-    ;
-
-fragment HexadecimalFractionalConstant
-    : HexadecimalDigitSequence? '.' HexadecimalDigitSequence
-    | HexadecimalDigitSequence '.'
-    ;
-
-fragment BinaryExponentPart
-    : [pP] Sign? DigitSequence
-    ;
-
-fragment HexadecimalDigitSequence
-    : HexadecimalDigit+
-    ;
-
-fragment FloatingSuffix
-    : [Ff]
-    | [Ll]
-    | [Dd][Ff]
-    | [Dd][Dd]
-    | [Dd][Ll]
-    | [Ff] '16'
-    | [Ff] '32'
-    | [Ff] '64'
-    | [Ff] '128'
-    | [Bb][Ff] '16'
-    ;
-
-CharacterConstant
-    : '\'' CCharSequence '\''
-    | 'L\'' CCharSequence '\''
-    | 'u\'' CCharSequence '\''
-    | 'U\'' CCharSequence '\''
-    ;
-
-fragment CCharSequence
-    : CChar+
-    ;
-
-fragment CChar
-    : ~['\\\r\n]
-    | EscapeSequence
-    ;
-
-fragment EscapeSequence
-    : SimpleEscapeSequence
-    | OctalEscapeSequence
-    | HexadecimalEscapeSequence
-    | UniversalCharacterName
-    ;
-
-fragment SimpleEscapeSequence
-    : '\\' ['"?abfnrtv\\]
-    ;
-
-fragment OctalEscapeSequence
-    : '\\' OctalDigit OctalDigit? OctalDigit?
-    ;
-
-fragment HexadecimalEscapeSequence
-    : '\\x' HexadecimalDigit+
-    ;
-
-StringLiteral
-    : EncodingPrefix? '"' SCharSequence? '"' ([ \n\r\t]+ EncodingPrefix? '"' SCharSequence? '"')*
-    ;
-
-fragment EncodingPrefix
-    : 'u8'
-    | 'u'
-    | 'U'
-    | 'L'
-    ;
-
-fragment SCharSequence
-    : SChar+
-    ;
-
-fragment SChar
-    : ~["\\\r\n]
-    | EscapeSequence
-    | '\\\n'   // Added line
-    | '\\\r\n' // Added line
-    ;
-
-Directive
-    : '#' ~('\n' | '\r')+ -> channel(HIDDEN)
-    ;
-
-Whitespace
-    : [ \t]+ -> channel(HIDDEN)
-    ;
-
-Newline
-    : ('\r' '\n'? | '\n') -> channel(HIDDEN)
     ;

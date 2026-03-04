@@ -5,6 +5,6 @@ import cz.mipit.sscc.util.ExitValue;
 
 import java.io.IOException;
 
-public interface Processor {
+public interface Compiler {
     ExitValue run() throws IOException, InterruptedException, SSCTranspilerException;
 }

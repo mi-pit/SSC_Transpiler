@@ -1,17 +1,16 @@
 package cz.mipit.sscc.ssc.compiler;
 
 import cz.mipit.sscc.Logger;
+import cz.mipit.sscc.Main;
 import cz.mipit.sscc.args.SSCCOptions;
 import cz.mipit.sscc.file.InputFile;
-import cz.mipit.sscc.ssc.Processor;
-import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
-import cz.mipit.sscc.ssc.compiler.visitors.ExpressionConvertorVisitor;
-import cz.mipit.sscc.ssc.compiler.visitors.SSCConvertorVisitor;
+import cz.mipit.sscc.ssc.Compiler;
+import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.visitors.SuperstructConvertorVisitor;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.util.ExitValue;
-import cz.mipit.sscc.util.ListBuilder;
 import cz.mipit.sscc.util.VisitorData;
+import cz.mipit.sscc.util.collection.builder.ListBuilder;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 
@@ -28,20 +27,20 @@ import static cz.mipit.sscc.Logger.errReturn;
 import static cz.mipit.sscc.Logger.warn;
 import static cz.mipit.sscc.Main.logger;
 
-public final class SSCCompiler implements Processor {
+public final class SSCCompiler implements Compiler {
     public static final Path SSCLIB_HOME;
 
     static {
         final String ssclibHomeEnv = System.getenv("SSCLIB_HOME");
         if (ssclibHomeEnv == null) {
-            Logger.errExit(ExitValue.LIBRARY_NOT_FOUND, "could not find ssc library: SSCLIB_HOME not set");
+            Logger.errExit(ExitValue.LIBRARY_NOT_FOUND, "SSCLIB_HOME not set");
             throw new AssertionError("unreachable");
         }
 
         final Path asPath = Path.of(ssclibHomeEnv);
 
         if (!Files.exists(asPath)) {
-            Logger.errExit(ExitValue.LIBRARY_NOT_FOUND, "could not find ssc library: " + ssclibHomeEnv);
+            Logger.errExit(ExitValue.LIBRARY_NOT_FOUND, "file doesn't exist: " + ssclibHomeEnv);
         }
 
         if (!Files.isDirectory(asPath)) {
@@ -50,8 +49,6 @@ public final class SSCCompiler implements Processor {
 
         SSCLIB_HOME = asPath;
     }
-
-    private final Set<SuperStruct> sss = new HashSet<>();
 
     private final SSCCOptions options;
 
@@ -74,9 +71,9 @@ public final class SSCCompiler implements Processor {
 
         final ListBuilder<String> cc = ListBuilder
                 .from("cc")
-                .add("-I" + SSCLIB_HOME + "/include/")
-                .addAll(CC_OPTIONS)
-                .add("--std=c2x");
+                .plus("-I" + SSCLIB_HOME + "/include/")
+                .plusMany(CC_OPTIONS)
+                .plus("--std=c2x");
 
         ccProcessArgBase = cc.build();
     }
@@ -101,7 +98,7 @@ public final class SSCCompiler implements Processor {
             }
 
             for (final Path path : outputtedFiles) {
-                logger.printVerbose("Deleting output file '%s'...", path);
+                logger.printVerboseFilename("Deleting output file", path.toString());
                 try {
                     Files.delete(path);
                 } catch (IOException e) {
@@ -147,8 +144,7 @@ public final class SSCCompiler implements Processor {
                     break;
                 }
             } finally {
-                logger.printVerbose("Processed '%s'", fileArg.absolutePathString());
-                sss.clear();
+                logger.printVerboseFilename("Processed", fileArg.absolutePathString());
             }
         }
         return totalFailed;
@@ -172,7 +168,7 @@ public final class SSCCompiler implements Processor {
 
     private Optional<Path> transpileFile(final InputFile inputFile)
             throws IOException, InterruptedException {
-        logger.printVerboseFilename("Processing file: ", inputFile.absolutePathString());
+        logger.printVerboseFilename("Processing file", inputFile.absolutePathString());
 
         final InputFile workingFile = inputFile.getChangedSuffix("c");
         final Path workingFileAbsolutePath = workingFile.toAbsolutePath();
@@ -183,42 +179,18 @@ public final class SSCCompiler implements Processor {
             return Optional.empty();
         }
 
-        {
-            logger.printVerbose("Extracting superstructs...");
-            final VisitorData data = VisitorData.fromFile(workingFile);
+        logger.printVerbose("Parsing preprocessed code...");
+        final VisitorData data = VisitorData.fromFile(workingFile);
 
-            if (!extractSuperstructMembers(data.tokens(), data.tree(), workingFileAbsolutePath)) {
-                logger.printVerbose("Failed to extract superstructs.");
-                return Optional.empty();
-            }
-        }
-        {
-            logger.printVerbose("Replacing superstruct references...");
-            final VisitorData data = VisitorData.fromFile(workingFile);
-
-            if (!replaceSuperstructCalls(data.tokens(), data.tree(), workingFileAbsolutePath)) {
-                logger.printVerbose("Failed to replace superstruct references.");
-                return Optional.empty();
-            }
-        }
-
-        if (options.debug()) {
-            for (var ss : sss) {
-                logger.printDebug(ss::toString);
-            }
+        logger.printVerbose("Extracting superstructs...");
+        if (!extractSuperstructMembers(data.tokens(), data.tree(), workingFileAbsolutePath)) {
+            logger.printVerbose("Failed to extract superstructs.");
+            return Optional.empty();
         }
 
         if (options.compileTarget().isPresent()) {
             /* don't verify if you're going to compile the files anyway */
             return Optional.of(workingFileAbsolutePath);
-        }
-
-        if (options.debug()) {
-            doProcess(List.of(
-                    "/opt/homebrew/bin/clang-format",
-                    "-i",
-                    workingFileAbsolutePath.toString())
-            );
         }
 
         logger.printVerbose("Verifying...");
@@ -237,30 +209,29 @@ public final class SSCCompiler implements Processor {
             throws IOException {
         final SuperstructConvertorVisitor visitor = new SuperstructConvertorVisitor(tokens, currentFile);
         final String result = visitor.visit(tree);
-        sss.addAll(visitor.getSuperStructs());
+        if (options.debug()) {
+            for (var entry : visitor.functionVariables.entrySet()) {
+                final String funcName = entry.getKey();
+                final Set<SuperstructVariable> variables = entry.getValue();
+                if (variables.isEmpty()) {
+                    continue;
+                }
+
+                Main.logger.printDebug("For scope " + (funcName == null ? "global" : "'" + funcName + "'"));
+                for (final SuperstructVariable variable : variables) {
+                    Main.logger.printDebug("        " + variable);
+                }
+            }
+        }
 
         Files.writeString(outputFile, result, StandardOpenOption.TRUNCATE_EXISTING);
 
         return visitor.hasNoErrors();
     }
 
-    private boolean replaceSuperstructCalls(final CommonTokenStream tokens,
-                                            final ParseTree tree,
-                                            final Path outputFile)
-            throws IOException {
-        final SSCConvertorVisitor visitor = new ExpressionConvertorVisitor(tokens, sss, currentFile);
-        final String result = visitor.visit(tree) + "\n";
-
-        try (final var bw = Files.newBufferedWriter(outputFile, StandardOpenOption.TRUNCATE_EXISTING)) {
-            bw.write(result);
-        }
-
-        return visitor.hasNoErrors();
-    }
-
     private static int doProcess(final List<String> args)
             throws IOException, InterruptedException {
-        logger.printDebug(args::toString);
+        logger.printDebug(() -> String.join(" ", args));
         return new ProcessBuilder(args).inheritIO().start().waitFor();
     }
 
@@ -271,11 +242,10 @@ public final class SSCCompiler implements Processor {
             throws IOException, InterruptedException {
         return 0 == doProcess(ListBuilder
                 .from(ccProcessArgBase)
-                .addAll(
+                .plusMany(
                         "-E",
-                        "-P",
                         "-D" + SSC_DEF_MACRO_STRING_NAME,
-                        "-Davailability(...)=",
+                        "-Davailability(...)=", // TODO? remove
                         "-x", "c", inFile.absolutePathString(),
                         "-o", outputFile.toString()
                 )
@@ -286,8 +256,8 @@ public final class SSCCompiler implements Processor {
     private int verifyCCode(final Path file) throws IOException, InterruptedException {
         return doProcess(ListBuilder
                 .from(ccProcessArgBase)
-                .add("-fsyntax-only")
-                .add(file.toString())
+                .plus("-fsyntax-only")
+                .plus(file.toString())
                 .build()
         );
     }
@@ -296,16 +266,16 @@ public final class SSCCompiler implements Processor {
             throws IOException, InterruptedException {
         final ListBuilder<String> argsBuilder = ListBuilder
                 .from(ccProcessArgBase)
-                .addMapped(files, Path::toString)
+                .plusMapped(files, Path::toString)
 
-                .add("-o")
-                .add(binaryName)
+                .plus("-o")
+                .plus(binaryName)
 
-                .add("-L" + SSCLIB_HOME + "/dylib/")
-                .add("-lssclib")
-                .add("-Wl,-rpath," + SSCLIB_HOME + "/dylib/");
+                .plus("-L" + SSCLIB_HOME + "/dylib/")
+                .plus("-lssclib")
+                .plus("-Wl,-rpath," + SSCLIB_HOME + "/dylib/");
         if (options.debug()) {
-            argsBuilder.add("-v");
+            argsBuilder.plus("-v");
         }
         //                .add("-fsanitize=address")
         //                .add("-fsanitize=undefined")

@@ -49,9 +49,37 @@ One may get references to non-static member functions using the following syntax
 
 ---
 
+### Flag sets
+
+Similar to enums, for easily declaring loads of flags
+without having to assign them manually.
+
+```
+flagset ‹Identifier› {
+    ‹value1›,
+    ‹value2› [= ‹initializer›],
+    ...
+};
+```
+
+Values may be left initialized or uninitialized.
+
+If left uninitialized, they get assigned the lowest available power of two.
+
+Values may not be initialized to any arbitrary value,
+rather only to a bitwise-or of previous values.
+This means that the flag values may be aliased (`flag2 = flag1`) and combined
+(`flag_compound = flag1 | flag2`)
+
+---
+
 ### Ternary operators
 
-You may now use `then` instead of `?` and `else` instead of `:` in a conditional expression
+You may now use `then` instead of `?`, `else` instead of `:` and `if` at the start, in a conditional expression.
+
+`cond ? expr1 : expr2`
+can be written as
+`if cond then expr1 else expr2`
 
 ---
 
@@ -110,13 +138,16 @@ Run `run.sh` or execute the `sscc.jar` with java directly.
 
 #### Options
 
-| Name              | Description                                         |
-|-------------------|-----------------------------------------------------|
-| `-v`              | verbose -- print all stages                         |
-| `-s`              | stop if transpilation of any file fails             |
-| `--lib     ‹dir›` | process all files in the given directory            |
-| `--compile ‹bin›` | compile the output of all given files into a binary |
-| `--debug`         | print debug info                                    |
+| Name | Long name            | Description                                         |
+|------|----------------------|-----------------------------------------------------|
+| `-h` | `--help`             | print help and exit                                 |
+| `-v` | `--verbose`          | verbose -- print all stages                         |
+| `-s` | `--no-stop-on-error` | stop if transpilation of any file fails             |
+| `-d` | `--dir     ‹dir›`    | process all files in the given directory            |
+| `-c` | `--compile ‹bin›`    | compile the output of all given files into a binary |
+|      | `--debug`            | print debug info                                    |
+|      | `--debug!`           | print debug info about antlr parsing                |
+| `--` |                      | treat all following arguments as file names         |
 
 #### Example
 
@@ -126,22 +157,40 @@ Run `run.sh` or execute the `sscc.jar` with java directly.
 
 ## Example code
 
-(other examples are in the `ssc-examples` directory)
-
 ```SSC
+#include <ssclib/headers/core/types.h>
+#include <stdlib.h>
+
+flagset AdderFlags {
+    LIE,
+    TELL_TRUTH,
+    SELF_DESTRUCT,
+};
+
 superstruct Adder {
     int x;
-    
+    private flagset AdderFlags flags;
+
     void add(int add) {
         this->x += add;
     }
-    
+
     void inc() {
         ++this->x;
     }
-    
+
     superstruct Adder *get_own_address() {
-        return this;
+        switch (this->flags) {
+            case LIE:
+                return nullptr;
+            case TELL_TRUTH:
+                return this;
+            case SELF_DESTRUCT:
+                abort();
+
+            default:
+                return this;
+        };
     }
 };
 
@@ -150,10 +199,14 @@ int main(void) {
     // add.x == 0
     add.add( 2 );
     // add.x == 2
-    
+
     superstruct Adder *ptr = calloc(1, sizeof(superstruct Adder));
     // assume non-null; ptr->x == 0
     ptr->inc();
     // ptr->x == 1
+
+    typedef superstruct Adder Adder;
+    Adder *addp = add.get_own_address();
+    (void) addp;
 }
 ```

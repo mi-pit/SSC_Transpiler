@@ -1,8 +1,7 @@
-package cz.mipit.sscc.ssc.compiler;
+package cz.mipit.sscc.ssc.exceptions;
 
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.file.InputFile;
-import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.ssc.exceptions.children.AntlrException;
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CommonTokenStream;

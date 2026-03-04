@@ -1,8 +1,8 @@
 package cz.mipit.sscc.ssc.compiler.visitors;
 
-import antlr.ssc.SSCBaseVisitor;
+import antlr.ssc.SSCLexer;
 import antlr.ssc.SSCParser;
-import cz.mipit.sscc.Logger;
+import antlr.ssc.SSCParserBaseVisitor;
 import cz.mipit.sscc.Main;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
@@ -14,9 +14,13 @@ import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.RuleNode;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
-import static java.lang.System.lineSeparator;
-
-public abstract class SSCConvertorVisitor extends SSCBaseVisitor<String> {
+/**
+ * Abstract class for low-level visitor stuff.
+ * <p>
+ * Other visitors should extend this one.
+ * </p>
+ */
+public abstract class SSCConvertorVisitor extends SSCParserBaseVisitor<String> {
     protected final CommonTokenStream tokens;
     protected final InputFile currentFile;
 
@@ -38,53 +42,96 @@ public abstract class SSCConvertorVisitor extends SSCBaseVisitor<String> {
         return "";
     }
 
+    int level = 0;
+
     @Override
     public String visitChildren(RuleNode node) {
-        final StringBuilder sb = new StringBuilder();
-        final int n = node.getChildCount();
-        for (int i = 0; i < n; i++) {
+        final var builder = new StringBuilder();
+
+        final boolean isOffset = node instanceof SSCParser.FunctionDefinitionContext
+                || node instanceof SSCParser.SuperStructSpecifierContext
+                || node instanceof SSCParser.StructOrUnionContext
+                || node instanceof SSCParser.EnumSpecifierContext
+                || (node instanceof TerminalNode terminalNode
+                && terminalNode.getSymbol().getType() == SSCLexer.LeftBrace);
+
+        if (isOffset) {
+            level++;
+        }
+
+        for (int i = 0; i < node.getChildCount(); i++) {
             try {
-                sb.append(node.getChild(i).accept(this));
-            } catch (SSCSyntaxException e) {
-                printErrorMessage(e);
+                final var child = node.getChild(i);
+                final String childText = child.accept(this);
+
+                if (!builder.isEmpty()
+                        && builder.charAt(builder.length() - 1) != '\n'
+                        && !childText.equals(";")) {
+                    builder.append(" ");
+                }
+
+                builder.append(childText);
+
+                if ((node instanceof TerminalNode terminalNode
+                        && terminalNode.getSymbol().getType() == SSCLexer.LeftBrace)
+                        || child instanceof SSCParser.DeclarationContext
+                        || child instanceof SSCParser.ExternalDeclarationContext
+                        || child instanceof SSCParser.StatementContext) {
+                    builder
+                            .append(System.lineSeparator())
+                            .append(SSCCUtil.Text.INDENT.repeat(level));
+                }
+            } catch (final SSCSyntaxException e) {
                 hasErrors = true;
+                printErrorMessage(e);
             }
         }
-        return sb.toString();
-    }
+        if (isOffset) {
+            level--;
+        }
 
-    private int level = 0;
+        return builder.toString();
+    }
 
     @Override
     public String visitTerminal(TerminalNode node) {
-        if (node.getSymbol().getType() == Token.EOF) {
-            return "";
-        }
+        return switch (node.getSymbol().getType()) {
+            case Token.EOF -> "";
+            case SSCParser.Superstruct -> "struct";
+            case SSCParser.FlagsSet -> "enum";
 
-        if (Main.TOKEN_DEBUG) {
-            final Token token = node.getSymbol();
-            final String symbolicName = SSCParser.VOCABULARY.getSymbolicName(token.getType());
-            Logger.info("token %s ~> %s", node.getText(), symbolicName);
-        }
+            case SSCParser.Then -> "?";
 
-        final String text = node.getText();
-        final String whitespace = switch (node.getSymbol().getType()) {
-            case SSCParser.Semi -> lineSeparator() + "    ".repeat(level);
-            case SSCParser.LeftBrace -> lineSeparator() + "    ".repeat(++level);
-            case SSCParser.RightBrace -> lineSeparator() + "    ".repeat(level > 0 ? --level : level);
-
-            default -> " ";
+            default -> node.getText();
         };
+    }
 
-        return text + whitespace;
+    @Override
+    public String visitConditionalExpression(SSCParser.ConditionalExpressionContext ctx) {
+        final String fstPartString = this.visitLogicalOrExpression(ctx.logicalOrExpression());
+
+        if (ctx.conditionalExpression() == null) {
+            assert ctx.expression() == null;
+            assert ctx.ternaryExpressionThen() == null;
+            assert ctx.ternaryExpressionElse() == null;
+            return fstPartString;
+        }
+
+        final String middlePartString = this.visitExpression(ctx.expression());
+        final String lastPartString = this.visitConditionalExpression(ctx.conditionalExpression());
+        return "%s ? %s : %s".formatted(fstPartString, middlePartString, lastPartString);
     }
 
     @Override
     public String visitSscIncludeDirective(SSCParser.SscIncludeDirectiveContext ctx) {
-        return SSCCUtil.Text.getLiteral(ctx, tokens) + lineSeparator();
+        final String[] s = ctx.SSCDirective().getText().split("<");
+        assert s.length == 2 : "preprocessor emitted invalid directive";
+        final String directive = System.lineSeparator() + "#include <" + s[1] + System.lineSeparator();
+        Main.logger.printDebug(() -> "converted directive: " + directive);
+        return directive;
     }
 
-    protected static void printErrorMessage(final SSCTranspilerException e) {
+    private static void printErrorMessage(final SSCTranspilerException e) {
         System.err.println(e.getMessage());
     }
 
