@@ -1,6 +1,5 @@
 package cz.mipit.sscc.util.collection;
 
-import java.util.Collection;
 import java.util.Iterator;
 
 /**
@@ -13,11 +12,12 @@ import java.util.Iterator;
  *
  * @param <ITEM> item type
  */
-public abstract class CollectionAdapter<ITEM> implements Collection<ITEM> {
-    protected final Collection<ITEM> coll;
+public abstract class CollectionAdapter<ITEM, COLL extends java.util.Collection<ITEM>>
+        implements java.util.Collection<ITEM>, Enumerable<ITEM> {
+    protected final COLL _collection;
 
-    protected CollectionAdapter(Collection<ITEM> coll) {
-        this.coll = coll;
+    protected CollectionAdapter(COLL _collection) {
+        this._collection = _collection;
     }
 
 
@@ -25,79 +25,84 @@ public abstract class CollectionAdapter<ITEM> implements Collection<ITEM> {
 
     @Override
     public int size() {
-        return coll.size();
+        return _collection.size();
     }
 
     @Override
     public boolean isEmpty() {
-        return coll.isEmpty();
+        return _collection.isEmpty();
     }
 
     @Override
     public void clear() {
-        coll.clear();
+        _collection.clear();
     }
 
     @Override
     public boolean contains(Object o) {
-        return coll.contains(o);
+        return _collection.contains(o);
     }
 
     @Override
     public Object[] toArray() {
-        return coll.toArray();
+        return _collection.toArray();
     }
 
     @Override
     public <T> T[] toArray(T[] a) {
-        return coll.toArray(a);
+        return _collection.toArray(a);
     }
 
     @Override
     public boolean add(ITEM item) {
-        return coll.add(item);
+        return _collection.add(item);
     }
 
     @Override
     public boolean remove(Object o) {
-        return coll.remove(o);
+        return _collection.remove(o);
     }
 
     @Override
-    public boolean containsAll(Collection<?> c) {
-        return coll.containsAll(c);
+    public boolean containsAll(java.util.Collection<?> c) {
+        return _collection.containsAll(c);
     }
 
     @Override
-    public boolean addAll(Collection<? extends ITEM> c) {
-        return coll.addAll(c);
+    public boolean addAll(java.util.Collection<? extends ITEM> c) {
+        return _collection.addAll(c);
     }
 
     @Override
-    public boolean removeAll(Collection<?> c) {
-        return coll.removeAll(c);
+    public boolean removeAll(java.util.Collection<?> c) {
+        return _collection.removeAll(c);
     }
 
     @SuppressWarnings("SuspiciousMethodCalls")
     @Override
-    public boolean retainAll(Collection<?> c) {
-        return coll.removeAll(c);
+    public boolean retainAll(java.util.Collection<?> c) {
+        return _collection.removeAll(c);
     }
 
 
     @Override
     public Iterator<ITEM> iterator() {
-        return coll.iterator();
+        return _collection.iterator();
     }
 
     @SuppressWarnings("EqualsDoesntCheckParameterClass")
     @Override
     public boolean equals(Object o) {
-        return coll.equals(o);
+        return _collection.equals(o);
     }
 
     @Override
     public int hashCode() {
-        return coll.hashCode();
+        return _collection.hashCode();
+    }
+
+    @Override
+    public Enumerator<ITEM> enumerator() {
+        return new EnumeratorImpl<>(iterator());
     }
 }

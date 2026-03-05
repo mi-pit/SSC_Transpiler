@@ -1,5 +1,6 @@
 package cz.mipit.sscc.collection;
 
+import cz.mipit.sscc.util.collection.Enumerable;
 import cz.mipit.sscc.util.collection.builder.CollectionBuilder;
 import cz.mipit.sscc.util.collection.builder.HashSetBuilder;
 import cz.mipit.sscc.util.collection.builder.ListBuilder;
@@ -113,7 +114,7 @@ public class TestBuilder {
 
     @Test
     void map() {
-        final ListBuilder<Integer> ints = ListBuilder.from(1).plus(2).plus(3);
+        final ListBuilder<Integer> ints = ListBuilder.with(1).plus(2).plus(3);
         final ListBuilder<Long> longs = ints.map(i -> (long) i);
         final ListBuilder<Double> doubles = ints.map(i -> (double) i);
         final ListBuilder<String> strings = ints.map(String::valueOf);
@@ -136,6 +137,70 @@ public class TestBuilder {
             Assertions.assertTrue(longsList.contains((long) i));
             Assertions.assertTrue(doublesList.contains((double) i));
             Assertions.assertTrue(stringsList.contains(String.valueOf(i)));
+        }
+    }
+
+    @Test
+    void enumerator() {
+        final String[] items = new String[]{
+                "Hello",
+                ", ",
+                "World",
+                "!",
+        };
+
+        final ListBuilder<String> builder = ListBuilder
+                .with("Hello")
+                .plus(", ")
+                .plus("World")
+                .plus("!");
+
+        int realIdx = 0;
+        for (final Enumerable.Entry<String> indexedString : builder.enumerator()) {
+            final int gottenIdx = indexedString.index();
+            Assertions.assertEquals(realIdx, gottenIdx);
+            Assertions.assertEquals(items[gottenIdx], indexedString.item());
+
+            realIdx++;
+        }
+    }
+
+    @Test
+    void nullItems() {
+        final ListBuilder<String> builder = ListBuilder
+                .with("Hello")
+                .plus(null)
+                .plus(", ")
+                .plus("World")
+                .plus("!")
+                .plus(null);
+
+        Assertions.assertDoesNotThrow(builder::build);
+        builder.forEach(s -> System.out.println('\'' + s + '\''));
+    }
+
+    @Test
+    void nullBuilder() {
+        final ListBuilder<ListBuilder<List<Integer>>> builder = ListBuilder.empty();
+        final ListBuilder<?> builder2 = builder.plus(null);
+
+        Assertions.assertSame(builder, builder2);
+        Assertions.assertSame(
+                builder,
+                builder.plusMapped(
+                        Set.of(List.of(1, 2, 3), List.of(4, 5, 6)),
+                        ListBuilder::with
+                )
+        );
+
+        int i = 1;
+        for (final ListBuilder<List<Integer>> listBuilder : builder) {
+            for (final List<Integer> list : listBuilder) {
+                for (final Integer integer : list) {
+                    Assertions.assertNotNull(integer);
+                    Assertions.assertEquals(i++, integer);
+                }
+            }
         }
     }
 }

@@ -3,9 +3,9 @@ package cz.mipit.sscc.util;
 public enum ExitValue {
     SUCCESS /* = 0 */,
     INVALID_ARGUMENTS,
+    LIBRARY_NOT_FOUND,
     TRANSPILATION_FAIL,
     C_COMPILATION_FAIL,
-    LIBRARY_NOT_FOUND,
     ;
 
     public String humanReadable() {

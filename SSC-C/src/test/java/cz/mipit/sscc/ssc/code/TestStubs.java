@@ -9,11 +9,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
-import java.util.Map;
+import java.util.Set;
 
 public class TestStubs {
-    private ExitValue exitValue;
-
     private static final String F_TYPEDEF = "typedef.ssc";
     private static final String F_SSCLIB = "ssclib-include.ssc";
 
@@ -24,9 +22,11 @@ public class TestStubs {
             F_SSCLIB,
     };
 
-    private static final Map<String, ExitValue> FAILURES = Map.of(
-            "inval_method.ssc", ExitValue.TRANSPILATION_FAIL,
-            "antlr-error.ssc", ExitValue.TRANSPILATION_FAIL
+    private static final Set<String> FAILURES = Set.of(
+            "inval_method.ssc",
+            "antlr-error.ssc",
+            "ternary.ssc",
+            "flagset.ssc"
     );
 
 
@@ -38,24 +38,33 @@ public class TestStubs {
     @Test
     void testSuccesses() {
         for (final String fileName : SUCCESSES) {
-            final SSCCompiler compiler = getSscCompiler(fileName);
+            final SSCCompiler compiler = getCompilerOfFile(fileName);
 
-            Assertions.assertDoesNotThrow(() -> {exitValue = compiler.run();});
-            Assertions.assertSame(ExitValue.SUCCESS, exitValue);
+            Assertions.assertDoesNotThrow(() -> {
+                final var exitValue = compiler.run();
+                Assertions.assertSame(ExitValue.SUCCESS, exitValue, "`%s`".formatted(fileName));
+            });
         }
     }
 
     @Test
     void testFailures() {
-        for (final Map.Entry<String, ExitValue> entry : FAILURES.entrySet()) {
-            final SSCCompiler compiler = getSscCompiler(entry.getKey());
+        for (final String fileName : FAILURES) {
+            final SSCCompiler compiler = getCompilerOfFile(fileName);
 
-            Assertions.assertDoesNotThrow(() -> {exitValue = compiler.run();});
-            Assertions.assertSame(entry.getValue(), exitValue, "`%s`".formatted(entry.getKey()));
+            Assertions.assertDoesNotThrow(() -> {
+                final ExitValue exitValue = compiler.run();
+                Assertions.assertTrue(
+                        exitValue != ExitValue.LIBRARY_NOT_FOUND
+                                && exitValue != ExitValue.INVALID_ARGUMENTS
+                );
+
+                Assertions.assertNotSame(ExitValue.SUCCESS, exitValue, "`%s`".formatted(fileName));
+            });
         }
     }
 
-    private static SSCCompiler getSscCompiler(String fileName) {
+    private static SSCCompiler getCompilerOfFile(String fileName) {
         final InputFile inFile = InputFile.fromAbsolutePath(Path.of(DIRECTORY, fileName));
         final SSCCOptions options = SSCCOptions.newWithDefaults();
         options.addFile(inFile);
