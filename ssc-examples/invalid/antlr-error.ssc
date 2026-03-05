@@ -1,5 +1,5 @@
 
-superstruct\
+object\
 Name {
     private int noname;
     public int there_is_no_public_keyword;

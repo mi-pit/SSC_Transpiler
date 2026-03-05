@@ -1,0 +1,7 @@
+# /* comment */ /**/ include /* // ---- */   <ssclib.ssch>
+#/* comment *//**/include/* // ---- */<stdlib.h>
+
+int main( void )
+{
+    return 0;
+}

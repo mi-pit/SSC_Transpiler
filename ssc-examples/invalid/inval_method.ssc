@@ -1,11 +1,11 @@
 #include<stdio.h>
 
-superstruct WithoutTheCalledMethod {
+object WithoutTheCalledMethod {
     int a;
     bool b;
 
-    static superstruct WithoutTheCalledMethod init( void ) {
-        return ( superstruct WithoutTheCalledMethod ) {
+    static object WithoutTheCalledMethod init( void ) {
+        return ( object WithoutTheCalledMethod ) {
             .a = 0,
             .b = false,
         };
@@ -20,12 +20,12 @@ superstruct WithoutTheCalledMethod {
     }
 
     pure void print( void ) {
-        printf( "%i, %s", this->a, this->b then "true" else "false" );
+        printf( "%i, %s", this->a, if this->b then "true" else "false" );
     }
 };
 
 int main() {
-    superstruct WithoutTheCalledMethod s = WithoutTheCalledMethod::init();
+    object WithoutTheCalledMethod s = WithoutTheCalledMethod::init();
     s.set_a( 123 );
     s.set_b( true );
 
@@ -34,11 +34,11 @@ int main() {
     s.nonexistent_method(); // syntax error
     s->set_a( 1 );          // syntax error
 
-    superstruct WithoutTheCalledMethod *p = &s;
+    object WithoutTheCalledMethod *p = &s;
     p->set_a( 1 );
     p.set_b( false );       // syntax error
 
-    superstruct WithoutTheCalledMethod **pp = &p;
+    object WithoutTheCalledMethod **pp = &p;
     pp->set_a( 1 );         // syntax error
     (*pp)->set_b( true );
 }

@@ -3,18 +3,21 @@
 .DS_Store
 
 ssc-examples/*
-!ssc-examples/*.ssc
+ssc-examples/**
+!ssc-examples/**/
+!ssc-examples/**/*.ssc
 
 *.interp
 *.tokens
 *.jar
 
-SSC-C/src/main/java/antlr/**/*.java
-
-!SSC-C/src/main/java/antlr/**/SSCLexerBase.java
-!SSC-C/src/main/java/antlr/**/SSCParserBase.java
-!SSC-C/src/main/java/antlr/**/Symbol.java
-!SSC-C/src/main/java/antlr/**/SymbolTable.java
-!SSC-C/src/main/java/antlr/**/TypeClassification.java
+# Files generated from grammar
+SSC-C/src/main/java/antlr/ssc/*.java
+# Not generated
+!SSC-C/src/main/java/antlr/ssc/SSCLexerBase.java
+!SSC-C/src/main/java/antlr/ssc/SSCParserBase.java
+!SSC-C/src/main/java/antlr/ssc/Symbol.java
+!SSC-C/src/main/java/antlr/ssc/SymbolTable.java
+!SSC-C/src/main/java/antlr/ssc/TypeClassification.java
 
 SSC-C/target
