@@ -242,24 +242,20 @@ Static_assert
     : 'static_assert'
     ;
 
-// SSC: internal
-SSCDirective
-    : '@sscpreprocessor_include' ~('\r' | '\n')+
-    ;
-
 Struct
     : 'struct'
     ;
 
 // SSC
 Superstruct
-    : 'superstruct'
+    : 'object'
     ;
 
 Switch
     : 'switch'
     ;
 
+// SSC
 Then
     : 'then'
     ;

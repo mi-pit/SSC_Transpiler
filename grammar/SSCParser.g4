@@ -272,25 +272,14 @@ logicalOrExpression
 // ISO C: conditional-expression (6.5.16)
 // ISO C: conditional-expression (6.5.16)
 conditionalExpression
-    : logicalOrExpression
-    | If? /* SSC */
-            logicalOrExpression
-            ternaryExpressionThen /* SSC */
-            expression
-            ternaryExpressionElse /* SSC */
-            conditionalExpression
-    ;
-
-// SSC
-ternaryExpressionThen
-    : '?'
-    | Then
-    ;
-
-// SSC
-ternaryExpressionElse
-    : ':'
-    | 'else'
+    : logicalOrExpression (Question expression Colon conditionalExpression)?
+    /* SSC */
+    | 'if'
+        logicalOrExpression
+        'then'
+        expression
+        'else'
+        conditionalExpression
     ;
 
 // ISO C: assignment-expression (6.5.17.1)
@@ -473,8 +462,7 @@ flagsInitializerList
 
 // SSC
 flagsInitializer
-    : Identifier
-    | Identifier '=' Identifier ('|' Identifier)*
+    : Identifier ('=' Identifier ('|' Identifier)*)?
     ;
 
 // ISO C: enumerator-list (6.7.3.3)
@@ -816,11 +804,6 @@ externalDeclaration
 	| ';' // stray ;
 	| asmDefinition // GCC
 	)
-    ;
-
-// SSC: internal
-sscIncludeDirective
-    : SSCDirective
     ;
 
 // ISO C: function-definition (6.9.2)

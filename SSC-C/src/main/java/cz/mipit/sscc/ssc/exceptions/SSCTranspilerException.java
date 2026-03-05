@@ -26,7 +26,7 @@ public class SSCTranspilerException extends RuntimeException {
     public static final int LINES_AFTER = 0;
 
     protected static final ConsoleColor COLOR_FATAL = ConsoleColorFactory.create(Ground.FORE, Color.RED);
-    protected static final ConsoleColor COLOR_ANTLR = ConsoleColorFactory.create(Ground.FORE, Color.MAGENTA);
+    protected static final ConsoleColor COLOR_ANTLR = ConsoleColorFactory.create(Ground.FORE, Color.RED);
 
     protected static final ConsoleColor COLOR_CODE = ConsoleColorFactory.create(Ground.FORE, Color.WHITE);
     protected static final ConsoleColor COLOR_LOCATOR = ConsoleColorFactory.create(Ground.FORE, Color.CYAN);

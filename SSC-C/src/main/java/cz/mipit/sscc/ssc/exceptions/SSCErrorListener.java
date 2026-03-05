@@ -9,12 +9,17 @@ import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
 import org.antlr.v4.runtime.Token;
 
+import java.util.SequencedCollection;
+
 public class SSCErrorListener extends BaseErrorListener {
     private final InputFile inputFile;
+    private final SequencedCollection<AntlrException> errors;
 
-    public SSCErrorListener(InputFile inputFile) {
+    public SSCErrorListener(InputFile inputFile,
+                            SequencedCollection<AntlrException> errors) {
         super();
         this.inputFile = inputFile;
+        this.errors = errors;
     }
 
     @Override
@@ -25,20 +30,17 @@ public class SSCErrorListener extends BaseErrorListener {
                             String msg,
                             RecognitionException e) {
         final Token token = (Token) offendingSymbol;
+        final CommonTokenStream tokenStream = (CommonTokenStream) recognizer.getInputStream();
 
-        final String symbolicName = msg.contains("expected")
+        final String symbolicNameMsg = msg.contains("expected")
                 ? System.lineSeparator() + "    got " + SSCParser.VOCABULARY.getSymbolicName(token.getType())
                 : "";
 
-        print(new AntlrException(
-                msg + symbolicName,
+        errors.add(new AntlrException(
+                msg + symbolicNameMsg,
                 token,
-                (CommonTokenStream) recognizer.getInputStream(),
+                tokenStream,
                 inputFile
         ));
-    }
-
-    private static void print(final SSCTranspilerException e) {
-        System.err.println(e.getMessage());
     }
 }
