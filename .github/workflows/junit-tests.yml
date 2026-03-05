@@ -16,6 +16,8 @@ jobs:
         with:
           distribution: temurin
           java-version: 24
+          cache: maven
 
       - name: Build and run tests
+        working-directory: SSC-C
         run: mvn test
