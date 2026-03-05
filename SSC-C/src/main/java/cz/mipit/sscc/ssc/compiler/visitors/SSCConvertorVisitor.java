@@ -3,7 +3,6 @@ package cz.mipit.sscc.ssc.compiler.visitors;
 import antlr.ssc.SSCLexer;
 import antlr.ssc.SSCParser;
 import antlr.ssc.SSCParserBaseVisitor;
-import cz.mipit.sscc.Main;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.ssc.exceptions.children.SSCSyntaxException;
@@ -33,8 +32,8 @@ public abstract class SSCConvertorVisitor extends SSCParserBaseVisitor<String> {
         hasErrors = false;
     }
 
-    protected SSCSyntaxException getSSCSyntaxException(String message, ParserRuleContext ctx) {
-        return new SSCSyntaxException(message, ctx, tokens, currentFile);
+    public boolean hasNoErrors() {
+        return !hasErrors;
     }
 
     @Override
@@ -42,11 +41,26 @@ public abstract class SSCConvertorVisitor extends SSCParserBaseVisitor<String> {
         return "";
     }
 
-    int level = 0;
+
+    @Override
+    public String visitTerminal(TerminalNode node) {
+        return switch (node.getSymbol().getType()) {
+            case Token.EOF -> "";
+            case SSCParser.Superstruct -> "struct";
+            case SSCParser.FlagsSet -> "enum";
+
+            case SSCParser.Then -> "?";
+
+            default -> node.getText();
+        };
+    }
+
+
+    private int level = 0;
 
     @Override
     public String visitChildren(RuleNode node) {
-        final var builder = new StringBuilder();
+        final StringBuilder builder = new StringBuilder();
 
         final boolean isOffset = node instanceof SSCParser.FunctionDefinitionContext
                 || node instanceof SSCParser.SuperStructSpecifierContext
@@ -81,9 +95,9 @@ public abstract class SSCConvertorVisitor extends SSCParserBaseVisitor<String> {
                             .append(System.lineSeparator())
                             .append(SSCCUtil.Text.INDENT.repeat(level));
                 }
-            } catch (final SSCSyntaxException e) {
+            } catch (final SSCTranspilerException e) {
                 hasErrors = true;
-                printErrorMessage(e);
+                System.err.println(e.getMessage());
             }
         }
         if (isOffset) {
@@ -93,49 +107,7 @@ public abstract class SSCConvertorVisitor extends SSCParserBaseVisitor<String> {
         return builder.toString();
     }
 
-    @Override
-    public String visitTerminal(TerminalNode node) {
-        return switch (node.getSymbol().getType()) {
-            case Token.EOF -> "";
-            case SSCParser.Superstruct -> "struct";
-            case SSCParser.FlagsSet -> "enum";
-
-            case SSCParser.Then -> "?";
-
-            default -> node.getText();
-        };
-    }
-
-    @Override
-    public String visitConditionalExpression(SSCParser.ConditionalExpressionContext ctx) {
-        final String fstPartString = this.visitLogicalOrExpression(ctx.logicalOrExpression());
-
-        if (ctx.conditionalExpression() == null) {
-            assert ctx.expression() == null;
-            assert ctx.ternaryExpressionThen() == null;
-            assert ctx.ternaryExpressionElse() == null;
-            return fstPartString;
-        }
-
-        final String middlePartString = this.visitExpression(ctx.expression());
-        final String lastPartString = this.visitConditionalExpression(ctx.conditionalExpression());
-        return "%s ? %s : %s".formatted(fstPartString, middlePartString, lastPartString);
-    }
-
-    @Override
-    public String visitSscIncludeDirective(SSCParser.SscIncludeDirectiveContext ctx) {
-        final String[] s = ctx.SSCDirective().getText().split("<");
-        assert s.length == 2 : "preprocessor emitted invalid directive";
-        final String directive = System.lineSeparator() + "#include <" + s[1] + System.lineSeparator();
-        Main.logger.printDebug(() -> "converted directive: " + directive);
-        return directive;
-    }
-
-    private static void printErrorMessage(final SSCTranspilerException e) {
-        System.err.println(e.getMessage());
-    }
-
-    public boolean hasNoErrors() {
-        return !hasErrors;
+    protected SSCSyntaxException getSSCSyntaxException(String message, ParserRuleContext ctx) {
+        return new SSCSyntaxException(message, ctx, tokens, currentFile);
     }
 }

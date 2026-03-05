@@ -8,19 +8,20 @@ import cz.mipit.sscc.ssc.Compiler;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.visitors.SuperstructConvertorVisitor;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
+import cz.mipit.sscc.ssc.exceptions.children.AntlrException;
 import cz.mipit.sscc.util.ExitValue;
 import cz.mipit.sscc.util.VisitorData;
 import cz.mipit.sscc.util.collection.builder.ListBuilder;
-import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
+import java.util.SequencedCollection;
 import java.util.Set;
 
 import static cz.mipit.sscc.Logger.errReturn;
@@ -70,7 +71,7 @@ public final class SSCCompiler implements Compiler {
         this.options = options;
 
         final ListBuilder<String> cc = ListBuilder
-                .from("cc")
+                .with("cc")
                 .plus("-I" + SSCLIB_HOME + "/include/")
                 .plusMany(CC_OPTIONS)
                 .plus("--std=c2x");
@@ -116,10 +117,10 @@ public final class SSCCompiler implements Compiler {
         int totalFailed = 0;
         final Set<InputFile> filesToProcess = options.filesToProcess();
         for (final InputFile fileArg : filesToProcess) {
-            if (!"ssc".equals(fileArg.suffix())) {
-                handleNonSSCFiles(fileArg, filesToCompile);
-                continue;
-            }
+//            if (!"ssc".equals(fileArg.suffix())) {
+//                handleNonSSCFiles(fileArg, filesToCompile);
+//                continue;
+//            }
 
             try {
                 currentFile = fileArg;
@@ -135,9 +136,9 @@ public final class SSCCompiler implements Compiler {
                     outputtedFiles.add(file);
                     filesToCompile.add(file);
                 }
+            } catch (SSCTranspilerException e) {
+                e.printStackTrace(System.err);
             } catch (RuntimeException e) {
-                handleKnownExceptionsOrRethrow(e);
-
                 totalFailed++;
                 if (options.stopOnError()) {
                     logger.printVerbose("Stopping.");
@@ -152,18 +153,12 @@ public final class SSCCompiler implements Compiler {
 
     private void handleNonSSCFiles(final InputFile fileArg,
                                    final Set<Path> filesToCompile) {
-        logger.printDebug(() -> "Skipping transpilation of file '"
-                + fileArg.absolutePathString()
-                + "' (not an ssc file)");
+        logger.printDebug(
+                () -> "Skipping transpilation of file '"
+                        + fileArg.absolutePathString()
+                        + "' (not an ssc file)"
+        );
         filesToCompile.add(fileArg.toAbsolutePath());
-    }
-
-    private void handleKnownExceptionsOrRethrow(final RuntimeException exception) throws RuntimeException {
-        if (exception instanceof SSCTranspilerException e) {
-            System.err.println(e.getMessage());
-        } else {
-            throw exception; /* doesn't get caught again */
-        }
     }
 
     private Optional<Path> transpileFile(final InputFile inputFile)
@@ -180,10 +175,18 @@ public final class SSCCompiler implements Compiler {
         }
 
         logger.printVerbose("Parsing preprocessed code...");
-        final VisitorData data = VisitorData.fromFile(workingFile);
+        final SequencedCollection<AntlrException> exceptions = new LinkedList<>();
+        final VisitorData data = VisitorData.fromFile(workingFile, exceptions);
+        if (!exceptions.isEmpty()) {
+            for (final AntlrException exception : exceptions) {
+                System.err.println(exception.getMessage());
+            }
+            logger.printVerbose("Could not parse code.");
+            return Optional.empty();
+        }
 
         logger.printVerbose("Extracting superstructs...");
-        if (!extractSuperstructMembers(data.tokens(), data.tree(), workingFileAbsolutePath)) {
+        if (!extractSuperstructMembers(data, workingFileAbsolutePath)) {
             logger.printVerbose("Failed to extract superstructs.");
             return Optional.empty();
         }
@@ -203,12 +206,11 @@ public final class SSCCompiler implements Compiler {
         return Optional.of(workingFileAbsolutePath);
     }
 
-    private boolean extractSuperstructMembers(final CommonTokenStream tokens,
-                                              final ParseTree tree,
+    private boolean extractSuperstructMembers(final VisitorData data,
                                               final Path outputFile)
             throws IOException {
-        final SuperstructConvertorVisitor visitor = new SuperstructConvertorVisitor(tokens, currentFile);
-        final String result = visitor.visit(tree);
+        final SuperstructConvertorVisitor visitor = new SuperstructConvertorVisitor(data.tokens(), currentFile);
+        final String result = visitor.visit(data.tree());
         if (options.debug()) {
             for (var entry : visitor.functionVariables.entrySet()) {
                 final String funcName = entry.getKey();
@@ -217,9 +219,9 @@ public final class SSCCompiler implements Compiler {
                     continue;
                 }
 
-                Main.logger.printDebug("For scope " + (funcName == null ? "global" : "'" + funcName + "'"));
+                Main.logger.printDebug(() -> "For scope " + (funcName == null ? "global" : "'" + funcName + "'"));
                 for (final SuperstructVariable variable : variables) {
-                    Main.logger.printDebug("        " + variable);
+                    Main.logger.printDebug(() -> "        " + variable);
                 }
             }
         }
@@ -227,12 +229,6 @@ public final class SSCCompiler implements Compiler {
         Files.writeString(outputFile, result, StandardOpenOption.TRUNCATE_EXISTING);
 
         return visitor.hasNoErrors();
-    }
-
-    private static int doProcess(final List<String> args)
-            throws IOException, InterruptedException {
-        logger.printDebug(() -> String.join(" ", args));
-        return new ProcessBuilder(args).inheritIO().start().waitFor();
     }
 
     private static final String SSC_DEF_MACRO_STRING_NAME = "__SSC_SOURCE__";
@@ -292,5 +288,11 @@ public final class SSCCompiler implements Compiler {
             return false;
         }
         return true;
+    }
+
+    private static int doProcess(final List<String> args)
+            throws IOException, InterruptedException {
+        logger.printDebug(() -> String.join(" ", args));
+        return new ProcessBuilder(args).inheritIO().start().waitFor();
     }
 }

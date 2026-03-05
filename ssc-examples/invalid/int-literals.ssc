@@ -1,0 +1,9 @@
+int a = 0000;
+int b = 0100'00;
+int c = 0x10'00'FF'AB;
+int d = 0'x134;         // invalid
+int e = 0x'134;         // invalid
+int f = 123'456'789;
+int g = 0;
+int h = 0'0;
+int i = 123';           // invalid

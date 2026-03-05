@@ -15,7 +15,6 @@ import cz.mipit.sscc.util.SSCCUtil;
 import cz.mipit.sscc.util.annotations.Nullable;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
-import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -42,7 +41,9 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
 
     public SuperstructConvertorVisitor(CommonTokenStream tokens, InputFile currentFile) {
         super(tokens, currentFile);
+
         superStructs = new HashMap<>();
+
         functionVariables = new HashMap<>();
         functionVariables.put(null, new HashSet<>());
     }
@@ -874,18 +875,23 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
         return Optional.empty();
     }
 
-    public long getFlagValue(final Map<String, Long> valuesMap,
-                             List<String> identifiers,
-                             ParserRuleContext ctx) {
-        long total = 0;
-        for (final String identifier : identifiers) {
-            final Long value = valuesMap.get(identifier);
-            if (value == null) {
-                throw getSSCSyntaxException("Undefined flag identifier", ctx);
-            }
-            total |= value;
+    /// Replace custom ternary operator
+    @Override
+    public String visitConditionalExpression(SSCParser.ConditionalExpressionContext ctx) {
+        if (ctx.If() == null) {
+            return super.visitConditionalExpression(ctx);
         }
-        return total;
+        assert ctx.If() != null;
+        assert ctx.Then() != null;
+        assert ctx.Else() != null;
+        assert ctx.logicalOrExpression() != null;
+        assert ctx.expression() != null;
+        assert ctx.conditionalExpression() != null;
+
+        final String fstPartString = this.visitLogicalOrExpression(ctx.logicalOrExpression());
+        final String middlePartString = this.visitExpression(ctx.expression());
+        final String lastPartString = this.visitConditionalExpression(ctx.conditionalExpression());
+        return "(%s ? %s : %s)".formatted(fstPartString, middlePartString, lastPartString);
     }
 
     @Override
@@ -900,7 +906,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
         /* TreeMap for sorting */
         final Map<String, Long> valuesMap = new TreeMap<>();
 
-        final byte distinctCount = getDistinctCount(ctx, valuesListCtx, valuesMap);
+        final byte distinctCount = getDistinctFlagsCount(ctx, valuesListCtx, valuesMap);
 
         final int bitsNeeded = distinctCount <= 8 ? 8
                 : distinctCount <= 16 ? 16
@@ -925,9 +931,9 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
         );
     }
 
-    private byte getDistinctCount(SSCParser.FlagsSpecifierContext ctx,
-                                  SSCParser.FlagsInitializerListContext valuesListCtx,
-                                  Map<String, Long> valuesMap) {
+    private byte getDistinctFlagsCount(SSCParser.FlagsSpecifierContext ctx,
+                                       SSCParser.FlagsInitializerListContext valuesListCtx,
+                                       Map<String, Long> valuesMap) {
         byte distinctCount = 0;
         long nextValue = 1;
         for (final SSCParser.FlagsInitializerContext initializer : valuesListCtx.flagsInitializer()) {
@@ -935,7 +941,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
                     .Identifier()
                     .stream()
                     .skip(1)
-                    .map(TerminalNode::getText)
+                    .map(this::visitTerminal)
                     .toList();
 
             final long currValue;
@@ -944,6 +950,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
             } else {
                 currValue = nextValue;
                 nextValue *= 2;
+                assert (nextValue & (nextValue - 1)) == 0;
             }
 
             final Long rv = valuesMap.put(initializer.Identifier(0).getText(), currValue);
@@ -957,5 +964,21 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
             }
         }
         return distinctCount;
+    }
+
+    private long getFlagValue(final Map<String, Long> valuesMap,
+                              List<String> identifiers,
+                              ParserRuleContext ctx) {
+        long total = 0;
+        for (final String identifier : identifiers) {
+            final Long value = valuesMap.get(identifier);
+            if (value == null) {
+                throw getSSCSyntaxException(
+                        "Flags may only be initialized with values from the same set",
+                        ctx);
+            }
+            total |= value;
+        }
+        return total;
     }
 }

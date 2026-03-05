@@ -2,7 +2,9 @@ package cz.mipit.sscc.util.collection.builder;
 
 import cz.mipit.sscc.util.collection.CollectionAdapter;
 
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -18,14 +20,16 @@ abstract class AbstractCollectionBuilder<
         COLL extends Collection<ITEM>,
         ITEM
         >
-        extends CollectionAdapter<ITEM> {
+        extends CollectionAdapter<ITEM, COLL> {
     protected final Function<COLL, COLL> builder;
 
     /// builder is called in {@link AbstractCollectionBuilder#build()}
     protected AbstractCollectionBuilder(final Supplier<COLL> supplier,
                                         final Function<COLL, COLL> builder) {
-        super(supplier.get());
-        this.builder = builder;
+        super(Objects.requireNonNull(supplier, "Collection supplier not provided").get());
+        this.builder = Objects.requireNonNull(builder, "Collection builder not provided");
+
+        Objects.requireNonNull(_collection, "Supplier didn't supply a collection");
     }
 
     /**
@@ -34,41 +38,36 @@ abstract class AbstractCollectionBuilder<
      *
      * @return The built collection
      */
-    @SuppressWarnings("unchecked")
     public COLL build() {
-        return builder.apply((COLL) coll);
+        return builder.apply(_collection);
     }
 
     /**
      * @param value value to add
      * @return this
      */
-    @SuppressWarnings("unchecked")
     public SELF plus(ITEM value) {
-        coll.add(value);
-        return (SELF) this;
+        add(value);
+        return self();
     }
 
     /**
      * @param values collection of values to add
      * @return this
      */
-    @SuppressWarnings("unchecked")
     public SELF plusMany(Collection<ITEM> values) {
-        coll.addAll(values);
-        return (SELF) this;
+        addAll(values);
+        return self();
     }
 
     /**
      * @param values array of values to add
      * @return this
      */
-    @SuppressWarnings("unchecked")
+    @SafeVarargs
     public final SELF plusMany(ITEM... values) {
-        for (final ITEM value : values) {
-            plus(value);
-        }
-        return (SELF) this;
+        addAll(Arrays.asList(values));
+        return self();
     }
 
     /**
@@ -79,17 +78,27 @@ abstract class AbstractCollectionBuilder<
      * @param <O>    Arbitrary type
      * @return this
      */
-    @SuppressWarnings("unchecked")
-    public <O> SELF plusMapped(Iterable<O> values, Function<O, ITEM> mapper) {
-        for (final O value : values) {
-            plus(mapper.apply(value));
-        }
+    public <O> SELF plusMapped(final Iterable<O> values,
+                               final Function<O, ITEM> mapper) {
+        Objects.requireNonNull(values);
+        Objects.requireNonNull(mapper);
 
+        for (final O value : values) {
+            add(mapper.apply(value));
+        }
+        return self();
+    }
+
+    /**
+     * @return {@code this}
+     */
+    @SuppressWarnings("unchecked")
+    protected SELF self() {
         return (SELF) this;
     }
 
     @Override
     public String toString() {
-        return String.format("CollectionBuilder(%s){%s}", coll.getClass(), coll);
+        return "CollectionBuilder(%s){%s}".formatted(_collection.getClass().getSimpleName(), _collection);
     }
 }

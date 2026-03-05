@@ -62,7 +62,7 @@ flagset ‹Identifier› {
 };
 ```
 
-Values may be left initialized or uninitialized.
+Values may be initialized or uninitialized.
 
 If left uninitialized, they get assigned the lowest available power of two.
 
@@ -70,6 +70,9 @@ Values may not be initialized to any arbitrary value,
 rather only to a bitwise-or of previous values.
 This means that the flag values may be aliased (`flag2 = flag1`) and combined
 (`flag_compound = flag1 | flag2`)
+
+The underlying type of the resulting enum is the smallest unsigned integer
+which is able to hold all the values (requires <stdint.h>)
 
 ---
 

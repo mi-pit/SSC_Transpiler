@@ -21,13 +21,11 @@ public class SymbolTable {
         define(createSymbol("_Thread_local", TypeClassification.StorageClassSpecifier_));
         define(createSymbol("typedef", TypeClassification.StorageClassSpecifier_));
 
-        define(createSymbol("enum", TypeClassification.EnumSpecifier_));
-
         /* SSC */
         define(createSymbol("flagset", TypeClassification.EnumSpecifier_));
+        define(createSymbol("object", TypeClassification.StorageClassSpecifier_));
 
-        define(createSymbol("superstruct", TypeClassification.StorageClassSpecifier_));
-
+        define(createSymbol("enum", TypeClassification.EnumSpecifier_));
         define(createSymbol("struct", TypeClassification.StorageClassSpecifier_));
         define(createSymbol("union", TypeClassification.StorageClassSpecifier_));
 

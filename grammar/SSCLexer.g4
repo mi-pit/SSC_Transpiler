@@ -242,24 +242,20 @@ Static_assert
     : 'static_assert'
     ;
 
-// SSC: internal
-SSCDirective
-    : '@sscpreprocessor_include' ~('\r' | '\n')+
-    ;
-
 Struct
     : 'struct'
     ;
 
 // SSC
 Superstruct
-    : 'superstruct'
+    : 'object'
     ;
 
 Switch
     : 'switch'
     ;
 
+// SSC
 Then
     : 'then'
     ;
@@ -279,8 +275,8 @@ Typeof
     ;
 
 Typeof_unqual
-    : 'typeof_unequal'
-    | '__typeof_unequal__' //GNU
+    : 'typeof_unqual'
+    | '__typeof_unqual__' //GNU
     ;
 
 Union
@@ -568,20 +564,24 @@ IntegerConstant
     | BinaryConstant
     ;
 
+fragment BinaryDigit
+    : [01]
+    ;
+
 fragment BinaryConstant
-    : '0' [bB] [0-1]+
+    : '0' [bB] BinaryDigit ('\''? BinaryDigit)*
     ;
 
 fragment DecimalConstant
-    : NonzeroDigit Digit*
+    : NonzeroDigit ('\''? Digit)*
     ;
 
 fragment OctalConstant
-    : '0' OctalDigit*
+    : '0' ('\''? OctalDigit)*
     ;
 
 fragment HexadecimalConstant
-    : HexadecimalPrefix HexadecimalDigit+
+    : HexadecimalPrefix HexadecimalDigitSequence
     ;
 
 fragment HexadecimalPrefix
@@ -661,7 +661,7 @@ fragment BinaryExponentPart
     ;
 
 fragment HexadecimalDigitSequence
-    : HexadecimalDigit+
+    : HexadecimalDigit ('\''? HexadecimalDigit)*
     ;
 
 fragment FloatingSuffix

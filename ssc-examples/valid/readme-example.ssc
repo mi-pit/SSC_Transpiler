@@ -1,0 +1,51 @@
+#include <ssclib/headers/core/types.h>
+#include <stdlib.h>
+
+flagset AdderFlags {
+    LIE,
+    TELL_TRUTH,
+    SELF_DESTRUCT,
+};
+
+object Adder {
+    int x;
+    private flagset AdderFlags flags;
+
+    void add(int add) {
+        this->x += add;
+    }
+
+    void inc() {
+        ++this->x;
+    }
+
+    object Adder *get_own_address() {
+        switch (this->flags) {
+            case LIE:
+                return nullptr;
+            case TELL_TRUTH:
+                return this;
+            case SELF_DESTRUCT:
+                abort();
+
+            default:
+                return this;
+        };
+    }
+};
+
+int main(void) {
+    object Adder add = { 0 };
+    // add.x == 0
+    add.add( 2 );
+    // add.x == 2
+
+    object Adder *ptr = calloc(1, sizeof(object Adder));
+    // assume non-null; ptr->x == 0
+    ptr->inc();
+    // ptr->x == 1
+
+    typedef object Adder Adder;
+    Adder *addp = add.get_own_address();
+    (void) addp;
+}

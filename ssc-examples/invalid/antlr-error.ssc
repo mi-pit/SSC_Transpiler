@@ -1,0 +1,17 @@
+
+object\
+Name {
+    private int noname;
+    public int there_is_no_public_keyword;
+
+    protected void and_no_protected_either()
+    {
+        (void) 0;
+    }
+};
+
+int main main main (void)
+{
+    return 0;
+    0
+}
