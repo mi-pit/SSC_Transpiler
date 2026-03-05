@@ -1,0 +1,44 @@
+#include<stdio.h>
+
+superstruct WithoutTheCalledMethod {
+    int a;
+    bool b;
+
+    static superstruct WithoutTheCalledMethod init( void ) {
+        return ( superstruct WithoutTheCalledMethod ) {
+            .a = 0,
+            .b = false,
+        };
+    }
+
+    void set_a( int a ) {
+        this->a = a;
+    }
+
+    void set_b( bool b ) {
+        this->b = b;
+    }
+
+    pure void print( void ) {
+        printf( "%i, %s", this->a, this->b then "true" else "false" );
+    }
+};
+
+int main() {
+    superstruct WithoutTheCalledMethod s = WithoutTheCalledMethod::init();
+    s.set_a( 123 );
+    s.set_b( true );
+
+    WithoutTheCalledMethod__set_a( &s, -1 );
+
+    s.nonexistent_method(); // syntax error
+    s->set_a( 1 );          // syntax error
+
+    superstruct WithoutTheCalledMethod *p = &s;
+    p->set_a( 1 );
+    p.set_b( false );       // syntax error
+
+    superstruct WithoutTheCalledMethod **pp = &p;
+    pp->set_a( 1 );         // syntax error
+    (*pp)->set_b( true );
+}

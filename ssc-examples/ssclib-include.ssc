@@ -1,0 +1,7 @@
+# /* comment */ /**/ include /* // KOKOTEK */   <ssclib.ssch>
+#/* comment *//**/include/* // KOKOTEK */<stdlib.h>
+
+int main( void )
+{
+    return 0;
+}

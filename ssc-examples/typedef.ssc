@@ -1,0 +1,45 @@
+#include <printf.h>
+#include <stddef.h>
+
+object String
+{
+    char *items;
+    size_t size;
+
+    void print( void )
+    {
+        printf( "%.*s", ( int ) this->size, this->items );
+    }
+};
+
+typedef object String string_t, *String;
+
+int main( void )
+{
+    string_t str_object_1 = {
+        .items = "abcde",
+        .size  = 3,
+    };
+    String str_pointer_1 = &str_object_1;
+    ( void ) str_pointer_1;
+
+    typedef object String *StringSSPtr, StringSS;
+
+    StringSS str_object_2 = {
+        .items = str_object_1.items,
+        .size  = 5,
+    };
+    StringSSPtr str_pointer_2 = &str_object_2;
+
+    StringSSPtr *str_double_ptr = &str_pointer_2;
+    ( void ) str_double_ptr;
+
+    typedef StringSS StringSS_local; // todo
+    StringSS_local str_loc;
+    ( void ) str_loc;
+
+    str_object_1.print();
+    str_pointer_2->print();
+
+    return if str_object_1.size > 1 then 0 else 1;
+}

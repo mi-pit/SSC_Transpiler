@@ -1,0 +1,58 @@
+flagset Flags{
+    NAMED_VAL1, // = 1
+    NAMED_VAL2, // = 2
+    NAMED_VAL4, // = 4
+
+    // = 1 | 2 = 3
+    NAMED_VAL3      = NAMED_VAL1 | NAMED_VAL2,
+    NAMED_VAL7_COMP = NAMED_VAL3 | NAMED_VAL4,
+};
+
+flagset{ NO_IDENTIFIER_OR_COMMA };
+
+flagset Long {
+    UV_001, UV_002, UV_004, UV_008, UV_016, UV_032, UV_064, UV_128, UV_256,
+};
+
+flagset Invalid{
+    FST = 1,
+    SND = 2,
+};
+
+flagset Extern {
+    E_1,
+    E_2 = UV_001,
+}
+
+flagset Self {
+    S_1 = S_1,
+    S_2 = S_2,
+}
+
+flagset All {
+    A_001,
+    A_002,
+    A_004,
+    A_008,
+    A_016,
+    A_032,
+    A_064,
+    A_128,
+    A_ALL = A_001 | A_002 | A_004 | A_008 | A_016 | A_032 | A_064 | A_128,
+};
+
+flagset{ VE };
+
+constexpr int INTEGER = 123;
+
+flagset{
+    LEGIT,
+    FROM_VIS_ENUM = VE,
+    FROM_INVIS_ENUM = A_128,
+    FROM_MACRO      = INTEGER,
+};
+
+flagset{
+    DUP,
+    DUP,
+};
