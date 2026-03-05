@@ -6,6 +6,7 @@ profile different versions
 
 ## Fix/QOL
 
+* proper ssclib support
 * fix bugs
 * go through all `fixme`s and `todo`s
 * add options for:
@@ -16,5 +17,6 @@ profile different versions
 
 ## Features
 
+* decide on superstruct keyword
 * lambda functions
-* namespaced macros
+* namespaces
