@@ -61,7 +61,7 @@ public class SSCTranspilerException extends RuntimeException {
                 .append(type.humanReadableName())
                 .append(" exception while processing file '")
                 .append(COLOR_DEFAULT)
-                .append(currentFile.getFullName())
+                .append(currentFile.fullName())
                 .append(color)
                 .append("':")
                 .append(lineSeparator());

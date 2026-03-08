@@ -14,12 +14,12 @@ public class TestInputFile {
     @Test
     void create() {
         final InputFile constructed = new InputFile(Path.of(DIRNAME), FILENAME, EXTENSION);
-        assertEquals(FILENAME + "." + EXTENSION, constructed.getFullName());
+        assertEquals(FILENAME + "." + EXTENSION, constructed.fullName());
         assertEquals(FILENAME, constructed.name());
         assertEquals(EXTENSION, constructed.suffix());
 
         final Path path = Path.of(DIRNAME, FILENAME + "." + EXTENSION);
-        final InputFile fromAbsolutePath = InputFile.fromAbsolutePath(path);
+        final InputFile fromAbsolutePath = InputFile.fromPath(path);
         assertEquals(constructed, fromAbsolutePath);
 
         assertEquals(fromAbsolutePath.toAbsolutePath(), path.toAbsolutePath());

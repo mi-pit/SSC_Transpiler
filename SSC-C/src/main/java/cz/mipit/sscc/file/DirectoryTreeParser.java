@@ -22,7 +22,7 @@ public final class DirectoryTreeParser {
                 }
 
                 final Path abs = path.toAbsolutePath();
-                final InputFile inputFile = InputFile.fromAbsolutePath(abs);
+                final InputFile inputFile = InputFile.fromPath(abs);
                 files.add(inputFile);
             });
         }

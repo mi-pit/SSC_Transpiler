@@ -38,7 +38,7 @@ public class TestCompiler {
     @Test
     void test() {
         final SSCCOptions options = SSCCOptions.newWithDefaults();
-        options.addFile(InputFile.fromAbsolutePath(PATH));
+        options.addFile(InputFile.fromPath(PATH));
         final Compiler compiler = new SSCCompiler(options);
         final ExitValue returnValue;
         try {

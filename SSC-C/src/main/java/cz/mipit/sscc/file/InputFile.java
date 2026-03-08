@@ -7,9 +7,15 @@ import java.util.Objects;
 
 /**
  * Immutable class.
- * <p>
- * Sibling to {@link Path}
- * </p>
+ * Objects are made up of
+ * <ul>
+ *   <li>Directory: {@link java.nio.file.Path}</li>
+ *   <li>Name: {@link java.lang.String}</li>
+ *   <li>Suffix: {@link java.lang.String} (null means no file extension)</li>
+ * </ul>
+ *
+ * @apiNote Sibling to {@link Path}, may be converted to and from a {@link Path}
+ * @implNote All getters have their data cached.
  */
 public final class InputFile {
     private final Path dir;
@@ -26,24 +32,28 @@ public final class InputFile {
         this.suffix = suffix;
 
         fullName = suffix == null ? name : name + "." + suffix;
-        path = Path.of(dir.toString(), getFullName());
+        path = Path.of(dir.toString(), fullName());
         absolutePath = path.toAbsolutePath();
     }
 
-    public static InputFile fromAbsolutePath(final Path fileAbsolutePath) {
-        final Path dir = fileAbsolutePath.getParent();
-        final String fullName = fileAbsolutePath.getFileName().toString();
+    public static InputFile fromPath(final Path path) {
+        final Path dir = Objects.requireNonNullElseGet(
+                path.getParent(),
+                () -> Path.of(".").toAbsolutePath().normalize()
+        );
+
+        final String fullName = path.getFileName().toString();
 
         final int dotIndex = fullName.lastIndexOf('.');
-        if (dotIndex == -1) {
-            return new InputFile(dir, fullName, null);
-        }
+        final String name = dotIndex == -1 ? fullName : fullName.substring(0, dotIndex);
+        final String suffix = dotIndex == -1 ? null : fullName.substring(dotIndex + 1);
 
-        return new InputFile(
-                dir == null ? Path.of(".").toAbsolutePath() : dir,
-                fullName.substring(0, dotIndex),
-                fullName.substring(dotIndex + 1)
-        );
+        return new InputFile(dir, name, suffix);
+    }
+
+    /// Creates a new object with the same directory and name and changed extension
+    public InputFile getChangedSuffix(final @Nullable String newSuffix) {
+        return new InputFile(dir, name, newSuffix);
     }
 
     public Path toPath() {
@@ -54,24 +64,20 @@ public final class InputFile {
         return absolutePath;
     }
 
-    public String getFullName() {
-        return fullName;
-    }
-
-    public InputFile getChangedSuffix(final @Nullable String newSuffix) {
-        return new InputFile(dir, name, newSuffix);
-    }
-
     public String absolutePathString() {
         return absolutePath.toString();
     }
 
-    public Path dir() {
+    public Path directory() {
         return dir;
     }
 
     public String name() {
         return name;
+    }
+
+    public String fullName() {
+        return fullName;
     }
 
     public String suffix() {

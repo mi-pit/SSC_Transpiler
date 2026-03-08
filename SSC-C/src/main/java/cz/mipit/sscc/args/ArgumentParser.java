@@ -112,7 +112,7 @@ public final class ArgumentParser {
             Logger.errExit(ExitValue.INVALID_ARGUMENTS, "File '" + path + "' is not a regular file");
         }
 
-        final InputFile inputFile = InputFile.fromAbsolutePath(path.toAbsolutePath());
+        final InputFile inputFile = InputFile.fromPath(path.toAbsolutePath());
 
         if (inputFile.suffix() == null) {
             Logger.errExit(ExitValue.INVALID_ARGUMENTS, "Could not verify type of file '" + inputFile.absolutePathString() + "'");
