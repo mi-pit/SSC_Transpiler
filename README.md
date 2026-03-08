@@ -170,7 +170,7 @@ flagset AdderFlags {
     SELF_DESTRUCT,
 };
 
-superstruct Adder {
+object Adder {
     int x;
     private flagset AdderFlags flags;
 
@@ -182,7 +182,7 @@ superstruct Adder {
         ++this->x;
     }
 
-    superstruct Adder *get_own_address() {
+    object Adder *get_own_address() {
         switch (this->flags) {
             case LIE:
                 return nullptr;
@@ -198,17 +198,17 @@ superstruct Adder {
 };
 
 int main(void) {
-    superstruct Adder add = { 0 };
+    object Adder add = { 0 };
     // add.x == 0
     add.add( 2 );
     // add.x == 2
 
-    superstruct Adder *ptr = calloc(1, sizeof(superstruct Adder));
+    object Adder *ptr = calloc(1, sizeof(object Adder));
     // assume non-null; ptr->x == 0
     ptr->inc();
     // ptr->x == 1
 
-    typedef superstruct Adder Adder;
+    typedef object Adder Adder;
     Adder *addp = add.get_own_address();
     (void) addp;
 }
