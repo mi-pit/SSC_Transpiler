@@ -26,19 +26,34 @@ public final class InputFile {
     private final Path path;
     private final Path absolutePath;
 
-    public InputFile(Path dir, String name, String suffix) {
+    private final String absolutePathString;
+
+    public InputFile(Path dir, String name, @Nullable String suffix,
+                     Path path, Path absolutePath) {
         this.dir = Objects.requireNonNull(dir, "File must have a directory");
         this.name = Objects.requireNonNull(name, "File must have a name");
         this.suffix = suffix;
 
         fullName = suffix == null ? name : name + "." + suffix;
-        path = Path.of(dir.toString(), fullName());
-        absolutePath = path.toAbsolutePath();
+        this.path = path;
+        this.absolutePath = absolutePath;
+        this.absolutePathString = absolutePath.toString();
+    }
+
+    private InputFile(Path dir, String name, @Nullable String suffix) {
+        this.dir = Objects.requireNonNull(dir);
+        this.name = Objects.requireNonNull(name);
+        this.suffix = suffix;
+
+        fullName = suffix == null ? name : name + "." + suffix;
+        this.path = Path.of(dir.toString(), fullName);
+        this.absolutePath = path.toAbsolutePath();
+        this.absolutePathString = absolutePath.toString();
     }
 
     public static InputFile fromPath(final Path path) {
         final Path dir = Objects.requireNonNullElseGet(
-                path.getParent(),
+                path.getParent().toAbsolutePath().normalize(),
                 () -> Path.of(".").toAbsolutePath().normalize()
         );
 
@@ -48,7 +63,7 @@ public final class InputFile {
         final String name = dotIndex == -1 ? fullName : fullName.substring(0, dotIndex);
         final String suffix = dotIndex == -1 ? null : fullName.substring(dotIndex + 1);
 
-        return new InputFile(dir, name, suffix);
+        return new InputFile(dir, name, suffix, path, path.toAbsolutePath());
     }
 
     /// Creates a new object with the same directory and name and changed extension
@@ -65,7 +80,7 @@ public final class InputFile {
     }
 
     public String absolutePathString() {
-        return absolutePath.toString();
+        return absolutePathString;
     }
 
     public Path directory() {
@@ -87,16 +102,18 @@ public final class InputFile {
 
     @Override
     public boolean equals(Object o) {
-        if (!(o instanceof InputFile inputFile)) {
-            return false;
+        if (o instanceof InputFile inputFile) {
+            return Objects.equals(dir, inputFile.dir)
+                    && Objects.equals(name, inputFile.name)
+                    && Objects.equals(suffix, inputFile.suffix);
         }
-        return Objects.equals(dir, inputFile.dir)
-                && Objects.equals(name, inputFile.name)
-                && Objects.equals(suffix, inputFile.suffix);
+        if (o instanceof Path p) {
+            return equals(p);
+        }
+        return false;
     }
 
     public boolean equals(Path path) {
-        assert Objects.equals(this.path, this.absolutePath);
         return Objects.equals(path, this.path);
     }
 

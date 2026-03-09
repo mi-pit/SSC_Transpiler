@@ -17,35 +17,35 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.SequencedCollection;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static cz.mipit.sscc.Logger.errReturn;
-import static cz.mipit.sscc.Logger.warn;
 import static cz.mipit.sscc.Main.logger;
 
 public final class SSCCompiler implements Compiler {
     public static final Path SSCLIB_HOME;
 
     static {
-        final String ssclibHomeEnv = System.getenv("SSCLIB_HOME");
-        if (ssclibHomeEnv == null) {
+        final String sscLibHomeEnv = System.getenv("SSCLIB_HOME");
+        if (sscLibHomeEnv == null) {
             Logger.errExit(ExitValue.LIBRARY_NOT_FOUND, "SSCLIB_HOME not set");
             throw new AssertionError("unreachable");
         }
 
-        final Path asPath = Path.of(ssclibHomeEnv);
+        final Path asPath = Path.of(sscLibHomeEnv);
 
         if (!Files.exists(asPath)) {
-            Logger.errExit(ExitValue.LIBRARY_NOT_FOUND, "file doesn't exist: " + ssclibHomeEnv);
+            Logger.errExit(ExitValue.LIBRARY_NOT_FOUND, "file doesn't exist: " + sscLibHomeEnv);
         }
 
         if (!Files.isDirectory(asPath)) {
-            Logger.errExit(ExitValue.LIBRARY_NOT_FOUND, "not a directory: " + ssclibHomeEnv);
+            Logger.errExit(ExitValue.LIBRARY_NOT_FOUND, "not a directory: " + sscLibHomeEnv);
         }
 
         SSCLIB_HOME = asPath;
@@ -65,8 +65,6 @@ public final class SSCCompiler implements Compiler {
 
     private final List<String> ccProcessArgBase;
 
-    private InputFile currentFile = null;
-
     public SSCCompiler(final SSCCOptions options) {
         this.options = options;
 
@@ -84,8 +82,8 @@ public final class SSCCompiler implements Compiler {
             return errReturn(ExitValue.INVALID_ARGUMENTS, "No files given to process");
         }
 
-        final Set<Path> outputtedFiles = new HashSet<>();
-        final Set<Path> filesToCompile = new HashSet<>();
+        final Set<Path> outputtedFiles = ConcurrentHashMap.newKeySet();
+        final Set<Path> filesToCompile = ConcurrentHashMap.newKeySet();
 
         final int totalFailed = goThroughAllFiles(filesToCompile, outputtedFiles);
         if (totalFailed != 0) {
@@ -100,65 +98,49 @@ public final class SSCCompiler implements Compiler {
 
             for (final Path path : outputtedFiles) {
                 logger.printVerboseFilename("Deleting output file", path.toString());
-                try {
-                    Files.delete(path);
-                } catch (IOException e) {
-                    warn("Could not delete file '" + path + "'");
-                }
+                Files.delete(path);
             }
         }
         logger.printVerbose("Successfully processed.");
         return ExitValue.SUCCESS;
     }
 
+    /// @return number of files where processing failed
     private int goThroughAllFiles(final Set<Path> filesToCompile,
-                                  final Set<Path> outputtedFiles)
-            throws IOException, InterruptedException {
-        int totalFailed = 0;
-        final Set<InputFile> filesToProcess = options.filesToProcess();
-        for (final InputFile fileArg : filesToProcess) {
-//            if (!"ssc".equals(fileArg.suffix())) {
-//                handleNonSSCFiles(fileArg, filesToCompile);
-//                continue;
-//            }
+                                  final Set<Path> outputtedFiles) {
+        // todo: remove option stop-on-error
+        final AtomicInteger totalFailed = new AtomicInteger();
+        options.filesToProcess().parallelStream().forEach(fileArg -> {
+            if ("c".equals(fileArg.suffix())) {
+                logger.printVerboseFilename("Skipping processing of file", fileArg.fullName());
+                filesToCompile.add(fileArg.toAbsolutePath());
+                return;
+            }
 
             try {
-                currentFile = fileArg;
                 final Optional<Path> processed = transpileFile(fileArg);
-                if (processed.isEmpty()) {
-                    totalFailed++;
-                    if (options.stopOnError()) {
-                        logger.printVerbose("Stopping.");
-                        break;
-                    }
-                } else {
+                if (processed.isPresent()) {
                     final Path file = processed.get();
                     outputtedFiles.add(file);
                     filesToCompile.add(file);
+                } else {
+                    totalFailed.getAndIncrement();
                 }
-            } catch (SSCTranspilerException e) {
-                e.printStackTrace(System.err);
             } catch (RuntimeException e) {
-                totalFailed++;
-                if (options.stopOnError()) {
-                    logger.printVerbose("Stopping.");
-                    break;
-                }
+                totalFailed.getAndIncrement();
+            } catch (IOException | InterruptedException e) {
+                totalFailed.getAndIncrement();
+                Logger.errReturn(
+                        ExitValue.TRANSPILATION_FAIL,
+                        "Caught exception while processing file '%s': \"%s\"",
+                        fileArg.fullName(),
+                        e.getMessage()
+                );
             } finally {
                 logger.printVerboseFilename("Processed", fileArg.absolutePathString());
             }
-        }
-        return totalFailed;
-    }
-
-    private void handleNonSSCFiles(final InputFile fileArg,
-                                   final Set<Path> filesToCompile) {
-        logger.printDebug(
-                () -> "Skipping transpilation of file '"
-                        + fileArg.absolutePathString()
-                        + "' (not an ssc file)"
-        );
-        filesToCompile.add(fileArg.toAbsolutePath());
+        });
+        return totalFailed.get();
     }
 
     private Optional<Path> transpileFile(final InputFile inputFile)
@@ -186,7 +168,7 @@ public final class SSCCompiler implements Compiler {
         }
 
         logger.printVerbose("Extracting superstructs...");
-        if (!extractSuperstructMembers(data, workingFileAbsolutePath)) {
+        if (!extractSuperstructMembers(inputFile, data, workingFileAbsolutePath)) {
             logger.printVerbose("Failed to extract superstructs.");
             return Optional.empty();
         }
@@ -206,7 +188,8 @@ public final class SSCCompiler implements Compiler {
         return Optional.of(workingFileAbsolutePath);
     }
 
-    private boolean extractSuperstructMembers(final VisitorData data,
+    private boolean extractSuperstructMembers(final InputFile currentFile,
+                                              final VisitorData data,
                                               final Path outputFile)
             throws IOException {
         final SuperstructConvertorVisitor visitor = new SuperstructConvertorVisitor(data.tokens(), currentFile);

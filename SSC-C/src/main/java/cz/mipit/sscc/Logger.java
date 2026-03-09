@@ -16,6 +16,30 @@ public final class Logger {
     public static final ConsoleColor COLOR_WARN = create(Ground.FORE, Color.YELLOW);
     public static final ConsoleColor COLOR_ERROR = create(Ground.FORE, Color.RED);
 
+    public static final ConsoleColor DEBUG_COLOR = create(
+            Ground.FORE,
+            Color.MAGENTA
+    );
+    public static final ConsoleColor VERBOSE_COLOR = create(
+            Ground.FORE,
+            Color.YELLOW
+    );
+
+    private SSCCOptions options;
+
+    public Logger(SSCCOptions opts) {
+        options = opts;
+    }
+
+    public Logger() {
+        this(SSCCOptions.newWithDefaults());
+    }
+
+    public void setOptions(final SSCCOptions options) {
+        this.options = options;
+    }
+
+
     public static void errExit(final ExitValue exitCode, String fmt, Object... args) {
         errReturn(exitCode, fmt, args);
         errReturn(exitCode, "Exiting with code %d", exitCode.ordinal());
@@ -60,31 +84,6 @@ public final class Logger {
         stream.println();
     }
 
-
-    private SSCCOptions options;
-
-    public Logger(SSCCOptions opts) {
-        options = opts;
-    }
-
-    public Logger() {
-        this(SSCCOptions.newWithDefaults());
-    }
-
-    public void setOptions(final SSCCOptions options) {
-        this.options = options;
-    }
-
-
-    private static final ConsoleColor DEBUG_COLOR = create(
-            Ground.FORE,
-            Color.MAGENTA
-    );
-    private static final ConsoleColor VERBOSE_COLOR = create(
-            Ground.FORE,
-            Color.YELLOW
-    );
-
     public void printDebug(String message) {
         printDebug("%s", message);
     }
@@ -114,7 +113,7 @@ public final class Logger {
         printVerbose("%s", supplier.get());
     }
 
-    public void printVerboseFilename(String a, String b) {
+    synchronized public void printVerboseFilename(String a, String b) {
         printVerbose("%s: '" + COLOR_DEFAULT + "%s" + VERBOSE_COLOR + "'", a, b);
     }
 }
