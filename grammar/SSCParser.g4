@@ -132,7 +132,7 @@ primaryExpression
     | StringLiteral+
     | '(' expression ')'
     | genericSelection
-
+    | lambdaFunction // SSC
     // GNU
     // https://github.com/gcc-mirror/gcc/blob/5d69161a7c36a2da8565967eb0cc2df1322a05a3/gcc/c/c-parser.cc#L11715-L11734
     | '__func__' //GNU
@@ -145,6 +145,10 @@ primaryExpression
     | '__builtin_types_compatible_p' '(' typeName ',' typeName ')' //GNU
     | '__builtin_tgmath' '(' exprList ')'
     | '__builtin_complex' '(' assignmentExpression ',' assignmentExpression ')'
+    ;
+
+lambdaFunction
+    : '(' typeName '(' parameterTypeList ')' ')' functionBody
     ;
 
 // GNU exprList
@@ -399,7 +403,7 @@ structOrUnionSpecifier
 	( Identifier? '{' ( {this.IsNullStructDeclarationListExtension()}? | memberDeclarationList) '}'
 	| Identifier
 	)
-//	{this.EnterDeclaration();}
+	{this.EnterDeclaration();}
     ;
 
 // ISO C: struct-or-union (6.7.3.2)

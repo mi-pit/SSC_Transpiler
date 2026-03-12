@@ -3,6 +3,7 @@ package cz.mipit.sscc.ssc.compiler.visitors;
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.Main;
 import cz.mipit.sscc.file.InputFile;
+import cz.mipit.sscc.ssc.compiler.data.lambda.LambdaFunction;
 import cz.mipit.sscc.ssc.compiler.data.ss.Field;
 import cz.mipit.sscc.ssc.compiler.data.ss.FunctionDefinition;
 import cz.mipit.sscc.ssc.compiler.data.ss.SSMember;
@@ -980,5 +981,26 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
             total |= value;
         }
         return total;
+    }
+
+
+    private final Set<LambdaFunction> lambdaFunctions = new HashSet<>();
+
+    @Override
+    public String visitLambdaFunction(SSCParser.LambdaFunctionContext ctx) {
+        final LambdaFunction lambda = new LambdaFunction(
+                currentFile,
+                currentFunctionName,
+                this.visitTypeName(ctx.typeName()),
+                this.visitParameterTypeList(ctx.parameterTypeList()),
+                this.visitFunctionBody(ctx.functionBody())
+        );
+        lambdaFunctions.add(lambda);
+
+        return lambda.getName();
+    }
+
+    public Set<LambdaFunction> getLambdaFunctions() {
+        return Set.copyOf(lambdaFunctions);
     }
 }

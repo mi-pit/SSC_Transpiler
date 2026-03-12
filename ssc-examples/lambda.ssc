@@ -1,0 +1,26 @@
+#include <ssclib.ssch>
+
+int main()
+{
+    int underscore_count = 0;
+
+    const char *str = "Abcdefg_!";
+    for ( unsigned long i = 0; i < sizeof str; ++i )
+    {
+        printf( "Underscore " );
+        if ( ( bool( char c, int *count ) ) {
+                 if ( c != '_' )
+                     return false;
+                 ++( *count );
+                 return true;
+             }( str[ i ], &underscore_count ) )
+            printf( "found" );
+        else
+            printf( "not found" );
+        printf( " at char %c\n", str[ i ] );
+    }
+
+    printf( "Found %i underscores\n", underscore_count );
+
+    return 1;
+}
