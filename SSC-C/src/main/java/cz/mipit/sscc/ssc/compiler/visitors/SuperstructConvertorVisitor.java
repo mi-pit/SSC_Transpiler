@@ -698,11 +698,8 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
 
         final Optional<SuperstructVariable> maybeVar = findSuperstructVariable(currentFunctionName, objectName);
         if (maybeVar.isEmpty()) {
-            Main.logger.printDebug(() -> "\tVariable is not superstruct");
-            if (currentFunctionName == null) {
-                throw getSSCSyntaxException("Accessing superstruct method from global scope", ctx);
-            }
-            Main.logger.printDebug(() -> "\t\tlocal vars: " + functionVariables.get(currentFunctionName));
+            Main.logger.printDebug(() -> "\tVariable is not superstruct\t\tlocal vars: "
+                    + functionVariables.get(currentFunctionName));
             return super.visitPostfixExpression(ctx);
         }
         final SuperstructVariable var = maybeVar.get();
