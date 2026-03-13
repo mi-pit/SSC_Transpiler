@@ -5,7 +5,6 @@ import cz.mipit.sscc.Main;
 import cz.mipit.sscc.args.SSCCOptions;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.Compiler;
-import cz.mipit.sscc.ssc.compiler.data.lambda.LambdaFunction;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.visitors.SuperstructConvertorVisitor;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
@@ -25,7 +24,6 @@ import java.util.SequencedCollection;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 import static cz.mipit.sscc.Logger.errReturn;
 import static cz.mipit.sscc.Main.logger;
@@ -128,16 +126,20 @@ public final class SSCCompiler implements Compiler {
                 } else {
                     totalFailed.getAndIncrement();
                 }
-            } catch (RuntimeException e) {
+            } catch (RuntimeException | IOException | InterruptedException e) {
                 totalFailed.getAndIncrement();
-            } catch (IOException | InterruptedException e) {
-                totalFailed.getAndIncrement();
+
+                final boolean shouldPrintStackTrace = options.verbose() || options.debug();
                 Logger.errReturn(
                         ExitValue.TRANSPILATION_FAIL,
-                        "Caught exception while processing file '%s': \"%s\"",
+                        "Caught exception while processing file '%s'%s",
                         fileArg.fullName(),
-                        e.getMessage()
+                        (shouldPrintStackTrace ? "" : " (run with verbose or debug option to see stack trace)")
                 );
+
+                if (shouldPrintStackTrace) {
+                    e.printStackTrace(System.err);
+                }
             } finally {
                 logger.printVerboseFilename("Processed", fileArg.absolutePathString());
             }
