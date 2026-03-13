@@ -24,8 +24,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.SequencedCollection;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -35,10 +37,13 @@ import static java.lang.System.lineSeparator;
 public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
     private final Map<String, SuperStruct> superStructs;
     private SuperStruct currentSS = null;
-    private final Map<String /* typedef name */, Typedef<SuperStruct>> superstructTypedefs = new HashMap<>();
+    private final Map<String /* typedef name */, Typedef<SuperStruct>> superstructTypedefs;
 
     public final Map<@Nullable String /* Function name */, Set<SuperstructVariable>> functionVariables;
     public String currentFunctionName = null; /* null => no function => global */
+
+    // must be sequenced so that nested lambdas get defined in the right order
+    private final SequencedCollection<LambdaFunction> lambdasCollectedInCurrentFunction;
 
     public SuperstructConvertorVisitor(CommonTokenStream tokens, InputFile currentFile) {
         super(tokens, currentFile);
@@ -47,6 +52,8 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
 
         functionVariables = new HashMap<>();
         functionVariables.put(null, new HashSet<>());
+        superstructTypedefs = new HashMap<>();
+        lambdasCollectedInCurrentFunction = new TreeSet<>();
     }
 
     @Override
@@ -351,7 +358,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
             throw getSSCSyntaxException("K&R C-style declarations are invalid in SSC", ctx.declarationList());
         }
 
-        final String unqualifiedName = ctx.declarator().directDeclarator().Identifier().getText();
+        final String unqualifiedName = this.visitTerminal(ctx.declarator().directDeclarator().Identifier());
         currentFunctionName = currentSS == null
                 ? unqualifiedName
                 : currentSS.name() + "__" + unqualifiedName;
@@ -364,10 +371,12 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
         final String ret = super.visitFunctionDefinition(ctx);
         currentFunctionName = null;
 
-        final String lambdas = lastLambdas.stream()
+        // emit lambda definitions after leaving function definition to have the proper scope
+        // lambdas are not themselves function definitions so they do not exit here
+        final String lambdas = lambdasCollectedInCurrentFunction.stream()
                 .map(LambdaFunction::getDefinition)
                 .collect(Collectors.joining(lineSeparator()));
-        lastLambdas.clear();
+        lambdasCollectedInCurrentFunction.clear();
 
         return lambdas + lineSeparator() + ret;
     }
@@ -987,8 +996,6 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
     }
 
 
-    private final Set<LambdaFunction> lastLambdas = new HashSet<>();
-
     @Override
     public String visitLambdaFunction(SSCParser.LambdaFunctionContext ctx) {
         final LambdaFunction lambda = new LambdaFunction(
@@ -1001,7 +1008,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
                         ? this.visitLambdaAttributes(ctx.lambdaAttributes())
                         : ""
         );
-        lastLambdas.add(lambda);
+        lambdasCollectedInCurrentFunction.add(lambda);
 
         return lambda.getName();
     }

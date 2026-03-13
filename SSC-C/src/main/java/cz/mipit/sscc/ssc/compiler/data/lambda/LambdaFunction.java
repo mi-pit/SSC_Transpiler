@@ -1,14 +1,11 @@
 package cz.mipit.sscc.ssc.compiler.data.lambda;
 
 import cz.mipit.sscc.file.InputFile;
-import cz.mipit.sscc.util.annotations.NotNull;
 
-import java.util.HashSet;
 import java.util.Objects;
-import java.util.Random;
-import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
-public final class LambdaFunction {
+public final class LambdaFunction implements Comparable<LambdaFunction> {
     private final String returnType;
     private final String params;
     private final String body;
@@ -17,8 +14,7 @@ public final class LambdaFunction {
     private final String prettifier;
 
     private final long id;
-    private static final Random RANDOM = new Random();
-    private static final Set<@NotNull Long> USED_IDS = new HashSet<>();
+    private static final AtomicLong nextId = new AtomicLong(0);
 
     public LambdaFunction(
             InputFile inFile,
@@ -47,14 +43,7 @@ public final class LambdaFunction {
 
         this.prettifier = fileNamePrettifier + "_" + functionName;
 
-        long id_candidate = Math.abs(RANDOM.nextLong());
-        // is this even necessary?
-        while (USED_IDS.contains(id_candidate)) {
-            id_candidate = Math.abs(RANDOM.nextLong());
-        }
-        USED_IDS.add(id_candidate);
-
-        id = id_candidate;
+        id = nextId.getAndIncrement();
     }
 
     public String getName() {
@@ -63,5 +52,23 @@ public final class LambdaFunction {
 
     public String getDefinition() {
         return attributes + " static " + returnType + " " + getName() + "(" + params + ")" + body;
+    }
+
+    @Override
+    public int compareTo(LambdaFunction o) {
+        Objects.requireNonNull(o);
+        return Long.compare(id, o.id);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof LambdaFunction that))
+            return false;
+        return compareTo(that) == 0;
+    }
+
+    @Override
+    public int hashCode() {
+        return (int) id;
     }
 }

@@ -15,6 +15,7 @@ void test_array()
 
     array_printf( array, 1024, int, "%i" );
 }
+void test_nested();
 
 int main()
 {
@@ -41,9 +42,25 @@ int main()
         printf( " at char %c\n", str[ i ] );
     }
 
-    printf( "Found %i underscores\n", underscore_count );
+    printf( "Found %i underscore(s)\n", underscore_count );
 
     test_array();
+    test_nested();
 
     return 1;
+}
+
+void test_nested()
+{
+    const auto outer = | [void] | --> int
+    {
+        const auto inner = | [void] | --> int
+        {
+            return 123;
+        };
+
+        return inner();
+    };
+
+    println( "Should be 123: %i", outer() );
 }
