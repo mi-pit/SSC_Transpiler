@@ -190,6 +190,10 @@ Label
     : '__label__' // gnu
     ;
 
+LambdaArrow
+    : '-->'
+    ;
+
 Long
     : 'long'
     ;

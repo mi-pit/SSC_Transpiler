@@ -213,13 +213,7 @@ public final class SSCCompiler implements Compiler {
             }
         }
 
-        final String lambdaDefinitions = visitor
-                .getLambdaFunctions()
-                .stream()
-                .map(LambdaFunction::getDefinition)
-                .collect(Collectors.joining(System.lineSeparator()));
-
-        Files.writeString(outputFile, lambdaDefinitions + result, StandardOpenOption.TRUNCATE_EXISTING);
+        Files.writeString(outputFile, result, StandardOpenOption.TRUNCATE_EXISTING);
 
         return visitor.hasNoErrors();
     }

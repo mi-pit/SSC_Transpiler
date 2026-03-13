@@ -147,8 +147,15 @@ primaryExpression
     | '__builtin_complex' '(' assignmentExpression ',' assignmentExpression ')'
     ;
 
+/* SSC */
 lambdaFunction
-    : '(' typeName '(' parameterTypeList ')' ')' functionBody
+    : '|' '[' parameterTypeList ']' '|' '-->' typeName
+        lambdaAttributes?
+    functionBody
+    ;
+
+lambdaAttributes
+    : (attributeSpecifier | gnuAttribute | declarationSpecifier)+
     ;
 
 // GNU exprList

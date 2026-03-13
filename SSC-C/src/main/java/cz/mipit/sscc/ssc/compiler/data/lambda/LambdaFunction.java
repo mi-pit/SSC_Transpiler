@@ -4,6 +4,7 @@ import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.util.annotations.NotNull;
 
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 
@@ -11,6 +12,7 @@ public final class LambdaFunction {
     private final String returnType;
     private final String params;
     private final String body;
+    private final String attributes;
 
     private final String prettifier;
 
@@ -23,17 +25,19 @@ public final class LambdaFunction {
             String functionName,
             String returnType,
             String params,
-            String ctx
+            String ctx,
+            String attributes
     ) {
-        this.returnType = returnType;
-        this.params = params;
-        this.body = ctx;
+        this.returnType = Objects.requireNonNull(returnType);
+        this.params = Objects.requireNonNull(params);
+        this.body = Objects.requireNonNull(ctx);
+        this.attributes = Objects.requireNonNull(attributes);
 
         final String fileNamePrettifier =
                 (inFile.name() + "_" + inFile.suffix())
                         .chars()
                         .mapToObj(i -> {
-                            if ((i > 'A' && i < 'Z') || (i > 'a' && i < 'z'))
+                            if ((i >= 'A' && i <= 'Z') || (i >= 'a' && i <= 'z'))
                                 return (char) i;
                             else
                                 return '_';
@@ -58,6 +62,6 @@ public final class LambdaFunction {
     }
 
     public String getDefinition() {
-        return returnType + " " + getName() + "(" + params + ")" + body;
+        return attributes + " static " + returnType + " " + getName() + "(" + params + ")" + body;
     }
 }

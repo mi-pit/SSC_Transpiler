@@ -50,7 +50,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
     }
 
     @Override
-    public String visitSuperStructSpecifier(SSCParser.SuperStructSpecifierContext ctx) {
+    public String visitSuperStructSpecifier(final SSCParser.SuperStructSpecifierContext ctx) {
         final String thisSSName = ctx.Identifier().getText();
 
         if (ctx.superStructBody() == null) {
@@ -363,7 +363,13 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
 
         final String ret = super.visitFunctionDefinition(ctx);
         currentFunctionName = null;
-        return ret;
+
+        final String lambdas = lastLambdas.stream()
+                .map(LambdaFunction::getDefinition)
+                .collect(Collectors.joining(lineSeparator()));
+        lastLambdas.clear();
+
+        return lambdas + lineSeparator() + ret;
     }
 
     private void getFunctionSuperstructArgs(final SSCParser.FunctionDefinitionContext ctx) {
@@ -981,7 +987,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
     }
 
 
-    private final Set<LambdaFunction> lambdaFunctions = new HashSet<>();
+    private final Set<LambdaFunction> lastLambdas = new HashSet<>();
 
     @Override
     public String visitLambdaFunction(SSCParser.LambdaFunctionContext ctx) {
@@ -990,14 +996,13 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
                 currentFunctionName,
                 this.visitTypeName(ctx.typeName()),
                 this.visitParameterTypeList(ctx.parameterTypeList()),
-                this.visitFunctionBody(ctx.functionBody())
+                this.visitFunctionBody(ctx.functionBody()),
+                ctx.lambdaAttributes() != null
+                        ? this.visitLambdaAttributes(ctx.lambdaAttributes())
+                        : ""
         );
-        lambdaFunctions.add(lambda);
+        lastLambdas.add(lambda);
 
         return lambda.getName();
-    }
-
-    public Set<LambdaFunction> getLambdaFunctions() {
-        return Set.copyOf(lambdaFunctions);
     }
 }
