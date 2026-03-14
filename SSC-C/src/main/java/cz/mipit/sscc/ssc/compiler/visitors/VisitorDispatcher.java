@@ -171,7 +171,7 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
         }
 
         final int declaratorPointer = SSCCUtil.getPointerLevel(declarator);
-        final String varName = directDecl.Identifier().getText();
+        final String varName = this.visitTerminal(directDecl.Identifier());
 
         final SuperstructVariable ssVar = new SuperstructVariable(ssName, pointerBase + declaratorPointer, varName);
         return Optional.of(ssVar);
@@ -195,7 +195,7 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
             }
 
             final var ssCtx = typeSpec.superStructSpecifier();
-            final String ssName = ssCtx.Identifier().getText();
+            final String ssName = this.visitTerminal(ssCtx.Identifier());
             return Optional.of(Either.left(ssName));
         }
 

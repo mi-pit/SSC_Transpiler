@@ -24,7 +24,7 @@ public class SuperstructConvertor extends Convertor<SSCParser.SuperStructSpecifi
 
     @Override
     public String convert(SSCParser.SuperStructSpecifierContext ctx) {
-        final String thisSSName = ctx.Identifier().getText();
+        final String thisSSName = dispatcher.visitTerminal(ctx.Identifier());
 
         if (ctx.superStructBody() == null) {
             return dispatcher.super_visitSuperStructSpecifier(ctx);
@@ -110,7 +110,7 @@ public class SuperstructConvertor extends Convertor<SSCParser.SuperStructSpecifi
             }
 
             final int ptrs = SSCCUtil.getPointerLevel(declarator);
-            final String name = declarator.directDeclarator().Identifier().getText();
+            final String name = dispatcher.visitTerminal(declarator.directDeclarator().Identifier());
 
             final Field field = new Field(isPrivate, new TypedVariable(type, ptrs, name));
             dispatcher.data.currentSS().ifPresent(ss -> ss.addMember(SSMember.field(field)));
@@ -140,7 +140,7 @@ public class SuperstructConvertor extends Convertor<SSCParser.SuperStructSpecifi
 
         final String unqualifiedName;
         if (directDecl.Identifier() != null) {
-            unqualifiedName = directDecl.Identifier().getText();
+            unqualifiedName = dispatcher.visitTerminal(directDecl.Identifier());
         } else if (directDecl.LeftParen() == null || directDecl.RightParen() == null) {
             Main.logger.printDebug("No declarator parentheses. Trying to parse declarator.");
             unqualifiedName = dispatcher.visitDeclarator(functionCtx.declarator());
@@ -249,7 +249,7 @@ public class SuperstructConvertor extends Convertor<SSCParser.SuperStructSpecifi
                     throw getSSCSyntaxException("Duplicate super struct specifier", declSpec);
                 }
                 final var superStructSpecCtx = typeSpecCtx.superStructSpecifier();
-                ssName = superStructSpecCtx.Identifier().getText();
+                ssName = dispatcher.visitTerminal(superStructSpecCtx.Identifier());
                 curr.add("struct " + ssName);
             }
             final var declarator = param.declarator();
@@ -257,7 +257,7 @@ public class SuperstructConvertor extends Convertor<SSCParser.SuperStructSpecifi
                 pointer += SSCCUtil.getPointerLevel(declarator);
 
                 if (declarator.directDeclarator().Identifier() != null) {
-                    final String varName = declarator.directDeclarator().Identifier().getText();
+                    final String varName = dispatcher.visitTerminal(declarator.directDeclarator().Identifier());
                     if (ssName != null) {
                         dispatcher.addFunctionVariable(new SuperstructVariable(ssName, pointer, varName));
                     }

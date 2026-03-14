@@ -21,10 +21,9 @@ public class FlagsConvertor extends Convertor<SSCParser.FlagsSpecifierContext> {
             return dispatcher.super_visitFlagsSpecifier(ctx);
         }
 
-        final String identifier = ctx.Identifier() == null ? "" : ctx.Identifier().getText();
+        final String identifier = ctx.Identifier() == null ? "" : dispatcher.visitTerminal(ctx.Identifier());
         final var valuesListCtx = ctx.flagsInitializerList();
 
-        /* TreeMap for sorting */
         final Map<String, Long> valuesMap = new TreeMap<>();
 
         final byte distinctCount = getDistinctFlagsCount(ctx, valuesListCtx, valuesMap);
@@ -74,8 +73,7 @@ public class FlagsConvertor extends Convertor<SSCParser.FlagsSpecifierContext> {
                 assert (nextValue & (nextValue - 1)) == 0;
             }
 
-            final Long rv = valuesMap.put(initializer.Identifier(0).getText(), currValue);
-            if (rv != null) {
+            if (valuesMap.put(dispatcher.visitTerminal(initializer.Identifier(0)), currValue) != null) {
                 throw getSSCSyntaxException("Duplicate identifier in flags specifier", initializer);
             }
 

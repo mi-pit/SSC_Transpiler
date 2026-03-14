@@ -81,11 +81,11 @@ public class Collector {
             throw dispatcher.getSSCSyntaxException("Cannot define superstruct within a typedef", ctx);
         }
 
-        final String ssName = ssSpec.Identifier().getText();
+        final String ssName = dispatcher.visitTerminal(ssSpec.Identifier());
 
         final SuperStruct ss = dispatcher.findSuperstructByName(ssName).orElse(new SuperStruct(ssName));
         for (final SSCParser.DeclaratorContext typedefDeclarator : declaratorsList) {
-            final String typedeffedName = typedefDeclarator.directDeclarator().Identifier().getText();
+            final String typedeffedName = dispatcher.visitTerminal(typedefDeclarator.directDeclarator().Identifier());
             final int pointer = typedefDeclarator.pointer().size();
             final Typedef<SuperStruct> typedef = new Typedef<>(typedeffedName, pointer, ss);
             dispatcher.data.superstructTypedefs().put(typedeffedName, typedef);

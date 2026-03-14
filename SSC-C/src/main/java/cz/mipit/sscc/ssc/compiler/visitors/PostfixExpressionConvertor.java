@@ -90,7 +90,7 @@ public class PostfixExpressionConvertor extends Convertor<SSCParser.PostfixExpre
             return getFieldAccessString(ctx, superstruct);
         }
 
-        final String methodName = ctx.Identifier(0).getText();
+        final String methodName = dispatcher.visitTerminal(ctx.Identifier(0));
         final Optional<FunctionDefinition> maybeMethod = dispatcher.findMethodInSuperstruct(superstruct, methodName);
 
         if (maybeMethod.isEmpty()) {
@@ -229,7 +229,7 @@ public class PostfixExpressionConvertor extends Convertor<SSCParser.PostfixExpre
 
     private String getFieldAccessString(SSCParser.PostfixExpressionContext ctx,
                                         SuperStruct superstruct) {
-        final String fieldName = ctx.Identifier(0).getText();
+        final String fieldName = dispatcher.visitTerminal(ctx.Identifier(0));
 
         final List<Field> allMatching = superstruct.members()
                 .stream()

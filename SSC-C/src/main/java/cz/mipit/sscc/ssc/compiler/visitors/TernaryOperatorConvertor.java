@@ -7,6 +7,7 @@ public class TernaryOperatorConvertor extends Convertor<SSCParser.ConditionalExp
         super(dispatcher);
     }
 
+    @Override
     public String convert(SSCParser.ConditionalExpressionContext ctx) {
         if (ctx.If() == null) {
             return dispatcher.super_visitConditionalExpression(ctx);

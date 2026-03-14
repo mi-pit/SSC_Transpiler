@@ -19,6 +19,7 @@ public class LambdaConvertor extends Convertor<SSCParser.LambdaFunctionContext> 
         lambdasCollectedInCurrentFunction = new TreeSet<>();
     }
 
+    @Override
     public String convert(SSCParser.LambdaFunctionContext ctx) {
         final LambdaFunction lambda = new LambdaFunction(
                 dispatcher.currentFile,
