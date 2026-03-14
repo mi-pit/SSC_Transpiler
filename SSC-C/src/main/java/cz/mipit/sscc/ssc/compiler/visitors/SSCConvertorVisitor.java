@@ -67,7 +67,9 @@ public abstract class SSCConvertorVisitor extends SSCParserBaseVisitor<String> {
                 || node instanceof SSCParser.StructOrUnionContext
                 || node instanceof SSCParser.EnumSpecifierContext
                 || (node instanceof TerminalNode terminalNode
-                && terminalNode.getSymbol().getType() == SSCLexer.LeftBrace);
+                && terminalNode.getSymbol().getType() == SSCLexer.LeftBrace)
+                || node instanceof SSCParser.IterationStatementContext
+                || node instanceof SSCParser.SelectionStatementContext;
 
         if (isOffset) {
             level++;
@@ -86,11 +88,11 @@ public abstract class SSCConvertorVisitor extends SSCParserBaseVisitor<String> {
 
                 builder.append(childText);
 
-                if ((node instanceof TerminalNode terminalNode
-                        && terminalNode.getSymbol().getType() == SSCLexer.LeftBrace)
-                        || child instanceof SSCParser.DeclarationContext
+                if ((child instanceof SSCParser.DeclarationContext
                         || child instanceof SSCParser.ExternalDeclarationContext
-                        || child instanceof SSCParser.StatementContext) {
+                        || child instanceof SSCParser.StatementContext
+                        || (child instanceof TerminalNode t && t.getSymbol().getType() == SSCParser.LeftBrace))
+                ) {
                     builder
                             .append(System.lineSeparator())
                             .append(SSCCUtil.Text.INDENT.repeat(level));

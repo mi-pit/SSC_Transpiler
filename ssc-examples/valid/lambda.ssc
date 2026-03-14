@@ -52,15 +52,24 @@ int main()
 
 void test_nested()
 {
-    const auto outer = | [void] | --> int
+    const auto outer = | [ size_t c, ... ] | --> int
     {
         const auto inner = | [void] | --> int
         {
             return 123;
         };
 
-        return inner();
+        va_list vl;
+        va_start( vl, c );
+
+        int n = inner();
+        for ( size_t i = 0; i < c; ++i )
+            n += va_arg( vl, int );
+
+        va_end( vl );
+
+        return n;
     };
 
-    println( "Should be 123: %i", outer() );
+    println( "Should be 123: %i", outer( 3u, 1, 2, 3 ) );
 }

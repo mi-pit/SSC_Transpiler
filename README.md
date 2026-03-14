@@ -23,8 +23,8 @@ java, a C compiler, clang-format (optional)
 
 ## Features
 
-SSC is (supposed to be) a superset of C, with the added `superstructs`
-(more features to come, if I get around to it).
+SSC is (supposed to be) a superset of C, with the added superstructs (`object`).
+More features to come, if I get around to it.
 
 ### Superstructs
 
@@ -46,6 +46,14 @@ Methods may be declared `static`, `pure` or `private`:
 Methods may not be declared both pure and static, since static methods don't operate on a superstruct
 
 One may get references to non-static member functions using the following syntax: `SSName::methodname` (no parens)
+
+---
+
+### Lambda functions
+
+Syntax
+
+`| [ parameters ] | --> return-type (optional: attributes, specifiers) { function-body }`
 
 ---
 
@@ -94,20 +102,11 @@ Since this language is just a hobby project of one idiot, there will be a lot of
 
 Hopefully, I have made the error messages at least ***somewhat*** helpful.
 
-Code in the messages in the "Replacing superstruct references" stage is a little mangled,
-but should be readable and the output `.c` file doesn't get deleted, so (worst case) look there.
-
-As a guide (not a rule):
-
-- `Syntax` and `Preprocessor` exceptions => user (writer of the ssc code) made a mistake
-- `Antlr parser` exceptions => only one entity knows what the problem is and I can't talk to them since I'm an atheist.
-  (problem could be in the java code, antlr grammar, ssc code being transpiled or any number of other reasons)
-- Any other exception is entirely on me
-
 ## C++
 
 This language is ***NOT*** a subset of C++ with a strange keyword for structs/classes.
-This language, as opposed to C++, supports
+This language, as opposed to C++, supports C language constructs removed in C++
+e.g.:
 
 - `void *` genericness
 - references to non-static member functions (`SSName::methodname`)

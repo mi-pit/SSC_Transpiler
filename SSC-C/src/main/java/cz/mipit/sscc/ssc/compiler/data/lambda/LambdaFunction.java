@@ -47,7 +47,7 @@ public final class LambdaFunction implements Comparable<LambdaFunction> {
     }
 
     public String getName() {
-        return "SSC_LAMBDA_FUNCTION__" + prettifier + "__" + id;
+        return "SSC_LAMBDA_FUNCTION__" + id + "__" + prettifier;
     }
 
     public String getDefinition() {

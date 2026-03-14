@@ -17,7 +17,9 @@ import cz.mipit.sscc.util.annotations.Nullable;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -39,8 +41,9 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
     private SuperStruct currentSS = null;
     private final Map<String /* typedef name */, Typedef<SuperStruct>> superstructTypedefs;
 
-    public final Map<@Nullable String /* Function name */, Set<SuperstructVariable>> functionVariables;
-    public String currentFunctionName = null; /* null => no function => global */
+    /* Function name null => no function => global */
+    public final Map<@Nullable String, Set<SuperstructVariable>> functionVariables;
+    public final Deque<String> functionCallStack;
 
     // must be sequenced so that nested lambdas get defined in the right order
     private final SequencedCollection<LambdaFunction> lambdasCollectedInCurrentFunction;
@@ -52,8 +55,12 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
 
         functionVariables = new HashMap<>();
         functionVariables.put(null, new HashSet<>());
+
         superstructTypedefs = new HashMap<>();
+
         lambdasCollectedInCurrentFunction = new TreeSet<>();
+
+        functionCallStack = new ArrayDeque<>();
     }
 
     @Override
@@ -181,7 +188,9 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
             throw getSSCSyntaxException("Missing declarator identifier in function definition", directDecl);
         }
 
-        currentFunctionName = currentSS.name() + "__" + unqualifiedName;
+        final String currentFunctionName = currentSS.name() + "__" + unqualifiedName;
+        functionCallStack.push(currentFunctionName);
+
         if (functionVariables.put(currentFunctionName, new HashSet<>()) != null) {
             throw getSSCSyntaxException("Duplicate function definition", functionCtx);
         }
@@ -207,7 +216,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
 
         currentSS.addMember(SSMember.function(functionDefinition));
 
-        currentFunctionName = null;
+        functionCallStack.pop();
     }
 
     public String parseType(List<SSCParser.DeclarationSpecifierContext> declSpecs,
@@ -288,7 +297,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
                 if (declarator.directDeclarator().Identifier() != null) {
                     final String varName = declarator.directDeclarator().Identifier().getText();
                     if (ssName != null) {
-                        functionVariables.get(currentFunctionName).add(new SuperstructVariable(ssName, pointer, varName));
+                        functionVariables.get(functionCallStack.peek()).add(new SuperstructVariable(ssName, pointer, varName));
                     }
                 }
 
@@ -359,17 +368,19 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
         }
 
         final String unqualifiedName = this.visitTerminal(ctx.declarator().directDeclarator().Identifier());
-        currentFunctionName = currentSS == null
+        final String currentFunctionName = currentSS == null
                 ? unqualifiedName
                 : currentSS.name() + "__" + unqualifiedName;
+        functionCallStack.push(currentFunctionName);
+
         if (functionVariables.put(currentFunctionName, new HashSet<>()) != null) {
             throw getSSCSyntaxException("Duplicate function definition", ctx);
         }
 
         getFunctionSuperstructArgs(ctx);
 
-        final String ret = super.visitFunctionDefinition(ctx);
-        currentFunctionName = null;
+        final String functionDefinitionString = super.visitFunctionDefinition(ctx);
+        functionCallStack.pop();
 
         // emit lambda definitions after leaving function definition to have the proper scope
         // lambdas are not themselves function definitions so they do not exit here
@@ -378,7 +389,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
                 .collect(Collectors.joining(lineSeparator()));
         lambdasCollectedInCurrentFunction.clear();
 
-        return lambdas + lineSeparator() + ret;
+        return lambdas + lineSeparator() + functionDefinitionString;
     }
 
     private void getFunctionSuperstructArgs(final SSCParser.FunctionDefinitionContext ctx) {
@@ -410,7 +421,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
             maybeSSName.get().map(
                     string -> tryCreateSuperstructVariableFromDeclarator(string, declarator),
                     typedef -> tryCreateSuperstructVariableFromDeclarator(typedef, declarator)
-            ).ifPresent(ssVar -> functionVariables.get(currentFunctionName).add(ssVar));
+            ).ifPresent(ssVar -> functionVariables.get(functionCallStack.peek()).add(ssVar));
         }
     }
 
@@ -446,16 +457,6 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
     ) {
         final var initDeclListCtx = ctx.initDeclaratorList();
         if (initDeclListCtx == null) {
-//            final List<SSCParser.TypeSpecifierContext> typeSpecs = declSpecsLs
-//                    .stream()
-//                    .map(SSCParser.DeclarationSpecifierContext::typeSpecifier)
-//                    .filter(Objects::nonNull)
-//                    .toList();
-//            if (typeSpecs.size() > 1) {
-//                throw getSSCSyntaxException("Multiple types in declaration specifiers list", ctx);
-//            }
-//
-//            throw getSSCSyntaxException("Typedef requires a name", declSpecsCtx);
             /* Todo? deal with this kind of stuff
              *  typedef __builtin_va_list __darwin_va_list;
              *  typedef __darwin_va_list va_list;
@@ -527,7 +528,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
                     str -> tryCreateSuperstructVariableFromDeclarator(str, declarator),
                     typedef -> tryCreateSuperstructVariableFromDeclarator(typedef, declarator)
             );
-            mapped.ifPresent(ssVar -> functionVariables.get(currentFunctionName).add(ssVar));
+            mapped.ifPresent(ssVar -> functionVariables.get(functionCallStack.peek()).add(ssVar));
         }
     }
 
@@ -711,6 +712,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
         if (ctx.Identifier().isEmpty())
             throw getSSCSyntaxException(arrowOrDot + " expression has no right side expression", ctx);
 
+        final String currentFunctionName = functionCallStack.peek();
         final Optional<SuperstructVariable> maybeVar = findSuperstructVariable(currentFunctionName, objectName);
         if (maybeVar.isEmpty()) {
             Main.logger.printDebug(() -> "\tVariable is not superstruct\t\tlocal vars: "
@@ -863,7 +865,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
 
         final String primaryExpression = this.visitPrimaryExpression(ctx.primaryExpression());
         if (field.isPrivate()) {
-            final boolean inSSMethod = findSuperstructVariable(currentFunctionName, primaryExpression).isPresent();
+            final boolean inSSMethod = findSuperstructVariable(functionCallStack.peek(), primaryExpression).isPresent();
             Main.logger.printDebug(() -> "Field `" + fieldName
                     + "` is private. Going to check if it may be used here...");
 
@@ -1000,7 +1002,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
     public String visitLambdaFunction(SSCParser.LambdaFunctionContext ctx) {
         final LambdaFunction lambda = new LambdaFunction(
                 currentFile,
-                currentFunctionName,
+                functionCallStack.peek(),
                 this.visitTypeName(ctx.typeName()),
                 this.visitParameterTypeList(ctx.parameterTypeList()),
                 this.visitFunctionBody(ctx.functionBody()),
