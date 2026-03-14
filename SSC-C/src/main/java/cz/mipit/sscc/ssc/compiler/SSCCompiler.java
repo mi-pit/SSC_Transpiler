@@ -6,11 +6,11 @@ import cz.mipit.sscc.args.SSCCOptions;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.Compiler;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
-import cz.mipit.sscc.ssc.compiler.visitors.SuperstructConvertorVisitor;
+import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.ssc.exceptions.children.AntlrException;
 import cz.mipit.sscc.util.ExitValue;
-import cz.mipit.sscc.util.VisitorData;
+import cz.mipit.sscc.util.VisitorInput;
 import cz.mipit.sscc.util.collection.builder.ListBuilder;
 
 import java.io.IOException;
@@ -29,6 +29,7 @@ import static cz.mipit.sscc.Logger.errReturn;
 import static cz.mipit.sscc.Main.logger;
 
 public final class SSCCompiler implements Compiler {
+    public static final String SSC_DEF_MACRO_STRING_NAME = "__SSC_SOURCE__";
     public static final Path SSCLIB_HOME;
 
     static {
@@ -162,7 +163,7 @@ public final class SSCCompiler implements Compiler {
 
         logger.printVerbose("Parsing preprocessed code...");
         final SequencedCollection<AntlrException> exceptions = new LinkedList<>();
-        final VisitorData data = VisitorData.fromFile(workingFile, exceptions);
+        final VisitorInput data = VisitorInput.fromFile(workingFile, exceptions);
         if (!exceptions.isEmpty()) {
             for (final AntlrException exception : exceptions) {
                 System.err.println(exception.getMessage());
@@ -193,13 +194,14 @@ public final class SSCCompiler implements Compiler {
     }
 
     private boolean extractSuperstructMembers(final InputFile currentFile,
-                                              final VisitorData data,
+                                              final VisitorInput data,
                                               final Path outputFile)
             throws IOException {
-        final SuperstructConvertorVisitor visitor = new SuperstructConvertorVisitor(data.tokens(), currentFile);
+        final VisitorDispatcher visitor = new VisitorDispatcher(data.tokens(), currentFile);
         final String result = visitor.visit(data.tree());
+
         if (options.debug()) {
-            for (var entry : visitor.functionVariables.entrySet()) {
+            for (var entry : visitor.getFunctionVariables().entrySet()) {
                 final String funcName = entry.getKey();
                 final Set<SuperstructVariable> variables = entry.getValue();
                 if (variables.isEmpty()) {
@@ -217,8 +219,6 @@ public final class SSCCompiler implements Compiler {
 
         return visitor.hasNoErrors();
     }
-
-    private static final String SSC_DEF_MACRO_STRING_NAME = "__SSC_SOURCE__";
 
     private boolean preprocessSSCCode(final InputFile inFile,
                                       final Path outputFile)
@@ -260,9 +260,6 @@ public final class SSCCompiler implements Compiler {
         if (options.debug()) {
             argsBuilder.plus("-v");
         }
-        //                .add("-fsanitize=address")
-        //                .add("-fsanitize=undefined")
-        //                .add("-fsanitize=integer")
 
         final List<String> args = argsBuilder.build();
 

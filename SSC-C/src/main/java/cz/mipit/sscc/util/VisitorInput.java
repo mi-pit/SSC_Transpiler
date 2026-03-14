@@ -13,9 +13,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.SequencedCollection;
 
-public record VisitorData(CommonTokenStream tokens, ParseTree tree) {
-    public static VisitorData fromFile(final InputFile inputFile,
-                                       final SequencedCollection<AntlrException> errors)
+public record VisitorInput(CommonTokenStream tokens, ParseTree tree) {
+    public static VisitorInput fromFile(final InputFile inputFile,
+                                        final SequencedCollection<AntlrException> errors)
             throws IOException {
         final SSCLexer lexer = new SSCLexer(CharStreams.fromString(Files.readString(inputFile.toPath())));
         final CommonTokenStream tokens = new CommonTokenStream(lexer);
@@ -26,6 +26,6 @@ public record VisitorData(CommonTokenStream tokens, ParseTree tree) {
         parser.addErrorListener(listener);
 
         final ParseTree tree = parser.compilationUnit();
-        return new VisitorData(tokens, tree);
+        return new VisitorInput(tokens, tree);
     }
 }

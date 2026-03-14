@@ -56,7 +56,7 @@ public class TestStubs {
     private static Set<InputFile> getInputFiles(Path dir) {
         final Set<InputFile> files;
         try {
-            files = DirectoryTreeParser.getPathsInDirectory(dir);
+            files = DirectoryTreeParser.getFilesInDirectory(dir, Set.of("ssc"));
         } catch (IOException e) {
             Assertions.fail(e);
             throw new AssertionError("unreachable");

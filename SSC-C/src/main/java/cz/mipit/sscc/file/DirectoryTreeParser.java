@@ -8,7 +8,7 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 public final class DirectoryTreeParser {
-    public static Set<InputFile> getPathsInDirectory(final Path root) throws IOException {
+    public static Set<InputFile> getFilesInDirectory(final Path root, Set<String> extensions) throws IOException {
         final Set<InputFile> files = new HashSet<>();
         try (Stream<Path> entries = Files.walk(root)) {
             entries.forEach(path -> {
@@ -17,8 +17,10 @@ public final class DirectoryTreeParser {
                 }
 
                 final String name = path.getFileName().toString();
-                if (!name.endsWith(".c") && !name.endsWith(".ssc")) {
-                    return;
+                for (String extension : extensions) {
+                    if (!name.endsWith(extension)) {
+                        return;
+                    }
                 }
 
                 final Path abs = path.toAbsolutePath();
@@ -27,5 +29,9 @@ public final class DirectoryTreeParser {
             });
         }
         return files;
+    }
+
+    public static Set<InputFile> getFilesInDirectory(final Path root) throws IOException {
+        return getFilesInDirectory(root, Set.of("ssc", "c"));
     }
 }

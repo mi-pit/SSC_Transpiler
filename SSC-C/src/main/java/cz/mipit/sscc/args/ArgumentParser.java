@@ -66,7 +66,7 @@ public final class ArgumentParser {
                 }
 
                 case LibPath -> {
-                    options.addFiles(DirectoryTreeParser.getPathsInDirectory(Path.of(arg)));
+                    options.addFiles(DirectoryTreeParser.getFilesInDirectory(Path.of(arg)));
                     yield NextOperation.None;
                 }
 

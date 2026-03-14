@@ -28,7 +28,7 @@ public final class InputFile {
 
     private final String absolutePathString;
 
-    public InputFile(Path dir, String name, @Nullable String suffix,
+    private InputFile(Path dir, String name, @Nullable String suffix,
                      Path path, Path absolutePath) {
         this.dir = Objects.requireNonNull(dir, "File must have a directory");
         this.name = Objects.requireNonNull(name, "File must have a name");
@@ -40,7 +40,7 @@ public final class InputFile {
         this.absolutePathString = absolutePath.toString();
     }
 
-    private InputFile(Path dir, String name, @Nullable String suffix) {
+    public InputFile(Path dir, String name, @Nullable String suffix) {
         this.dir = Objects.requireNonNull(dir);
         this.name = Objects.requireNonNull(name);
         this.suffix = suffix;

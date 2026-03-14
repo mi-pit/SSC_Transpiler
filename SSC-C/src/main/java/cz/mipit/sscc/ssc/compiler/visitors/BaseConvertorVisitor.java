@@ -19,13 +19,13 @@ import org.antlr.v4.runtime.tree.TerminalNode;
  * Other visitors should extend this one.
  * </p>
  */
-public abstract class SSCConvertorVisitor extends SSCParserBaseVisitor<String> {
+public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> {
     protected final CommonTokenStream tokens;
     protected final InputFile currentFile;
 
     private boolean hasErrors;
 
-    protected SSCConvertorVisitor(CommonTokenStream tokens, InputFile currentFile) {
+    protected BaseConvertorVisitor(CommonTokenStream tokens, InputFile currentFile) {
         this.tokens = tokens;
         this.currentFile = currentFile;
 
@@ -36,11 +36,14 @@ public abstract class SSCConvertorVisitor extends SSCParserBaseVisitor<String> {
         return !hasErrors;
     }
 
+    protected SSCSyntaxException getSSCSyntaxException(String message, ParserRuleContext ctx) {
+        return new SSCSyntaxException(message, ctx, tokens, currentFile);
+    }
+
     @Override
     protected String defaultResult() {
         return "";
     }
-
 
     @Override
     public String visitTerminal(TerminalNode node) {
@@ -58,6 +61,7 @@ public abstract class SSCConvertorVisitor extends SSCParserBaseVisitor<String> {
 
     private int level = 0;
 
+    /// Also formats the result
     @Override
     public String visitChildren(RuleNode node) {
         final StringBuilder builder = new StringBuilder();
@@ -107,9 +111,5 @@ public abstract class SSCConvertorVisitor extends SSCParserBaseVisitor<String> {
         }
 
         return builder.toString();
-    }
-
-    protected SSCSyntaxException getSSCSyntaxException(String message, ParserRuleContext ctx) {
-        return new SSCSyntaxException(message, ctx, tokens, currentFile);
     }
 }
