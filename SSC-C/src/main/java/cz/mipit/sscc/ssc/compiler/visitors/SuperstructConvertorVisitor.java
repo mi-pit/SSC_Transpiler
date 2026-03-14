@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.SequencedCollection;
+import java.util.SequencedSet;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -46,7 +46,7 @@ public class SuperstructConvertorVisitor extends SSCConvertorVisitor {
     public final Deque<String> functionCallStack;
 
     // must be sequenced so that nested lambdas get defined in the right order
-    private final SequencedCollection<LambdaFunction> lambdasCollectedInCurrentFunction;
+    private final SequencedSet<LambdaFunction> lambdasCollectedInCurrentFunction;
 
     public SuperstructConvertorVisitor(CommonTokenStream tokens, InputFile currentFile) {
         super(tokens, currentFile);
