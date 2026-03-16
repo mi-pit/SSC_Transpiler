@@ -28,14 +28,6 @@ public final class SSCCOptions implements Iterable<Option<?>> {
             null, Boolean.class, false, NextOperation.None
     );
 
-    public static final String OPTSTR_STOP_ON_ERROR_SHORT = "-s";
-    public static final String OPTSTR_STOP_ON_ERROR_LONG = "--no-stop-on-error";
-    private final Option<Boolean> OPTION_STOP_ON_ERROR = new Option<>(
-            new OptionString(OPTSTR_STOP_ON_ERROR_SHORT, OPTSTR_STOP_ON_ERROR_LONG),
-            "Don't stop on error", "By default, sscc stops processing after encountering an error (this powers through)",
-            null, Boolean.class, true, NextOperation.None
-    );
-
     public static final String OPTSTR_NORMAL_DEBUG = "--debug";
     private final Option<Boolean> OPTION_DEBUG = new Option<>(
             new OptionString(OPTSTR_NORMAL_DEBUG),
@@ -76,7 +68,6 @@ public final class SSCCOptions implements Iterable<Option<?>> {
     private final List<Option<?>> OPTIONS = List.of(
             OPTION_HELP,
             OPTION_VERBOSE,
-            OPTION_STOP_ON_ERROR,
             OPTION_DEBUG,
             OPTION_ANTLR_DEBUG,
             OPTION_COMPILE,
@@ -99,10 +90,6 @@ public final class SSCCOptions implements Iterable<Option<?>> {
 
     public boolean debug() {
         return OPTION_DEBUG.value();
-    }
-
-    public boolean stopOnError() {
-        return OPTION_STOP_ON_ERROR.value();
     }
 
     public Optional<String> compileTarget() {

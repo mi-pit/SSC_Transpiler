@@ -114,7 +114,6 @@ public final class SSCCompiler implements Compiler {
      */
     private int goThroughAllFiles(final Set<Path> filesToCompile,
                                   final Set<Path> outputtedFiles) {
-        // todo: remove option stop-on-error
         final AtomicInteger totalFailed = new AtomicInteger();
 
         options.filesToProcess().parallelStream().forEach(fileArg -> {
