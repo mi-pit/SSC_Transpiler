@@ -75,11 +75,11 @@ public final class Logger {
         return errReturn(exitValue, "%s", message);
     }
 
-    private static void log(final ConsoleColor color,
-                            final String typeString,
-                            final PrintStream stream,
-                            final String fmtstr,
-                            Object... args) {
+    synchronized private static void log(final ConsoleColor color,
+                                         final String typeString,
+                                         final PrintStream stream,
+                                         final String fmtstr,
+                                         Object... args) {
         color.printf(stream, Main.SSCC_NAME + ": " + typeString + ": " + fmtstr, args);
         stream.println();
     }
@@ -92,7 +92,7 @@ public final class Logger {
         printDebug("%s", supplier.get());
     }
 
-    public void printDebug(String fmt, Object... objects) {
+    synchronized public void printDebug(String fmt, Object... objects) {
         if (!options.debug()) {
             return;
         }
@@ -101,7 +101,7 @@ public final class Logger {
         System.out.println();
     }
 
-    public void printVerbose(String fmt, Object... objects) {
+    synchronized public void printVerbose(String fmt, Object... objects) {
         if (!options.verbose()) {
             return;
         }
@@ -109,11 +109,7 @@ public final class Logger {
         System.out.println();
     }
 
-    public void printVerbose(Supplier<String> supplier) {
-        printVerbose("%s", supplier.get());
-    }
-
-    synchronized public void printVerboseFilename(String a, String b) {
-        printVerbose("%s: '" + COLOR_DEFAULT + "%s" + VERBOSE_COLOR + "'", a, b);
+    public void printVerboseFilename(String message, String fileName) {
+        printVerbose("%s: '" + COLOR_DEFAULT + "%s" + VERBOSE_COLOR + "'", message, fileName);
     }
 }

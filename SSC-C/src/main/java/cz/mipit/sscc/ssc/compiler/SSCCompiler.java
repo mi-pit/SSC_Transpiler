@@ -82,8 +82,9 @@ public final class SSCCompiler implements Compiler {
             return errReturn(ExitValue.INVALID_ARGUMENTS, "No files given to process");
         }
 
-        final Set<Path> outputtedFiles = ConcurrentHashMap.newKeySet();
         final Set<Path> filesToCompile = ConcurrentHashMap.newKeySet();
+        // files to be deleted if binary is produced
+        final Set<Path> outputtedFiles = ConcurrentHashMap.newKeySet();
 
         final int totalFailed = goThroughAllFiles(filesToCompile, outputtedFiles);
         if (totalFailed != 0) {
@@ -106,11 +107,16 @@ public final class SSCCompiler implements Compiler {
         return ExitValue.SUCCESS;
     }
 
-    /// @return number of files where processing failed
+    /**
+     * Input sets must support concurrency
+     *
+     * @return number of files where processing failed
+     */
     private int goThroughAllFiles(final Set<Path> filesToCompile,
                                   final Set<Path> outputtedFiles) {
         // todo: remove option stop-on-error
         final AtomicInteger totalFailed = new AtomicInteger();
+
         options.filesToProcess().parallelStream().forEach(fileArg -> {
             if ("c".equals(fileArg.suffix())) {
                 logger.printVerboseFilename("Skipping processing of file", fileArg.fullName());
