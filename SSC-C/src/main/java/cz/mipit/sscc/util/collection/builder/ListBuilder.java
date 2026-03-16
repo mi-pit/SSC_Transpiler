@@ -47,7 +47,7 @@ public final class ListBuilder<T>
             final Function<T, O> mapper
     ) {
         final ListBuilder<O> lb = ListBuilder.withCapacity(_collection.size());
-        return lb.plusMapped(this._collection, mapper);
+        return lb.plusMapped(_collection, mapper);
     }
 
     /**

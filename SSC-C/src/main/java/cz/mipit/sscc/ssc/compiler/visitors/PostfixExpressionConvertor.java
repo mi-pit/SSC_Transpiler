@@ -23,7 +23,7 @@ public class PostfixExpressionConvertor extends Convertor<SSCParser.PostfixExpre
 
     @Override
     public String convert(SSCParser.PostfixExpressionContext ctx) {
-        /* Compound literals for some reason have to be converted here */
+        /* Compound literals for some reason count as postfix expressions */
         final Optional<String> res = getCompoundLiteralReplaced(ctx);
         if (res.isPresent()) {
             return res.get();
@@ -40,12 +40,7 @@ public class PostfixExpressionConvertor extends Convertor<SSCParser.PostfixExpre
 
     private Optional<String> getCompoundLiteralReplaced(SSCParser.PostfixExpressionContext ctx) {
         /* postfixExpression.typeName implies compound literal */
-        if (ctx.typeName() == null
-                || ctx.typeName().specifierQualifierList() == null
-                || ctx.typeName().specifierQualifierList().typeSpecifierQualifier().isEmpty()
-                || ctx.typeName().specifierQualifierList().typeSpecifierQualifier(0).typeSpecifier() == null
-                || ctx.typeName().specifierQualifierList().typeSpecifierQualifier(0).typeSpecifier().superStructSpecifier() == null
-        ) {
+        if (ctx.typeName() == null) {
             return Optional.empty();
         }
 

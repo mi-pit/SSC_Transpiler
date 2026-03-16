@@ -78,10 +78,9 @@ public abstract class CollectionAdapter<ITEM, COLL extends java.util.Collection<
         return _collection.removeAll(c);
     }
 
-    @SuppressWarnings("SuspiciousMethodCalls")
     @Override
     public boolean retainAll(java.util.Collection<?> c) {
-        return _collection.removeAll(c);
+        return _collection.retainAll(c);
     }
 
 

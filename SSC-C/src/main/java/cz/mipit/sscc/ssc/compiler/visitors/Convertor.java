@@ -10,9 +10,15 @@ public abstract class Convertor<T extends ParserRuleContext> {
         this.dispatcher = dispatcher;
     }
 
+    /**
+     * Converts the context to a string.
+     * <p>
+     * Implementations should use the dispatcher to recursively visit child contexts when applicable.
+     * </p>
+     */
     abstract public String convert(T ctx);
 
-    protected SSCSyntaxException getSSCSyntaxException(String message, ParserRuleContext ctx) {
+    final protected SSCSyntaxException getSSCSyntaxException(String message, ParserRuleContext ctx) {
         return dispatcher.getSSCSyntaxException(message, ctx);
     }
 }
