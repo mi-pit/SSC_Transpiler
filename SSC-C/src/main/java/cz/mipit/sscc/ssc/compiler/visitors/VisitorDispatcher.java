@@ -8,6 +8,7 @@ import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.data.var.Typedef;
 import cz.mipit.sscc.util.Either;
 import cz.mipit.sscc.util.SSCCUtil;
+import cz.mipit.sscc.util.annotations.Nullable;
 import org.antlr.v4.runtime.CommonTokenStream;
 
 import java.util.HashSet;
@@ -16,14 +17,16 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+import static cz.mipit.sscc.Main.logger;
+
 
 public class VisitorDispatcher extends BaseConvertorVisitor {
+    private final Convertor<SSCParser.PostfixExpressionContext> postfixExpressionConvertor;
+    private final Convertor<SSCParser.FunctionDefinitionContext> functionConvertor;
+    private final Convertor<SSCParser.ConditionalExpressionContext> ternaryOperatorConvertor;
     private final Convertor<SSCParser.FlagsSpecifierContext> flagsConvertor;
     private final LambdaConvertor lambdaConvertor;
-    private final Convertor<SSCParser.ConditionalExpressionContext> ternaryOperatorConvertor;
-    private final Convertor<SSCParser.SuperStructSpecifierContext> superstructConvertor;
-    private final Convertor<SSCParser.FunctionDefinitionContext> functionConvertor;
-    private final Convertor<SSCParser.PostfixExpressionContext> postfixExpressionConvertor;
+    private final SuperstructConvertor superstructConvertor;
 
     private final Collector collector;
 
@@ -95,6 +98,20 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
         return lambdaConvertor.convert(ctx);
     }
 
+    @Override
+    public String visitExternalDeclaration(SSCParser.ExternalDeclarationContext ctx) {
+        final String external = super.visitExternalDeclaration(ctx);
+
+        // emit lambda definitions right after leaving external declaration to have the proper scope
+        // lambdas are not themselves function definitions so they do not exit here
+        final String lambdas = lambdaConvertor.emit();
+
+        // if superstruct convertor has methods => external is a super struct declaration
+        // methods must be defined AFTER the struct
+        final String ssMethods = superstructConvertor.emit().orElse("");
+
+        return lambdas + external + ssMethods;
+    }
 
     @Override
     public String visitDeclaration(SSCParser.DeclarationContext ctx) {
@@ -119,14 +136,6 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
 
 
     /* ==== GETTERS ==== */
-
-    public Map<String, Set<SuperstructVariable>> getFunctionVariables() {
-        return data.functionVariables();
-    }
-
-    public String emitLambdas() {
-        return lambdaConvertor.emit();
-    }
 
     public Optional<FunctionDefinition> findMethodInSuperstruct(final SuperStruct ssr,
                                                                 final String methodName) {
@@ -236,5 +245,21 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
             }
         }
         return Optional.empty();
+    }
+
+
+    public void debugPrintFunctionVariables() {
+        for (final Map.Entry<@Nullable String, Set<SuperstructVariable>> entry : data.functionVariables().entrySet()) {
+            final String funcName = entry.getKey();
+            final Set<SuperstructVariable> variables = entry.getValue();
+            if (variables.isEmpty()) {
+                continue;
+            }
+
+            logger.printDebug(() -> "For scope " + (funcName == null ? "global" : "'" + funcName + "'"));
+            for (final SuperstructVariable variable : variables) {
+                logger.printDebug(() -> "        " + variable);
+            }
+        }
     }
 }

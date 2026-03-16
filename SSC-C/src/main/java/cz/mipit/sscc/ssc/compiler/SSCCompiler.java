@@ -1,11 +1,9 @@
 package cz.mipit.sscc.ssc.compiler;
 
 import cz.mipit.sscc.Logger;
-import cz.mipit.sscc.Main;
 import cz.mipit.sscc.args.SSCCOptions;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.Compiler;
-import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.ssc.exceptions.children.AntlrException;
@@ -58,8 +56,9 @@ public final class SSCCompiler implements Compiler {
             "-Wall",
             "-Wextra",
 
-            "-Wno-extra-semi",      /* sscc creates extra semicolons */
-            "-Wno-unused-function", /* preprocessor includes unused functions */
+            /* no `pedantic` or `W-unused-function` because of preprocessor
+             * (stdlib contains platform specific code and unused functions) */
+            "-Wno-unused-function",
 
             "-Werror"
     );
@@ -93,8 +92,9 @@ public final class SSCCompiler implements Compiler {
 
         if (options.compileTarget().isPresent()) {
             logger.printVerbose("Compiling...");
-            if (!compileCBatch(options.compileTarget().get(), filesToCompile)) {
-                return ExitValue.C_COMPILATION_FAIL;
+            final int exitCode = compileCBatch(options.compileTarget().get(), filesToCompile);
+            if (exitCode != 0) {
+                return errReturn(ExitValue.C_COMPILATION_FAIL, "Compilation failed with exit code: " + exitCode);
             }
 
             for (final Path path : outputtedFiles) {
@@ -201,18 +201,7 @@ public final class SSCCompiler implements Compiler {
         final String result = visitor.visit(data.tree());
 
         if (options.debug()) {
-            for (var entry : visitor.getFunctionVariables().entrySet()) {
-                final String funcName = entry.getKey();
-                final Set<SuperstructVariable> variables = entry.getValue();
-                if (variables.isEmpty()) {
-                    continue;
-                }
-
-                Main.logger.printDebug(() -> "For scope " + (funcName == null ? "global" : "'" + funcName + "'"));
-                for (final SuperstructVariable variable : variables) {
-                    Main.logger.printDebug(() -> "        " + variable);
-                }
-            }
+            visitor.debugPrintFunctionVariables();
         }
 
         Files.writeString(outputFile, result, StandardOpenOption.TRUNCATE_EXISTING);
@@ -245,7 +234,7 @@ public final class SSCCompiler implements Compiler {
         );
     }
 
-    private boolean compileCBatch(String binaryName, Set<Path> files)
+    private int compileCBatch(String binaryName, Set<Path> files)
             throws IOException, InterruptedException {
         final ListBuilder<String> argsBuilder = ListBuilder
                 .from(ccProcessArgBase)
@@ -263,20 +252,16 @@ public final class SSCCompiler implements Compiler {
 
         final List<String> args = argsBuilder.build();
 
-        logger.printDebug("Compiling using `%s`", String.join(" ", args));
-
         /* cc -Werror -Wall -Wextra -pedantic -fsyntax-only "$file" */
-        final int exitCode = doProcess(args);
-        if (exitCode != 0) {
-            errReturn(ExitValue.C_COMPILATION_FAIL, "Compilation failed with exit code: " + exitCode);
-            return false;
-        }
-        return true;
+        return doProcess(args);
     }
 
     private static int doProcess(final List<String> args)
             throws IOException, InterruptedException {
-        logger.printDebug(() -> String.join(" ", args));
-        return new ProcessBuilder(args).inheritIO().start().waitFor();
+        logger.printDebug(() -> "Creating a new process: " + String.join(" ", args));
+        return new ProcessBuilder(args)
+                .inheritIO()
+                .start()
+                .waitFor();
     }
 }

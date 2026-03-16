@@ -19,7 +19,7 @@ public class SuperStruct {
         this.members = new ArrayList<>();
     }
 
-    public String convert() {
+    public String getStructDefinition() {
         final StringBuilder resultBuilder = new StringBuilder();
 
         resultBuilder.append(String.format("struct %s {%n", name));
@@ -32,13 +32,15 @@ public class SuperStruct {
                     .append(System.lineSeparator())
             );
         }
-        resultBuilder
-                .append("};")
-                .append(System.lineSeparator());
+        resultBuilder.append("}");
 
+        return resultBuilder.toString();
+    }
+
+    public String getMethods() {
+        final StringBuilder resultBuilder = new StringBuilder();
         appendFunctions(resultBuilder, FunctionDefinition::getDeclaration);
         appendFunctions(resultBuilder, FunctionDefinition::getDefinition);
-
         return resultBuilder.toString();
     }
 

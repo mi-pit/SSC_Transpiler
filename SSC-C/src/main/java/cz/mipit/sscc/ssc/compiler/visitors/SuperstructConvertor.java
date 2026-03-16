@@ -14,12 +14,16 @@ import cz.mipit.sscc.util.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class SuperstructConvertor extends Convertor<SSCParser.SuperStructSpecifierContext> {
+    private SuperStruct lastSuperstruct;
+
     public SuperstructConvertor(VisitorDispatcher dispatcher) {
         super(dispatcher);
+        lastSuperstruct = null;
     }
 
     @Override
@@ -44,7 +48,18 @@ public class SuperstructConvertor extends Convertor<SSCParser.SuperStructSpecifi
 
         dispatcher.data.setCurrentSS(null);
 
-        return superStruct.convert();
+        lastSuperstruct = superStruct;
+        return lastSuperstruct.getStructDefinition();
+    }
+
+    public Optional<String> emit() {
+        if (lastSuperstruct == null) {
+            return Optional.empty();
+        }
+        final String methods = lastSuperstruct.getMethods();
+        lastSuperstruct = null;
+
+        return Optional.of(methods);
     }
 
     private void processMemberCtx(final SSCParser.SuperStructMemberContext memberCtx,

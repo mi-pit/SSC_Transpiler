@@ -8,8 +8,6 @@ import cz.mipit.sscc.util.Either;
 import java.util.List;
 import java.util.Optional;
 
-import static java.lang.System.lineSeparator;
-
 public class FunctionDefinitionConvertor extends Convertor<SSCParser.FunctionDefinitionContext> {
     public FunctionDefinitionConvertor(VisitorDispatcher dispatcher) {
         super(dispatcher);
@@ -42,11 +40,7 @@ public class FunctionDefinitionConvertor extends Convertor<SSCParser.FunctionDef
         final String functionDefinitionString = dispatcher.super_visitFunctionDefinition(ctx);
         dispatcher.data.functionStack().pop();
 
-        // emit lambda definitions after leaving function definition to have the proper scope
-        // lambdas are not themselves function definitions so they do not exit here
-        final String lambdas = dispatcher.emitLambdas();
-
-        return lambdas + lineSeparator() + functionDefinitionString;
+        return functionDefinitionString;
     }
 
 
