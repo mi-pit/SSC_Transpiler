@@ -1,4 +1,4 @@
-package cz.mipit.sscc.ssc.compiler.visitors;
+package cz.mipit.sscc.ssc.compiler.visitors.convertors;
 
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.Main;
@@ -9,8 +9,8 @@ import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.data.var.TypedVariable;
 import cz.mipit.sscc.ssc.compiler.data.var.Typedef;
+import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import cz.mipit.sscc.util.SSCCUtil;
-import cz.mipit.sscc.util.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,7 +18,10 @@ import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-public class SuperstructConvertor extends Convertor<SSCParser.SuperStructSpecifierContext> {
+public class SuperstructConvertor
+        extends AbstractConvertor<SSCParser.SuperStructSpecifierContext>
+        implements EmittingConvertor<SSCParser.SuperStructSpecifierContext> {
+
     private SuperStruct lastSuperstruct;
 
     public SuperstructConvertor(VisitorDispatcher dispatcher) {
@@ -48,10 +51,14 @@ public class SuperstructConvertor extends Convertor<SSCParser.SuperStructSpecifi
 
         dispatcher.data.setCurrentSS(null);
 
+        if (lastSuperstruct != null) {
+            throw new IllegalStateException("Already in a superstruct");
+        }
         lastSuperstruct = superStruct;
         return lastSuperstruct.getStructDefinition();
     }
 
+    @Override
     public Optional<String> emit() {
         if (lastSuperstruct == null) {
             return Optional.empty();
@@ -104,7 +111,7 @@ public class SuperstructConvertor extends Convertor<SSCParser.SuperStructSpecifi
 
         if (initDeclaratorList.initDeclarator().isEmpty()) {
             throw getSSCSyntaxException(
-                    "Init declarator empty `" + SSCCUtil.Text.getLiteral(memberCtx, dispatcher.tokens) + "`",
+                    "Init declarator empty `" + dispatcher.getLiteral(memberCtx) + "`",
                     initDeclaratorList
             );
         }
@@ -166,8 +173,10 @@ public class SuperstructConvertor extends Convertor<SSCParser.SuperStructSpecifi
         final SuperStruct superStruct = dispatcher.data.currentSS().get();
 
         final String currentFunctionName = superStruct.name() + "__" + unqualifiedName;
-        dispatcher.data.functionStack().push(currentFunctionName);
-        dispatcher.initFunctionVariables(currentFunctionName, functionCtx);
+        dispatcher.pushFunction(
+                currentFunctionName,
+                () -> getSSCSyntaxException("Duplicate function definition", functionCtx)
+        );
 
         if (!isStatic) {
             final SuperstructVariable selfReferenceVariable =
@@ -190,7 +199,7 @@ public class SuperstructConvertor extends Convertor<SSCParser.SuperStructSpecifi
 
         superStruct.addMember(SSMember.function(functionDefinition));
 
-        dispatcher.data.functionStack().pop();
+        dispatcher.popFunction();
     }
 
     public String parseType(List<SSCParser.DeclarationSpecifierContext> declSpecs,
@@ -236,7 +245,7 @@ public class SuperstructConvertor extends Convertor<SSCParser.SuperStructSpecifi
                 /* Function with no parameters */
                 break;
             }
-            @Nullable String ssName = null;
+            String ssName = null;
             int pointer = 0;
 
             final List<String> curr = new ArrayList<>();

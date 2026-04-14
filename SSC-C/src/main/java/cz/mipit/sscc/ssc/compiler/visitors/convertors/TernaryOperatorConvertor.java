@@ -1,8 +1,9 @@
-package cz.mipit.sscc.ssc.compiler.visitors;
+package cz.mipit.sscc.ssc.compiler.visitors.convertors;
 
 import antlr.ssc.SSCParser;
+import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 
-public class TernaryOperatorConvertor extends Convertor<SSCParser.ConditionalExpressionContext> {
+public class TernaryOperatorConvertor extends AbstractConvertor<SSCParser.ConditionalExpressionContext> {
     public TernaryOperatorConvertor(VisitorDispatcher dispatcher) {
         super(dispatcher);
     }

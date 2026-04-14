@@ -1,4 +1,4 @@
-package cz.mipit.sscc.ssc.compiler.visitors;
+package cz.mipit.sscc.ssc.compiler.visitors.convertors;
 
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.Main;
@@ -7,8 +7,8 @@ import cz.mipit.sscc.ssc.compiler.data.ss.FunctionDefinition;
 import cz.mipit.sscc.ssc.compiler.data.ss.SSMember;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
+import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import cz.mipit.sscc.util.Either;
-import cz.mipit.sscc.util.SSCCUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,7 +16,7 @@ import java.util.Optional;
 
 import static java.lang.System.lineSeparator;
 
-public class PostfixExpressionConvertor extends Convertor<SSCParser.PostfixExpressionContext> {
+public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.PostfixExpressionContext> {
     public PostfixExpressionConvertor(VisitorDispatcher dispatcher) {
         super(dispatcher);
     }
@@ -47,7 +47,7 @@ public class PostfixExpressionConvertor extends Convertor<SSCParser.PostfixExpre
         final String res = dispatcher.super_visitPostfixExpression(ctx);
 
         Main.logger.printDebug(() -> "superStructSpecifier in: "
-                + SSCCUtil.Text.getLiteral(ctx, dispatcher.tokens).replace(lineSeparator(), " ")
+                + dispatcher.getLiteral(ctx).replace(lineSeparator(), " ")
                 + lineSeparator() + "\t\tReturning: " + res.replace(lineSeparator(), " "));
 
         return Optional.of(res);
@@ -60,7 +60,7 @@ public class PostfixExpressionConvertor extends Convertor<SSCParser.PostfixExpre
                         : !ctx.Dot().isEmpty() ? ArrowOrDot.Dot
                         : ArrowOrDot.Neither;
 
-        Main.logger.printDebug(() -> arrowOrDot + " in: " + SSCCUtil.Text.getLiteral(ctx, dispatcher.tokens));
+        Main.logger.printDebug(() -> arrowOrDot + " in: " + dispatcher.getLiteral(ctx));
         assert arrowOrDot != ArrowOrDot.Neither;
 
         final String objectName = dispatcher.visitPrimaryExpression(ctx.primaryExpression());
@@ -86,7 +86,7 @@ public class PostfixExpressionConvertor extends Convertor<SSCParser.PostfixExpre
         }
 
         final String methodName = dispatcher.visitTerminal(ctx.Identifier(0));
-        final Optional<FunctionDefinition> maybeMethod = dispatcher.findMethodInSuperstruct(superstruct, methodName);
+        final Optional<FunctionDefinition> maybeMethod = superstruct.findMethod(methodName);
 
         if (maybeMethod.isEmpty()) {
             Main.logger.printDebug(() -> "Variable does not have such a method");
@@ -160,7 +160,7 @@ public class PostfixExpressionConvertor extends Convertor<SSCParser.PostfixExpre
     }
 
     public String convertStaticFunctionCall(final SSCParser.PostfixExpressionContext ctx) {
-        Main.logger.printDebug(() -> "Double colon in: " + SSCCUtil.Text.getLiteral(ctx, dispatcher.tokens));
+        Main.logger.printDebug(() -> "Double colon in: " + dispatcher.getLiteral(ctx));
 
         if (ctx.primaryExpression() == null) {
             throw getSSCSyntaxException("Double colon expression has no left side (Superstruct name) expression", ctx);
@@ -202,7 +202,7 @@ public class PostfixExpressionConvertor extends Convertor<SSCParser.PostfixExpre
         }
         final SuperStruct superstruct = maybeSS.get();
 
-        final Optional<FunctionDefinition> maybeMethod = dispatcher.findMethodInSuperstruct(superstruct, methodName);
+        final Optional<FunctionDefinition> maybeMethod = superstruct.findMethod(methodName);
         if (maybeMethod.isEmpty()) {
             throw getSSCSyntaxException(
                     "Superstruct with name `" + className

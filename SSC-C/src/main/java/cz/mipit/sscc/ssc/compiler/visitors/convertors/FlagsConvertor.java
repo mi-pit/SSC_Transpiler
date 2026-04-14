@@ -1,6 +1,7 @@
-package cz.mipit.sscc.ssc.compiler.visitors;
+package cz.mipit.sscc.ssc.compiler.visitors.convertors;
 
 import antlr.ssc.SSCParser;
+import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import cz.mipit.sscc.util.SSCCUtil;
 import org.antlr.v4.runtime.ParserRuleContext;
 
@@ -10,7 +11,7 @@ import java.util.TreeMap;
 
 import static java.lang.System.lineSeparator;
 
-public class FlagsConvertor extends Convertor<SSCParser.FlagsSpecifierContext> {
+public class FlagsConvertor extends AbstractConvertor<SSCParser.FlagsSpecifierContext> {
     public FlagsConvertor(VisitorDispatcher dispatcher) {
         super(dispatcher);
     }

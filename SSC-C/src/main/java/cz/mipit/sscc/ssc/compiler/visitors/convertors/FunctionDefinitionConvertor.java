@@ -1,14 +1,15 @@
-package cz.mipit.sscc.ssc.compiler.visitors;
+package cz.mipit.sscc.ssc.compiler.visitors.convertors;
 
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.var.Typedef;
+import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import cz.mipit.sscc.util.Either;
 
 import java.util.List;
 import java.util.Optional;
 
-public class FunctionDefinitionConvertor extends Convertor<SSCParser.FunctionDefinitionContext> {
+public class FunctionDefinitionConvertor extends AbstractConvertor<SSCParser.FunctionDefinitionContext> {
     public FunctionDefinitionConvertor(VisitorDispatcher dispatcher) {
         super(dispatcher);
     }
@@ -32,19 +33,21 @@ public class FunctionDefinitionConvertor extends Convertor<SSCParser.FunctionDef
                 .map(SuperStruct::name)
                 .orElse(unqualifiedName);
 
-        dispatcher.data.functionStack().push(currentFunctionName);
-        dispatcher.initFunctionVariables(currentFunctionName, ctx);
+        dispatcher.pushFunction(
+                currentFunctionName,
+                () -> getSSCSyntaxException("Duplicate function definition", ctx)
+        );
 
-        getFunctionSuperstructArgs(ctx);
+        getFunctionSuperstructParams(ctx);
 
         final String functionDefinitionString = dispatcher.super_visitFunctionDefinition(ctx);
-        dispatcher.data.functionStack().pop();
+        dispatcher.popFunction();
 
         return functionDefinitionString;
     }
 
 
-    private void getFunctionSuperstructArgs(final SSCParser.FunctionDefinitionContext ctx) {
+    private void getFunctionSuperstructParams(final SSCParser.FunctionDefinitionContext ctx) {
         final List<SSCParser.ParameterTypeListContext> ls = ctx.declarator().directDeclarator().parameterTypeList();
         if (ls.isEmpty()) {
             throw getSSCSyntaxException("Function definition has no parameter type list", ctx.declarator());

@@ -6,9 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 public class SuperStruct {
     private final String name;
@@ -55,12 +53,12 @@ public class SuperStruct {
         }
     }
 
-    public Set<FunctionDefinition> getFunctions() {
+    public List<FunctionDefinition> getFunctions() {
         return members.stream()
                 .map(member -> member.data().getRight())
                 .filter(Optional::isPresent)
                 .map(Optional::get)
-                .collect(Collectors.toSet());
+                .toList();
     }
 
     public String name() {
@@ -73,5 +71,15 @@ public class SuperStruct {
 
     public void addMember(SSMember member) {
         members.add(member);
+    }
+
+    public Optional<FunctionDefinition> findMethod(final String methodName) {
+        for (final FunctionDefinition func : this.getFunctions()) {
+            if (func.getUnqualifiedName().equals(methodName)) {
+                return Optional.of(func);
+            }
+        }
+
+        return Optional.empty();
     }
 }

@@ -9,10 +9,10 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-public class Collector {
+public class VariableCollector {
     private final VisitorDispatcher dispatcher;
 
-    public Collector(final VisitorDispatcher dispatcher) {
+    public VariableCollector(final VisitorDispatcher dispatcher) {
         this.dispatcher = dispatcher;
     }
 
@@ -45,12 +45,10 @@ public class Collector {
     ) {
         final var initDeclListCtx = ctx.initDeclaratorList();
         if (initDeclListCtx == null) {
-            /* Todo? deal with this kind of stuff
-             *  typedef __builtin_va_list __darwin_va_list;
-             *  typedef __darwin_va_list va_list;
-             *  typedef __builtin_va_list va_list;
-             *
-             * for now at least, let cc deal with it
+            /* e.g.
+             * typedef __builtin_va_list __darwin_va_list;
+             * typedef __darwin_va_list va_list;
+             * typedef __builtin_va_list va_list;
              */
             return;
         }
