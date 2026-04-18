@@ -74,11 +74,6 @@ public class VariableCollector {
         }
 
         final SSCParser.SuperStructSpecifierContext ssSpec = ssSpecs.getFirst();
-        if (ssSpec.superStructBody() != null) {
-            // todo?
-            throw dispatcher.getSSCSyntaxException("Cannot define superstruct within a typedef", ctx);
-        }
-
         final String ssName = dispatcher.visitTerminal(ssSpec.Identifier());
 
         final SuperStruct ss = dispatcher.findSuperstructByName(ssName).orElse(new SuperStruct(ssName));

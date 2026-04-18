@@ -23,7 +23,7 @@ public class TestSuperStruct {
 
         assertEquals(SS_NAME, struct.name());
 
-        final Set<FunctionDefinition> functions = struct.getFunctions();
+        final List<FunctionDefinition> functions = struct.getFunctions();
         assertTrue(functions == null || functions.isEmpty());
 
         final List<SSMember> members = struct.members();

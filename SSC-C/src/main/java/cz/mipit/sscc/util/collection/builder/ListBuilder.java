@@ -2,7 +2,6 @@ package cz.mipit.sscc.util.collection.builder;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
@@ -17,7 +16,7 @@ public final class ListBuilder<T>
     }
 
     private ListBuilder() {
-        this(ArrayList::new);
+        this(DEFAULT_CAPACITY);
     }
 
     private ListBuilder(int capacity) {
@@ -51,7 +50,7 @@ public final class ListBuilder<T>
     }
 
     /**
-     * Returns an immutable list, built from the original by using {@link List#copyOf(Collection)}.
+     * Returns an immutable list, built from the original by using {@link ListBuilder#listCopy(List)}.
      * This operation is idempotent, and has no effect on the original collection.
      *
      * @return a new immutable list
@@ -64,7 +63,7 @@ public final class ListBuilder<T>
 
 
     /**
-     * This static function returns an immutable copy of the original list.
+     * This static function returns a copy of the original list.
      * <p>
      * Items may be null
      * </p>
@@ -73,8 +72,7 @@ public final class ListBuilder<T>
      * @param <T>  item type
      * @return unmodifiable list with the items from the parameter
      */
-    @SuppressWarnings("Java9CollectionFactory") // the suggested method throws NullPointerException if an item is null
     public static <T> List<T> listCopy(List<T> list) {
-        return Collections.unmodifiableList(new ArrayList<>(Objects.requireNonNull(list, "no list to copy")));
+        return new ArrayList<>(Objects.requireNonNull(list, "no list to copy"));
     }
 }

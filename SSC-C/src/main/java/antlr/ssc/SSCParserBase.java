@@ -6,6 +6,7 @@ import org.antlr.v4.runtime.Parser;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.TokenStream;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.HashSet;
 import java.util.List;
@@ -143,13 +144,13 @@ public abstract class SSCParserBase extends Parser {
     public boolean IsDeclaration() {
         if (noSemantics.contains("IsDeclaration"))
             return true;
-        if (debug)
+        if (this.debug)
             System.out.println("IsDeclaration");
         boolean result = IsDeclarationSpecifiers()
                 || IsAttributeSpecifierSequence()
                 || IsStaticAssertDeclaration()
                 || IsAttributeDeclaration();
-        if (debug)
+        if (this.debug)
             System.out.println("IsDeclaration " + result);
         return result;
     }
@@ -159,14 +160,14 @@ public abstract class SSCParserBase extends Parser {
             return true;
         Token lt1 = ((CommonTokenStream) this.getInputStream()).LT(1);
         String text = lt1.getText();
-        if (debug)
+        if (this.debug)
             System.out.println("IsDeclarationSpecifier " + lt1);
         boolean result = IsStorageClassSpecifier()
                 || IsTypeSpecifier()
                 || IsTypeQualifier()
                 || IsFunctionSpecifier()
                 || IsAlignmentSpecifier();
-        if (debug)
+        if (this.debug)
             System.out.println("IsDeclarationSpecifier " + result + " for " + lt1);
         return result;
     }
@@ -174,12 +175,12 @@ public abstract class SSCParserBase extends Parser {
     public boolean IsTypeSpecifierQualifier() {
         if (noSemantics.contains("IsTypeSpecifierQualifier"))
             return true;
-        if (debug)
+        if (this.debug)
             System.out.println("IsDeclarationSpecifier");
         boolean result = IsTypeSpecifier()
                 || IsTypeQualifier()
                 || IsAlignmentSpecifier();
-        if (debug)
+        if (this.debug)
             System.out.println("IsDeclarationSpecifier " + result);
         return result;
     }
@@ -373,26 +374,55 @@ public abstract class SSCParserBase extends Parser {
         return result;
     }
 
+    // SSC
+    public void EnterTemplate() {
+        if (!(this.getContext() instanceof SSCParser.FunctionTemplateDefinitionContext funcdefCtx)) {
+            return;
+        }
+
+        if (this.debug)
+            System.out.println("Function definition");
+        if (funcdefCtx.identifierList() == null) {
+            return;
+        }
+
+        if (this.debug)
+            System.out.println("Template types");
+
+        _st.pushBlockScope();
+
+        for (TerminalNode identifier : funcdefCtx.identifierList().Identifier()) {
+            Symbol symbol = new Symbol();
+            symbol.setName(identifier.getText());
+            HashSet<TypeClassification> classSet = new HashSet<>();
+            classSet.add(TypeClassification.TypeSpecifier_);
+            symbol.setClassification(classSet);
+
+            _st.define(symbol);
+            if (this.debug)
+                System.out.println("New template type specifier defined: " + identifier.getText() + "\t" + symbol);
+        }
+    }
+
+    public void ExitTemplate() {
+        _st.popBlockScope();
+    }
+
     public void EnterDeclaration() {
-        if (debug)
+        if (this.debug)
             System.out.println("EnterDeclaration");
         ParserRuleContext context = this.getContext();
         while (context != null) {
-            if (context instanceof SSCParser.DeclarationContext) {
-                SSCParser.DeclarationContext declaration_context = (SSCParser.DeclarationContext) context;
+            if (context instanceof SSCParser.DeclarationContext declaration_context) {
                 SSCParser.DeclarationSpecifiersContext declaration_specifiers = declaration_context.declarationSpecifiers();
                 SSCParser.DeclarationSpecifierContext[] declaration_specifier = declaration_specifiers != null ?
                         declaration_specifiers.declarationSpecifier().toArray(new SSCParser.DeclarationSpecifierContext[0]) : null;
 
                 // Declare any typeSpecifiers that declare something.
                 if (declaration_specifier != null) {
-                    boolean isTypedef = false;
-                    if (declaration_specifier != null) {
-                        for (SSCParser.DeclarationSpecifierContext ds : declaration_specifier) {
-                            if (ds.storageClassSpecifier() != null && ds.storageClassSpecifier().Typedef() != null) {
-                                isTypedef = true;
-                                break;
-                            }
+                    for (SSCParser.DeclarationSpecifierContext ds : declaration_specifier) {
+                        if (ds.storageClassSpecifier() != null && ds.storageClassSpecifier().Typedef() != null) {
+                            break;
                         }
                     }
                     for (SSCParser.DeclarationSpecifierContext ds : declaration_specifier) {
@@ -402,7 +432,7 @@ public abstract class SSCParserBase extends Parser {
                                 var idToken = sous.Identifier().getSymbol();
                                 var id = idToken.getText();
                                 if (id != null) {
-                                    if (debug)
+                                    if (this.debug)
                                         System.out.println("New symbol Declaration1 Declarator " + id);
                                     Symbol symbol = new Symbol();
                                     symbol.setName(id);
@@ -450,7 +480,7 @@ public abstract class SSCParserBase extends Parser {
                                 symbol.setDefinedLine(loc.line);
                                 symbol.setDefinedColumn(loc.column);
                                 _st.define(symbol);
-                                if (debug)
+                                if (this.debug)
                                     System.out.println("New symbol Declaration2 Declarator " + symbol);
                             } else {
                                 Symbol symbol = new Symbol();
@@ -462,16 +492,15 @@ public abstract class SSCParserBase extends Parser {
                                 symbol.setDefinedLine(loc.line);
                                 symbol.setDefinedColumn(loc.column);
                                 _st.define(symbol);
-                                if (debug)
+                                if (this.debug)
                                     System.out.println("New symbol Declaration3 Declarator " + symbol);
                             }
                         }
                     }
                 }
             }
-            if (context instanceof SSCParser.FunctionDefinitionContext) {
-                SSCParser.FunctionDefinitionContext fd = (SSCParser.FunctionDefinitionContext) context;
-                SSCParser.DeclaratorContext de = fd.declarator();
+            if (context instanceof SSCParser.FunctionDefinitionContext funcdefCtx) {
+                SSCParser.DeclaratorContext de = funcdefCtx.declarator();
                 SSCParser.DirectDeclaratorContext dd = de != null ? de.directDeclarator() : null;
                 if (dd != null && dd.Identifier() != null) {
                     Token idToken = dd.Identifier().getSymbol();
@@ -486,7 +515,7 @@ public abstract class SSCParserBase extends Parser {
                     symbol.setDefinedLine(loc.line);
                     symbol.setDefinedColumn(loc.column);
                     _st.define(symbol);
-                    if (debug)
+                    if (this.debug)
                         System.out.println("New symbol Declarationf Declarator " + symbol);
                     return;
                 }
@@ -529,13 +558,13 @@ public abstract class SSCParserBase extends Parser {
     }
 
     public void EnterScope() {
-        if (debug)
+        if (this.debug)
             System.out.println("EnterScope");
         _st.pushBlockScope();
     }
 
     public void ExitScope() {
-        if (debug)
+        if (this.debug)
             System.out.println("ExitScope");
         _st.popBlockScope();
     }

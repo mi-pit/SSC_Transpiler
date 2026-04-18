@@ -190,10 +190,6 @@ Label
     : '__label__' // gnu
     ;
 
-LambdaArrow
-    : '-->'
-    ;
-
 Long
     : 'long'
     ;
@@ -262,6 +258,10 @@ Switch
 // SSC
 Then
     : 'then'
+    ;
+
+Template
+    : 'tmpl'
     ;
 
 True_

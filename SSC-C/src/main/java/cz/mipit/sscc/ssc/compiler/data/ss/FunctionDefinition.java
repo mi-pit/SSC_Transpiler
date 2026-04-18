@@ -79,8 +79,7 @@ public class FunctionDefinition {
         }
 
         final ListBuilder<String> tokensBuilder = ListBuilder
-                .with("static")
-                .plusMany(cDeclarationSpecifiers)
+                .from(cDeclarationSpecifiers)
                 .plus(type)
                 .plus(superstructMemberOfName + "__" + unqualifiedName + "(" + selfRef + String.join(", ", params) + ")");
 

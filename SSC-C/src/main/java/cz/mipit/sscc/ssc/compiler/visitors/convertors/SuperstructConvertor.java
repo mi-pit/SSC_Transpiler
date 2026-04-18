@@ -18,9 +18,7 @@ import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-public class SuperstructConvertor
-        extends AbstractConvertor<SSCParser.SuperStructSpecifierContext>
-        implements EmittingConvertor<SSCParser.SuperStructSpecifierContext> {
+public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStructSpecifierContext> {
 
     private SuperStruct lastSuperstruct;
 
@@ -52,22 +50,33 @@ public class SuperstructConvertor
         dispatcher.data.setCurrentSS(null);
 
         if (lastSuperstruct != null) {
-            throw new IllegalStateException("Already in a superstruct");
+            Main.logger.printDebug("A non-emitted superstruct with name '"
+                    + lastSuperstruct.name()
+                    + "' is still present while processing superstruct '"
+                    + thisSSName + "'"
+            );
         }
         lastSuperstruct = superStruct;
-        return lastSuperstruct.getStructDefinition();
+        return lastSuperstruct.emitStructDefinition();
     }
 
-    @Override
+    public Optional<String> emitDeclarations() {
+        if (lastSuperstruct == null) {
+            return Optional.empty();
+        }
+        return Optional.of(lastSuperstruct.emitMethodDeclarations());
+    }
+
     public Optional<String> emit() {
         if (lastSuperstruct == null) {
             return Optional.empty();
         }
-        final String methods = lastSuperstruct.getMethods();
+        final String methods = lastSuperstruct.emitMethodDefinitions();
         lastSuperstruct = null;
 
         return Optional.of(methods);
     }
+
 
     private void processMemberCtx(final SSCParser.SuperStructMemberContext memberCtx,
                                   final String thisSSName) {
@@ -173,10 +182,7 @@ public class SuperstructConvertor
         final SuperStruct superStruct = dispatcher.data.currentSS().get();
 
         final String currentFunctionName = superStruct.name() + "__" + unqualifiedName;
-        dispatcher.pushFunction(
-                currentFunctionName,
-                () -> getSSCSyntaxException("Duplicate function definition", functionCtx)
-        );
+        dispatcher.pushFunction(currentFunctionName, functionCtx);
 
         if (!isStatic) {
             final SuperstructVariable selfReferenceVariable =

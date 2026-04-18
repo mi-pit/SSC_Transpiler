@@ -16,10 +16,12 @@ import java.util.Set;
 
 public final class CompilerData {
     private @Nullable SuperStruct currentSS;
-    private final Map<String, SuperStruct> superStructs;
-    private final Map<@NotNull String /* typedef name */, Typedef<SuperStruct>> superstructTypedefs;
+
+    private final Map<@NotNull String, SuperStruct> superStructs;
+    private final Map<@NotNull String, Typedef<SuperStruct>> superstructTypedefs;
     private final Map<@Nullable String, Set<SuperstructVariable>> functionVariables;
-    private final Deque<String> functionCallStack;
+
+    private final Deque<@NotNull String> functionCallStack;
 
     public CompilerData() {
         currentSS = null;

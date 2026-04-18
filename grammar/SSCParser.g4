@@ -149,7 +149,7 @@ primaryExpression
 
 /* SSC */
 lambdaFunction
-    : '|' '[' parameterTypeList ']' '|' '-->' typeName
+    : '|' '[' parameterTypeList ']' '|' '->' typeName
         lambdaAttributes?
     functionBody
     ;
@@ -182,7 +182,8 @@ genericAssociation
 // ISO C: postfix-expression (6.5.3.1)
 postfixExpression
     : (
-        primaryExpression
+        templateDispatch // SSC
+         | primaryExpression
          | '__extension__'? '(' typeName ')' '{' initializerList ','? '}'
     ) (
         '[' expression ']'
@@ -194,6 +195,16 @@ postfixExpression
          | '++'
          | '--'
     )*
+    ;
+
+// SSC: template call
+templateDispatch
+    : Identifier '<' typeArgument (',' typeArgument)* '>'
+    ;
+
+// SSC: template type argument
+typeArgument
+    : typeQualifier* typeSpecifier typeQualifier* pointer*
     ;
 
 // ISO C: argument-expression-list (6.5.3.1)
@@ -395,10 +406,12 @@ superStructSpecifier
     | Superstruct Identifier
     ;
 
+// SSC
 superStructBody
     : superStructMember+
     ;
 
+// SSC
 superStructMember
     : declaration
     | functionDefinition
@@ -810,16 +823,24 @@ translationUnit
 // ISO C: external-declaration (6.9.1)
 externalDeclaration
     : '__extension__'? (
-	functionDefinition
-	| declaration
-	| ';' // stray ;
-	| asmDefinition // GCC
+        functionDefinition
+        | functionTemplateDefinition // SSC
+        | declaration
+        | ';' // stray ;
+        | asmDefinition // GCC
 	)
     ;
 
 // ISO C: function-definition (6.9.2)
 functionDefinition
-    : attributeSpecifierSequence? declarationSpecifiers? declarator declarationList? functionBody
+    : attributeSpecifierSequence? declarationSpecifiers? declarator functionBody
+    ;
+
+// SSC: template definition
+functionTemplateDefinition
+    : Template '<' identifierList '>' {this.EnterTemplate();}
+      functionDefinition
+      {this.ExitTemplate();}
     ;
 
 // declarationList

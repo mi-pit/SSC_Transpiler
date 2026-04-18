@@ -23,20 +23,13 @@ public class FunctionDefinitionConvertor extends AbstractConvertor<SSCParser.Fun
         assert ctx.functionBody() != null;
         assert ctx.functionBody().compoundStatement() != null;
 
-        if (ctx.declarationList() != null) {
-            throw getSSCSyntaxException("K&R C-style declarations are invalid in SSC", ctx.declarationList());
-        }
-
         final String unqualifiedName = dispatcher.visitTerminal(ctx.declarator().directDeclarator().Identifier());
         final String currentFunctionName = dispatcher.data
                 .currentSS()
                 .map(SuperStruct::name)
                 .orElse(unqualifiedName);
 
-        dispatcher.pushFunction(
-                currentFunctionName,
-                () -> getSSCSyntaxException("Duplicate function definition", ctx)
-        );
+        dispatcher.pushFunction(currentFunctionName, ctx);
 
         getFunctionSuperstructParams(ctx);
 

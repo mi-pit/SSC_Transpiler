@@ -76,21 +76,28 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
         }
         final SuperstructVariable var = maybeVar.get();
 
-        final SuperStruct superstruct = dispatcher.getSuperStructFromVariable(ctx, var);
+        final SuperStruct superStruct = dispatcher.data.superStructs().get(var.ssName());
+        if (superStruct == null) {
+            throw dispatcher.getSSCSyntaxException(
+                    "`superstruct " + var.ssName() + "` "
+                            + "(type of variable \"" + var.getName() + "\") is not properly defined",
+                    ctx
+            );
+        }
 
         final boolean hasLeftParen = !ctx.LeftParen().isEmpty();
         assert hasLeftParen == !ctx.RightParen().isEmpty();
         if (!hasLeftParen) {
             Main.logger.printDebug(() -> "\tNo parentheses");
-            return getFieldAccessString(ctx, superstruct);
+            return getFieldAccessString(ctx, superStruct);
         }
 
         final String methodName = dispatcher.visitTerminal(ctx.Identifier(0));
-        final Optional<FunctionDefinition> maybeMethod = superstruct.findMethod(methodName);
+        final Optional<FunctionDefinition> maybeMethod = superStruct.findMethod(methodName);
 
         if (maybeMethod.isEmpty()) {
             Main.logger.printDebug(() -> "Variable does not have such a method");
-            if (superstruct
+            if (superStruct
                     .members()
                     .stream()
                     .map(SSMember::data)
@@ -119,14 +126,14 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
             if (functionDefinition.isPrivate()) {
                 Main.logger.printDebug(() -> "Method '" + methodName + "' is private. Going to check if it may be used here...");
                 if (dispatcher.data.currentSS().isEmpty()
-                        || !dispatcher.data.currentSS().get().name().equals(superstruct.name())) {
+                        || !dispatcher.data.currentSS().get().name().equals(superStruct.name())) {
                     throw getSSCSyntaxException(
                             "Cannot access private method `" + methodName + "` from outside the superstruct", ctx);
                 }
             }
         });
 
-        final String ssName = superstruct.name();
+        final String ssName = superStruct.name();
 
         final StringBuilder expressionBuilder =
                 new StringBuilder(ssName)

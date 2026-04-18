@@ -17,7 +17,7 @@ public class SuperStruct {
         this.members = new ArrayList<>();
     }
 
-    public String getStructDefinition() {
+    public String emitStructDefinition() {
         final StringBuilder resultBuilder = new StringBuilder();
 
         resultBuilder.append(String.format("struct %s {%n", name));
@@ -35,22 +35,24 @@ public class SuperStruct {
         return resultBuilder.toString();
     }
 
-    public String getMethods() {
-        final StringBuilder resultBuilder = new StringBuilder();
-        appendFunctions(resultBuilder, FunctionDefinition::getDeclaration);
-        appendFunctions(resultBuilder, FunctionDefinition::getDefinition);
-        return resultBuilder.toString();
+    public String emitMethodDeclarations() {
+        return emitMethods(FunctionDefinition::getDeclaration);
     }
 
-    private void appendFunctions(final StringBuilder resultBuilder,
-                                 final Function<FunctionDefinition, String> function) {
+    public String emitMethodDefinitions() {
+        return emitMethods(FunctionDefinition::getDefinition);
+    }
+
+    private String emitMethods(final Function<FunctionDefinition, String> functionFunction) {
+        final StringBuilder resultBuilder = new StringBuilder();
         for (final SSMember member : members) {
             member.data().getRight().ifPresent(fnDef ->
                     resultBuilder
-                            .append(function.apply(fnDef))
+                            .append(functionFunction.apply(fnDef))
                             .append(System.lineSeparator())
             );
         }
+        return resultBuilder.toString();
     }
 
     public List<FunctionDefinition> getFunctions() {
