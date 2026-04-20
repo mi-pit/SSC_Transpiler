@@ -18,11 +18,17 @@ public final class Main {
 
     public static final Logger logger = new Logger();
 
-    public static void main(String[] args) throws IOException, InterruptedException {
+    public static void main(String[] args) {
         final SSCCOptions options = ArgumentParser.parse(args);
         logger.setOptions(options);
 
         final Compiler compiler = new SSCCompiler(options);
-        System.exit(compiler.run().ordinal());
+        try {
+            final int rv = compiler.run().ordinal();
+            System.exit(rv);
+        } catch (Exception e) {
+            e.printStackTrace(System.err);
+            System.exit(1);
+        }
     }
 }

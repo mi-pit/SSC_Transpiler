@@ -11,7 +11,7 @@ public final class LambdaFunction implements Comparable<LambdaFunction> {
     private final String body;
     private final String attributes;
 
-    private final String prettifier;
+    private final String name;
 
     private final long id;
     private static final AtomicLong nextId = new AtomicLong(0);
@@ -41,13 +41,14 @@ public final class LambdaFunction implements Comparable<LambdaFunction> {
                         .collect(StringBuilder::new, StringBuilder::append, StringBuilder::append)
                         .toString();
 
-        this.prettifier = fileNamePrettifier + "_" + functionName;
-
+        final String prettifier = fileNamePrettifier + "__" + functionName;
         id = nextId.getAndIncrement();
+
+        name = "SSC_LAMBDA_FUNCTION__" + id + "__" + prettifier;
     }
 
     public String getName() {
-        return "SSC_LAMBDA_FUNCTION__" + id + "__" + prettifier;
+        return name;
     }
 
     public String getDefinition() {

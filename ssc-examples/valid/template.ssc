@@ -1,0 +1,40 @@
+
+tmpl<A, B>
+A static_cast(B val) {
+    return (A) val;
+}
+
+tmpl<T>
+T type_default() {
+    auto lambda_fn = |[ void ]| -> long long {
+        return 0;
+    };
+    return (T) lambda_fn();
+}
+
+tmpl<TEST>
+TEST test_tmpl(TEST t) {
+    TEST t2 = (TEST) t;
+    return (TEST) t2 + (TEST) t;
+}
+
+tmpl<NESTED_TEMPLATE_TYPE>
+NESTED_TEMPLATE_TYPE def() {
+    NESTED_TEMPLATE_TYPE default_value = type_default<NESTED_TEMPLATE_TYPE>();
+    return default_value;
+}
+
+
+int main() {
+    int a = static_cast<int, long>(0);
+
+    void *def_ptr = type_default<void *>();
+
+    int *(*IntPtrGetter)();
+    IntPtrGetter = type_default<int *>;
+    (void) IntPtrGetter;
+
+    return if (a == 0) && (def_ptr == nullptr)
+        then 0
+        else 1;
+}

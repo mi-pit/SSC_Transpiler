@@ -31,7 +31,4 @@ public final class DirectoryTreeParser {
         return files;
     }
 
-    public static Set<InputFile> getFilesInDirectory(final Path root) throws IOException {
-        return getFilesInDirectory(root, Set.of("ssc", "c"));
-    }
 }

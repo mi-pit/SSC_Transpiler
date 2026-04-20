@@ -1,0 +1,34 @@
+#include <stdio.h>
+#include <stdint.h>
+
+
+tmpl<STRUCT>
+uint64_t get_struct_hash(STRUCT *s) {
+    uint64_t num = 0;
+    char *bytes = (char *) s;
+    for ( size_t i = 0; i < sizeof( STRUCT ); ++i ) {
+        num ^= bytes[i];
+    }
+
+    return num;
+}
+
+object Class {
+    int a, b;
+    bool t;
+
+    void print() {
+        printf( "%d %d %s\n", this->a, this->b, this->t ? "true" : "false" );
+    }
+};
+
+int main() {
+    object Class o = {
+        .a = 1,
+        .b = -1,
+        .t = true,
+    };
+
+    char hash = get_struct_hash<object Class>(&o);
+    printf("%i\n", hash);
+}

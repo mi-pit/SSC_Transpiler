@@ -6,6 +6,7 @@ public enum ExitValue {
     LIBRARY_NOT_FOUND,
     TRANSPILATION_FAIL,
     C_COMPILATION_FAIL,
+    IO_EXCEPTION,
     ;
 
     public String humanReadable() {

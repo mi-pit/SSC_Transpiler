@@ -6,21 +6,21 @@ import java.util.Objects;
 
 import static cz.mipit.sscc.util.SSCCUtil.Text.INDENT;
 
-public final class Option<T> {
-    final OptionString strings;
+final class Option<T> {
+    private final OptionString strings;
     private final String name, description;
     private final @Nullable String argumentDescription;
 
-    public final Class<T> type;
-    public final T defaultValue;
+    private final Class<T> type;
+    private final T defaultValue;
     private T value;
 
     final NextOperation nextOperation;
 
-    Option(OptionString optstr, String name,
-           String description, String argument,
-           Class<T> type, T defaultValue,
-           NextOperation nextOperation) {
+    public Option(OptionString optstr, String name,
+                  String description, String argument,
+                  Class<T> type, T defaultValue,
+                  NextOperation nextOperation) {
         this.strings = Objects.requireNonNull(optstr);
         this.name = Objects.requireNonNull(name);
         this.description = Objects.requireNonNull(description);
@@ -34,13 +34,15 @@ public final class Option<T> {
     }
 
     public String formatted() {
+        boolean hasArgument = argumentDescription != null;
+
         final StringBuilder sBuilder = new StringBuilder()
                 .append(INDENT)
                 .append(name)
                 .append(System.lineSeparator())
 
                 .append(INDENT)
-                .append(strings.formatted(argumentDescription != null))
+                .append(strings.formatted(hasArgument))
                 .append(System.lineSeparator())
 
                 .append(INDENT)
@@ -49,7 +51,7 @@ public final class Option<T> {
                 .append(description)
                 .append(System.lineSeparator());
 
-        if (argumentDescription != null) {
+        if (hasArgument) {
             sBuilder
                     .append(INDENT)
                     .append(INDENT)
@@ -76,5 +78,13 @@ public final class Option<T> {
             );
         }
         this.value = type.cast(value);
+    }
+
+    public T defaultValue() {
+        return defaultValue;
+    }
+
+    public boolean matches(String value) {
+        return strings.matches(value);
     }
 }

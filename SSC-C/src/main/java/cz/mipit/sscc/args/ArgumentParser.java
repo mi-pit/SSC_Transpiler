@@ -4,10 +4,12 @@ import cz.mipit.sscc.Logger;
 import cz.mipit.sscc.file.DirectoryTreeParser;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.util.ExitValue;
+import cz.mipit.sscc.util.UnreachableCodeException;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Set;
 
 import static cz.mipit.sscc.Logger.warn;
 import static cz.mipit.sscc.args.SSCCOptions.OPTION_HELP;
@@ -28,7 +30,7 @@ public final class ArgumentParser {
         System.exit(0);
     }
 
-    public static SSCCOptions parse(String[] args) throws IOException {
+    public static SSCCOptions parse(String[] args) {
         if (args.length == 0) {
             printHelpAndExit();
         }
@@ -48,7 +50,7 @@ public final class ArgumentParser {
     }
 
     @SuppressWarnings("DuplicateExpressions") /* Path.of(arg) could throw if unverified */
-    private SSCCOptions parse_(String[] args) throws IOException {
+    private SSCCOptions parse_(String[] args) {
         NextOperation nextOperation = NextOperation.None;
         for (final String arg : args) {
             nextOperation = switch (nextOperation) {
@@ -66,7 +68,14 @@ public final class ArgumentParser {
                 }
 
                 case LibPath -> {
-                    options.addFiles(DirectoryTreeParser.getFilesInDirectory(Path.of(arg)));
+                    Set<InputFile> inputFiles;
+                    try {
+                        inputFiles = DirectoryTreeParser.getFilesInDirectory(Path.of(arg), Set.of("ssc", "c"));
+                    } catch (IOException io) {
+                        Logger.errExit(ExitValue.IO_EXCEPTION, io.getMessage());
+                        throw new UnreachableCodeException();
+                    }
+                    options.addFiles(inputFiles);
                     yield NextOperation.None;
                 }
 
@@ -78,13 +87,12 @@ public final class ArgumentParser {
                         options.addFile(inputFile);
                         yield NextOperation.None;
                     }
-                    if (OPTION_HELP.strings.matches(arg)) {
+                    if (OPTION_HELP.matches(arg)) {
                         printHelpAndExit();
                     }
                     for (final Option<?> opt : options) {
-                        final OptionString optstr = opt.strings;
-                        if (optstr.matches(arg)) {
-                            if (opt.defaultValue instanceof Boolean def) {
+                        if (opt.matches(arg)) {
+                            if (opt.defaultValue() instanceof Boolean def) {
                                 opt.setValue(!def);
                             }
 

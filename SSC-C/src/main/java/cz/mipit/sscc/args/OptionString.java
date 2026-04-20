@@ -1,18 +1,21 @@
 package cz.mipit.sscc.args;
 
 import java.util.Arrays;
-import java.util.Set;
+import java.util.Objects;
+import java.util.SequencedSet;
 import java.util.StringJoiner;
+import java.util.TreeSet;
 
-public class OptionString {
-    private final Set<String> values;
+class OptionString {
+    private final SequencedSet<String> values;
 
-    public OptionString(String... values) {
-        if (values.length == 0) {
+    public OptionString(final String... values) {
+        if (Objects.requireNonNull(values).length == 0) {
             throw new IllegalArgumentException("Must provide at least one value");
         }
-        // use `copyOf` to throw if an element is null
-        this.values = Set.copyOf(Arrays.asList(values));
+
+        // throw if an element is null
+        this.values = new TreeSet<>(Arrays.asList(values));
     }
 
     public String formatted(final boolean hasArgument) {
