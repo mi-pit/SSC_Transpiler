@@ -59,13 +59,14 @@ public class TemplateDefinitionConvertor {
         templates = new HashMap<>();
     }
 
-    private String resolveTemplateName(String functionName, List<String> typeArgumentsConverted) {
+    private String typeSpecifyTemplateName(String functionName, List<String> typeArgumentsConverted) {
         final StringBuilder sBuilder = new StringBuilder(
                 functionName
         );
 
-        for (String typeArg : typeArgumentsConverted) {
-            sBuilder.append("_")
+        for (int i = 0; i < typeArgumentsConverted.size(); i++) {
+            final String typeArg = typeArgumentsConverted.get(i);
+            sBuilder.append(i == 0 ? "__" : "_")
                     .append(typeArg);
         }
 
@@ -77,7 +78,7 @@ public class TemplateDefinitionConvertor {
                 ctx.typeArgument().stream().map(dispatcher::visitTypeArgument).toList();
 
         final String unqualified = getMangledFunctionName(ctx.Identifier());
-        final String resolved = resolveTemplateName(
+        final String resolved = typeSpecifyTemplateName(
                 unqualified,
                 ctx.typeArgument().stream().map(this::convertTypeArgumentToShorthand).toList()
         );
@@ -139,8 +140,15 @@ public class TemplateDefinitionConvertor {
     private String convertTypeArgumentToShorthand(SSCParser.TypeArgumentContext ctx) {
         final String literal = dispatcher.getLiteral(ctx.typeSpecifier());
 
-        String shorthand = TYPE_SHORTHANDS.getOrDefault(literal,
-                COMPOUND_SHORTHANDS.getOrDefault(literal, literal));
+        String shorthand = TYPE_SHORTHANDS.get(literal);
+        if (shorthand == null) {
+            final StringBuilder builder = new StringBuilder();
+            final String[] spl = literal.split(" ");
+            for (String sub : spl) {
+                builder.append(COMPOUND_SHORTHANDS.getOrDefault(sub, sub));
+            }
+            shorthand = builder.toString();
+        }
 
         final StringBuilder resultBuilder = new StringBuilder(shorthand);
 
