@@ -1,7 +1,6 @@
 package cz.mipit.sscc.ssc.compiler.visitors;
 
 import antlr.ssc.SSCParser;
-import antlr.ssc.Symbol;
 import antlr.ssc.SymbolTable;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
@@ -81,17 +80,9 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
         return superstructConvertor.convert(ctx);
     }
 
-    public String super_visitSuperStructSpecifier(final SSCParser.SuperStructSpecifierContext ctx) {
-        return super.visitSuperStructSpecifier(ctx);
-    }
-
     @Override
     public String visitFunctionDefinition(final SSCParser.FunctionDefinitionContext ctx) {
         return functionConvertor.convert(ctx);
-    }
-
-    public String super_visitFunctionDefinition(final SSCParser.FunctionDefinitionContext ctx) {
-        return super.visitFunctionDefinition(ctx);
     }
 
     @Override
@@ -99,17 +90,9 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
         return postfixExpressionConvertor.convert(ctx);
     }
 
-    public String super_visitPostfixExpression(final SSCParser.PostfixExpressionContext ctx) {
-        return super.visitPostfixExpression(ctx);
-    }
-
     @Override
     public String visitConditionalExpression(SSCParser.ConditionalExpressionContext ctx) {
         return ternaryOperatorConvertor.convert(ctx);
-    }
-
-    public String super_visitConditionalExpression(final SSCParser.ConditionalExpressionContext ctx) {
-        return super.visitConditionalExpression(ctx);
     }
 
     @Override
@@ -117,23 +100,14 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
         return flagsConvertor.convert(ctx);
     }
 
-    public String super_visitFlagsSpecifier(final SSCParser.FlagsSpecifierContext ctx) {
-        return super.visitFlagsSpecifier(ctx);
-    }
-
     @Override
     public String visitTemplateDispatch(SSCParser.TemplateDispatchContext ctx) {
         return templateConvertor.convertTemplateDispatch(ctx);
     }
 
-    public boolean isInTemplate = false;
-
     @Override
     public String visitFunctionTemplateDefinition(SSCParser.FunctionTemplateDefinitionContext ctx) {
-        isInTemplate = true;
         templateConvertor.visitTemplateDefinition(ctx);
-        isInTemplate = false;
-
         return ""; // templates only exist when called
     }
 
@@ -181,10 +155,6 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
 
     public boolean hasType(String typeName) {
         return symbolTable.resolve(typeName) != null;
-    }
-
-    public Symbol getSymbol(String ident) {
-        return symbolTable.resolve(ident);
     }
 
     /**

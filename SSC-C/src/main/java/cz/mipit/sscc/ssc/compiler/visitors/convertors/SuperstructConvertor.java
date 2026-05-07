@@ -32,7 +32,7 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
         final String thisSSName = dispatcher.visitTerminal(ctx.Identifier());
 
         if (ctx.superStructBody() == null) {
-            return dispatcher.super_visitSuperStructSpecifier(ctx);
+            return dispatcher.visitSuper(ctx);
         }
 
         if (dispatcher.data.superStructs().containsKey(thisSSName)) {

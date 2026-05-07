@@ -33,7 +33,7 @@ public class FunctionDefinitionConvertor extends AbstractConvertor<SSCParser.Fun
 
         getFunctionSuperstructParams(ctx);
 
-        final String functionDefinitionString = dispatcher.super_visitFunctionDefinition(ctx);
+        final String functionDefinitionString = dispatcher.visitSuper(ctx);
         dispatcher.popFunction();
 
         return functionDefinitionString;

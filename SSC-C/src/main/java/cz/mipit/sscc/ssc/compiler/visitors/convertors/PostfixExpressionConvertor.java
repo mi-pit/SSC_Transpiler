@@ -35,7 +35,7 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
         if (!ctx.DoubleColon().isEmpty()) {
             return convertStaticFunctionCall(ctx);
         }
-        return dispatcher.super_visitPostfixExpression(ctx);
+        return dispatcher.visitSuper(ctx);
     }
 
     private Optional<String> getCompoundLiteralReplaced(SSCParser.PostfixExpressionContext ctx) {
@@ -44,7 +44,7 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
             return Optional.empty();
         }
 
-        final String res = dispatcher.super_visitPostfixExpression(ctx);
+        final String res = dispatcher.visitSuper(ctx);
 
         Main.logger.printDebug(() -> "superStructSpecifier in: "
                 + dispatcher.getLiteral(ctx).replace(lineSeparator(), " ")
@@ -72,7 +72,7 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
         if (maybeVar.isEmpty()) {
             Main.logger.printDebug(() -> "\tVariable is not superstruct\t\tlocal vars: "
                     + dispatcher.data.functionVariables().get(currentFunctionName));
-            return dispatcher.super_visitPostfixExpression(ctx);
+            return dispatcher.visitSuper(ctx);
         }
         final SuperstructVariable var = maybeVar.get();
 
@@ -106,7 +106,7 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
                     .map(Optional::get)
                     .anyMatch(decl -> decl.getName().equals(methodName))
             ) {
-                return dispatcher.super_visitPostfixExpression(ctx);
+                return dispatcher.visitSuper(ctx);
             }
 
             Main.logger.printDebug(() ->
@@ -268,6 +268,6 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
             }
         }
 
-        return dispatcher.super_visitPostfixExpression(ctx);
+        return dispatcher.visitSuper(ctx);
     }
 }
