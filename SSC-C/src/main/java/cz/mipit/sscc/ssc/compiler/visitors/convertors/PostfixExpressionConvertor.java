@@ -80,7 +80,7 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
         if (superStruct == null) {
             throw dispatcher.getSSCSyntaxException(
                     "`superstruct " + var.ssName() + "` "
-                            + "(type of variable \"" + var.getName() + "\") is not properly defined",
+                            + "(type of variable \"" + var.getIdentifier() + "\") is not properly defined",
                     ctx
             );
         }
@@ -119,7 +119,7 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
             throw getSSCSyntaxException("Cannot access non-local superstruct variable using `.`", ctx);
         }
         if (arrowOrDot == ArrowOrDot.Arrow && var.pointer() != 1) {
-            throw getSSCSyntaxException("Variable '" + var.getName() + "' is not a pointer to struct", ctx);
+            throw getSSCSyntaxException("Variable '" + var.getIdentifier() + "' is not a pointer to struct", ctx);
         }
 
         maybeMethod.ifPresent(functionDefinition -> {

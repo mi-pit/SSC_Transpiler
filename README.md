@@ -11,7 +11,7 @@ licensed under the BSD 3-Clause License.
 
 ## Requirements
 
-java, a C compiler, clang-format (optional)
+Java & a C compiler
 
 ---
 

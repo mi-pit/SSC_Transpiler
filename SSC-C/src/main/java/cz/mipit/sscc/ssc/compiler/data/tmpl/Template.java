@@ -1,11 +1,16 @@
 package cz.mipit.sscc.ssc.compiler.data.tmpl;
 
-import java.util.ArrayList;
+import antlr.ssc.SSCParser;
+import cz.mipit.sscc.ssc.compiler.data.Token;
+import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
+import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateConvertor;
+
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class Template {
+    private final VisitorDispatcher dispatcher;
+
     private final String name;
 
     private final String fnAttributes;
@@ -15,94 +20,77 @@ public class Template {
 
     private final List<String> typeArgumentAliases;
 
+    public List<String> getTypeArgumentAliases() {
+        return typeArgumentAliases;
+    }
+
 
     public Template(
+            final VisitorDispatcher dispatcher,
             final String name,
             final String fnAttributes,
             final List<String> typeArgumentAliases,
             final List<String> returnType,
             final List<List<String>> parameters,
-            final List<String> functionTokens
+            final List<Token> functionTokens
     ) {
+        this.dispatcher = dispatcher;
+
         this.name = name;
         this.fnAttributes = fnAttributes;
         this.typeArgumentAliases = typeArgumentAliases;
-        this.returnType = returnType.stream().map(s -> new Token(typeArgumentAliases.contains(s), false, s)).toList();
-        this.parameters =
-                parameters.stream().map(
-                        strings -> strings.stream().map(
-                                s -> new Token(typeArgumentAliases.contains(s), false, s)
-                        ).toList()
-                ).toList();
+        this.returnType = returnType.stream().map(
+                s -> typeArgumentAliases.contains(s)
+                        ? Token.type(s)
+                        : Token.other(s)
+        ).toList();
+        this.parameters = parameters.stream().map(
+                strings -> strings.stream().map(
+                        s -> typeArgumentAliases.contains(s)
+                                ? Token.type(s)
+                                : Token.other(s)
+                ).toList()
+        ).toList();
 
-        this.body = new ArrayList<>();
-
-        for (String raw : functionTokens) {
-            if (raw == null) {
-                body.add(new Token(false, true, name));
-            }
-            final Token parsed = new Token(
-                    typeArgumentAliases.contains(
-                            Objects.requireNonNull(raw)
-                    ),
-                    false,
-                    raw);
-            body.add(parsed);
-        }
+        this.body = functionTokens;
     }
 
     public String getName() {
         return name;
     }
 
-    public String convert(List<String> calledTypeArguments, String resolvedName) {
-        List<String> params = parameters
+    public String convert(List<SSCParser.TypeArgumentContext> calledTypeArguments) {
+        final List<String> params = parameters
                 .stream()
-                .map(l -> l.stream().map(tok -> tok.convert(calledTypeArguments)).collect(Collectors.joining(" ")))
+                .map(
+                        l -> l.stream().map(
+                                tok -> tok.convertTemplate(calledTypeArguments, this, dispatcher)
+                        ).collect(Collectors.joining(" "))
+                )
                 .toList();
+        final String resolvedName = TemplateConvertor.typeSpecifyTemplateName(
+                name,
+                calledTypeArguments.stream()
+                        .map(o -> TemplateConvertor.convertTypeArgumentToShorthand(o, dispatcher))
+                        .toList()
+        );
+
+        final String convertedReturnType = returnType.stream()
+                .map(t -> t.convertTemplate(calledTypeArguments, this, dispatcher))
+                .collect(Collectors.joining(" "));
+
+        final String convertedBody = body.stream()
+                .map(t -> t.convertTemplate(calledTypeArguments, this, dispatcher))
+                .collect(Collectors.joining(" "));
 
         return fnAttributes +
                 " " +
-                String.join(
-                        " ",
-                        returnType.stream().map(t -> t.convert(calledTypeArguments)).toList()) +
+                convertedReturnType +
                 " " + resolvedName +
                 "(" +
                 String.join(", ", params) +
                 ")" +
-                String.join(
-                        " ",
-                        body.stream().map(b -> b.convert(calledTypeArguments)).toList()
-                );
-    }
-
-    private class Token {
-        final boolean isTypeArgument;
-        final boolean isName;
-        final String token;
-
-        public Token(boolean isTypeArgument, boolean isName, String token) {
-            this.isTypeArgument = isTypeArgument;
-            this.isName = isName;
-            this.token = token;
-        }
-
-        public String convert(List<String> actualTypeArgs) {
-            if (isTypeArgument) {
-                for (int i = 0; i < typeArgumentAliases.size(); i++) {
-                    final String typeArgumentAlias = typeArgumentAliases.get(i);
-                    // if "A" == this
-                    //    return "int"
-                    if (typeArgumentAlias.equals(this.token)) {
-                        return actualTypeArgs.get(i);
-                    }
-                }
-            }
-            if (isName) {
-                return name;
-            }
-
-            return this.token;
-        }
+                convertedBody
+                ;
     }
 }

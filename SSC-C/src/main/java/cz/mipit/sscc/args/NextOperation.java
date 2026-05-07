@@ -5,8 +5,11 @@ enum NextOperation {
     FilesOnly(false),
     CompileTarget(true),
     LibPath(true),
-    //FileTypeSSC, FileTypeC
+
+    FileType(true),
+    File(true),
     ;
+
     private final boolean r;
 
     NextOperation(boolean r) {

@@ -1,6 +1,7 @@
 package cz.mipit.sscc;
 
 import cz.mipit.sscc.args.SSCCOptions;
+import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.util.ExitValue;
 import cz.mipit.sscc.util.color.ConsoleColor;
 
@@ -16,14 +17,9 @@ public final class Logger {
     public static final ConsoleColor COLOR_WARN = create(Ground.FORE, Color.YELLOW);
     public static final ConsoleColor COLOR_ERROR = create(Ground.FORE, Color.RED);
 
-    public static final ConsoleColor DEBUG_COLOR = create(
-            Ground.FORE,
-            Color.MAGENTA
-    );
-    public static final ConsoleColor VERBOSE_COLOR = create(
-            Ground.FORE,
-            Color.YELLOW
-    );
+    public static final ConsoleColor DEBUG_COLOR = create(Ground.FORE, Color.MAGENTA);
+    public static final ConsoleColor VERBOSE_COLOR = create(Ground.FORE, Color.YELLOW);
+
 
     private SSCCOptions options;
 
@@ -51,7 +47,7 @@ public final class Logger {
     }
 
     public static void warn(final String message, final Object... args) {
-        log(COLOR_WARN, "warning", System.err, message, args);
+        _log(COLOR_WARN, "warning", System.err, message, args);
     }
 
     public static void warn(final String message) {
@@ -63,11 +59,11 @@ public final class Logger {
     }
 
     public static void info(final String format, final Object... args) {
-        log(COLOR_DEFAULT, "info", System.out, format, args);
+        _log(COLOR_DEFAULT, "info", System.out, format, args);
     }
 
     public static ExitValue errReturn(final ExitValue exitValue, String fmt, Object... args) {
-        log(COLOR_ERROR, "error: " + exitValue.humanReadable(), System.err, fmt, args);
+        _log(COLOR_ERROR, "error: " + exitValue.humanReadable(), System.err, fmt, args);
         return exitValue;
     }
 
@@ -75,11 +71,11 @@ public final class Logger {
         return errReturn(exitValue, "%s", message);
     }
 
-    synchronized private static void log(final ConsoleColor color,
-                                         final String typeString,
-                                         final PrintStream stream,
-                                         final String fmtstr,
-                                         Object... args) {
+    synchronized private static void _log(final ConsoleColor color,
+                                          final String typeString,
+                                          final PrintStream stream,
+                                          final String fmtstr,
+                                          Object... args) {
         color.printf(stream, Main.SSCC_NAME + ": " + typeString + ": " + fmtstr, args);
         stream.println();
     }
@@ -111,5 +107,38 @@ public final class Logger {
 
     public void printVerboseFilename(String message, String fileName) {
         printVerbose("%s: '" + COLOR_DEFAULT + "%s" + VERBOSE_COLOR + "'", message, fileName);
+    }
+
+    private void printException(final boolean isUnexpected, Throwable e) {
+        if (isUnexpected) {
+            System.err.print("Unexpected exception caught: ");
+        }
+
+        if (options.debug() || (isUnexpected && options.verbose())) {
+            e.printStackTrace(System.err);
+            return;
+        }
+
+        System.err.print(e.getMessage());
+
+        if (isUnexpected && !options.verbose()) {
+            System.err.print(" (for stack trace, run with `" + SSCCOptions.OPTSTR_VERBOSE_SHORT + "` option)");
+        }
+
+        System.err.println();
+    }
+
+    /**
+     * Prints an error message to {@code System.err}.
+     * If ran with the debug option, this method also prints the stack trace.
+     *
+     * @param e Any valid exception
+     */
+    public void printException(Throwable e) {
+        printException(true, e);
+    }
+
+    public void printException(SSCTranspilerException e) {
+        printException(false, e);
     }
 }

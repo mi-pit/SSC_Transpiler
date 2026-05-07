@@ -1,5 +1,6 @@
 package cz.mipit.sscc.file;
 
+import cz.mipit.sscc.util.annotations.NotNull;
 import cz.mipit.sscc.util.annotations.Nullable;
 
 import java.nio.file.Path;
@@ -18,6 +19,8 @@ import java.util.Objects;
  * @implNote All getters have their data cached.
  */
 public final class InputFile {
+    private final FileType fileType;
+
     private final Path dir;
     private final String name;
     private final @Nullable String suffix;
@@ -28,47 +31,71 @@ public final class InputFile {
 
     private final String absolutePathString;
 
-    private InputFile(Path dir, String name, @Nullable String suffix,
-                     Path path, Path absolutePath) {
+    private InputFile(FileType fileType,
+                      Path dir, String name,
+                      @Nullable String suffix,
+                      Path path, Path absolutePath) {
+        this.fileType = Objects.requireNonNull(fileType);
         this.dir = Objects.requireNonNull(dir, "File must have a directory");
         this.name = Objects.requireNonNull(name, "File must have a name");
         this.suffix = suffix;
 
-        fullName = suffix == null ? name : name + "." + suffix;
+        this.fullName = suffix == null ? name : name + "." + suffix;
         this.path = path;
         this.absolutePath = absolutePath;
         this.absolutePathString = absolutePath.toString();
     }
 
-    public InputFile(Path dir, String name, @Nullable String suffix) {
-        this.dir = Objects.requireNonNull(dir);
-        this.name = Objects.requireNonNull(name);
-        this.suffix = suffix;
+    public static InputFile create(Path dir, String name, @Nullable String suffix) {
+        final String fullName = suffix == null ? name : name + "." + suffix;
+        final Path path = Path.of(dir.toString(), fullName);
+        final Path absolutePath = path.toAbsolutePath();
 
-        fullName = suffix == null ? name : name + "." + suffix;
-        this.path = Path.of(dir.toString(), fullName);
-        this.absolutePath = path.toAbsolutePath();
-        this.absolutePathString = absolutePath.toString();
+        return new InputFile(
+                FileType.fromString(suffix), dir, name, suffix,
+                path, absolutePath
+        );
     }
 
-    public static InputFile fromPath(final Path path) {
-        final Path dir = Objects.requireNonNullElseGet(
-                path.getParent().toAbsolutePath().normalize(),
-                () -> Path.of(".").toAbsolutePath().normalize()
+
+    private record FileData(Path dir, String name, String suffix) {
+        private static @NotNull FileData fromPath(Path path) {
+            final Path dir = Objects.requireNonNullElseGet(
+                    path.getParent(),
+                    () -> Path.of(".")
+            ).toAbsolutePath().normalize();
+
+            final String fullName = path.getFileName().toString();
+
+            final int dotIndex = fullName.lastIndexOf('.');
+            final String name = dotIndex == -1 ? fullName : fullName.substring(0, dotIndex);
+            final String suffix = dotIndex == -1 ? null : fullName.substring(dotIndex + 1);
+            return new FileData(dir, name, suffix);
+        }
+    }
+
+    public static InputFile fromPath(FileType fileType, Path path) {
+        FileData result = FileData.fromPath(path);
+        return new InputFile(
+                fileType, result.dir(), result.name(),
+                result.suffix(), path, path.toAbsolutePath()
         );
+    }
 
-        final String fullName = path.getFileName().toString();
 
-        final int dotIndex = fullName.lastIndexOf('.');
-        final String name = dotIndex == -1 ? fullName : fullName.substring(0, dotIndex);
-        final String suffix = dotIndex == -1 ? null : fullName.substring(dotIndex + 1);
+    public static InputFile fromPath(final Path path) {
+        final FileData result = FileData.fromPath(path);
 
-        return new InputFile(dir, name, suffix, path, path.toAbsolutePath());
+        return new InputFile(
+                FileType.fromString(result.suffix()),
+                result.dir(), result.name(), result.suffix(),
+                path, path.toAbsolutePath()
+        );
     }
 
     /// Creates a new object with the same directory and name and changed extension
     public InputFile getChangedSuffix(final @Nullable String newSuffix) {
-        return new InputFile(dir, name, newSuffix);
+        return create(dir, name, newSuffix);
     }
 
     public Path toPath() {
@@ -99,6 +126,9 @@ public final class InputFile {
         return suffix;
     }
 
+    public FileType getFileType() {
+        return fileType;
+    }
 
     @Override
     public boolean equals(Object o) {

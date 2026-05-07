@@ -272,7 +272,7 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
                     }
 
                     pointer += val.pointer();
-                    ssName = val.getName();
+                    ssName = val.getIdentifier();
                 }
 
                 if (ssName != null) {

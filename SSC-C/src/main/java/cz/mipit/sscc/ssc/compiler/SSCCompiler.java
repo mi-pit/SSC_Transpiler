@@ -2,6 +2,7 @@ package cz.mipit.sscc.ssc.compiler;
 
 import cz.mipit.sscc.Logger;
 import cz.mipit.sscc.args.SSCCOptions;
+import cz.mipit.sscc.file.FileType;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.Compiler;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
@@ -117,7 +118,7 @@ public final class SSCCompiler implements Compiler {
         final AtomicInteger totalFailed = new AtomicInteger();
 
         options.filesToProcess().parallelStream().forEach(fileArg -> {
-            if ("c".equals(fileArg.suffix())) {
+            if (fileArg.getFileType() != FileType.SSC) {
                 logger.printVerboseFilename("Skipping processing of file", fileArg.fullName());
                 filesToCompile.add(fileArg.toAbsolutePath());
                 return;
@@ -170,15 +171,13 @@ public final class SSCCompiler implements Compiler {
         final SequencedCollection<AntlrException> exceptions = new LinkedList<>();
         final VisitorInput data = VisitorInput.fromFile(workingFile, exceptions);
         if (!exceptions.isEmpty()) {
-            for (final AntlrException exception : exceptions) {
-                System.err.println(exception.getMessage());
-            }
+            exceptions.forEach(logger::printException);
             logger.printVerbose("Could not parse code.");
             return Optional.empty();
         }
 
         logger.printVerbose("Extracting superstructs...");
-        if (!extractSuperstructMembers(inputFile, data, workingFileAbsolutePath)) {
+        if (!extractSuperstructMembers(data, workingFileAbsolutePath)) {
             logger.printVerbose("Failed to extract superstructs.");
             return Optional.empty();
         }
@@ -198,11 +197,10 @@ public final class SSCCompiler implements Compiler {
         return Optional.of(workingFileAbsolutePath);
     }
 
-    private boolean extractSuperstructMembers(final InputFile currentFile,
-                                              final VisitorInput data,
+    private boolean extractSuperstructMembers(final VisitorInput data,
                                               final Path outputFile)
             throws IOException {
-        final VisitorDispatcher visitor = new VisitorDispatcher(data.tokens(), currentFile);
+        final VisitorDispatcher visitor = new VisitorDispatcher(data);
         final String result = visitor.visit(data.tree());
 
         if (options.debug()) {

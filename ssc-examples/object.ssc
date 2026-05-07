@@ -1,0 +1,15 @@
+typedef object SuperStruct {
+    int a;
+    void a() {(void) this;}
+} SuperStruct;
+
+int main() {
+    object SuperStruct ss;
+    (void) ss;
+
+    object Object {
+        int b;
+        void b() {(void) this;}
+    } o;
+    (void) o;
+}

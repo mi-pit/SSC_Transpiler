@@ -22,8 +22,8 @@ import static java.lang.System.lineSeparator;
 import static java.util.Objects.requireNonNull;
 
 public class SSCTranspilerException extends RuntimeException {
-    public static final int LINES_BEFORE = 4;
-    public static final int LINES_AFTER = 0;
+    protected static final int LINES_BEFORE = 4;
+    protected static final int LINES_AFTER = 0;
 
     protected static final ConsoleColor COLOR_FATAL = ConsoleColorFactory.create(Ground.FORE, Color.RED);
     protected static final ConsoleColor COLOR_ANTLR = ConsoleColorFactory.create(Ground.FORE, Color.RED);
@@ -34,10 +34,10 @@ public class SSCTranspilerException extends RuntimeException {
     protected static final ConsoleColor COLOR_CODE_BOLD;
 
     static {
-        if (System.getProperty("os.name").toLowerCase().startsWith("windows")) {
-            COLOR_CODE_BOLD = ConsoleColorFactory.WINDOWS.defaultColor();
-        } else {
+        if (ConsoleColorFactory.FROM_OS == ConsoleColorFactory.UNIX) {
             COLOR_CODE_BOLD = new UnixTerminalColor("\u001B[1m" + COLOR_CODE);
+        } else {
+            COLOR_CODE_BOLD = ConsoleColorFactory.FROM_OS.defaultColor();
         }
     }
 
@@ -49,42 +49,6 @@ public class SSCTranspilerException extends RuntimeException {
     private final @Nullable String message;
     private final String context;
     private final @Nullable String locator;
-
-
-    private String formattedMessage() {
-        final ConsoleColor color = type.toColor();
-
-        final StringBuilder sBuilder = new StringBuilder(color.toString());
-        sBuilder
-                .append(Main.SSCC_NAME)
-                .append(": ")
-                .append(type.humanReadableName())
-                .append(" exception while processing file '")
-                .append(COLOR_DEFAULT)
-                .append(currentFile.fullName())
-                .append(color)
-                .append("':")
-                .append(lineSeparator());
-
-        if (message != null) {
-            sBuilder
-                    .append("    ")
-                    .append(message)
-                    .append(COLOR_DEFAULT)
-                    .append(lineSeparator());
-        }
-        sBuilder.append(context);
-
-        if (locator != null) {
-            sBuilder.append(lineSeparator())
-                    .append(COLOR_LOCATOR)
-                    .append(locator);
-        }
-
-        sBuilder.append(COLOR_DEFAULT);
-
-        return sBuilder.toString();
-    }
 
     /* Base constructor */
     private SSCTranspilerException(Type type, String message,
@@ -191,7 +155,38 @@ public class SSCTranspilerException extends RuntimeException {
 
     @Override
     public String getMessage() {
-        return formattedMessage();
+        final ConsoleColor color = type.toColor();
+
+        final StringBuilder sBuilder = new StringBuilder(color.toString());
+        sBuilder
+                .append(Main.SSCC_NAME)
+                .append(": ")
+                .append(type.humanReadableName())
+                .append(" exception while processing file '")
+                .append(COLOR_DEFAULT)
+                .append(currentFile.fullName())
+                .append(color)
+                .append("':")
+                .append(lineSeparator());
+
+        if (message != null) {
+            sBuilder
+                    .append("    ")
+                    .append(message)
+                    .append(COLOR_DEFAULT)
+                    .append(lineSeparator());
+        }
+        sBuilder.append(context);
+
+        if (locator != null) {
+            sBuilder.append(lineSeparator())
+                    .append(COLOR_LOCATOR)
+                    .append(locator);
+        }
+
+        sBuilder.append(COLOR_DEFAULT);
+
+        return sBuilder.toString();
     }
 
 
@@ -209,11 +204,6 @@ public class SSCTranspilerException extends RuntimeException {
 
         public final String humanReadableName() {
             return name().replace('_', ' ');
-        }
-
-        @Override
-        public String toString() {
-            return "SSCExceptionType{ " + name() + " }";
         }
     }
 }

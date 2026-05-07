@@ -67,7 +67,6 @@ public class TestStubs {
     private static SSCCompiler getCompilerOfFile(InputFile inFile) {
         final SSCCOptions options = SSCCOptions.newWithDefaults();
         options.addFile(inFile);
-        options.setCompileTarget(inFile.getChangedSuffix(null).absolutePathString());
 
         return new SSCCompiler(options);
     }

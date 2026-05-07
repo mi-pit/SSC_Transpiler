@@ -2,6 +2,7 @@ package cz.mipit.sscc.args;
 
 import cz.mipit.sscc.Logger;
 import cz.mipit.sscc.file.DirectoryTreeParser;
+import cz.mipit.sscc.file.FileType;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.util.ExitValue;
 import cz.mipit.sscc.util.UnreachableCodeException;
@@ -19,7 +20,7 @@ public final class ArgumentParser {
 
     private static final String HELP_STRING = """
             Usage: sscc [options|files]
-            Options:
+            Options:    // output of options marked as "unstable" is subject to change
             """;
 
     private static void printHelpAndExit() {
@@ -52,6 +53,7 @@ public final class ArgumentParser {
     @SuppressWarnings("DuplicateExpressions") /* Path.of(arg) could throw if unverified */
     private SSCCOptions parse_(String[] args) {
         NextOperation nextOperation = NextOperation.None;
+        FileType nextFileType = null;
         for (final String arg : args) {
             nextOperation = switch (nextOperation) {
                 case FilesOnly -> {
@@ -76,6 +78,22 @@ public final class ArgumentParser {
                         throw new UnreachableCodeException();
                     }
                     options.addFiles(inputFiles);
+                    yield NextOperation.None;
+                }
+
+                case FileType -> {
+                    nextFileType = FileType.fromString(arg);
+                    yield NextOperation.File;
+                }
+
+                case File -> {
+                    final Path path = Path.of(arg);
+                    final InputFile in = nextFileType == null
+                            ? InputFile.fromPath(path)
+                            : InputFile.fromPath(nextFileType, path);
+                    nextFileType = null;
+
+                    options.addFile(in);
                     yield NextOperation.None;
                 }
 

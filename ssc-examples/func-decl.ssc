@@ -1,0 +1,27 @@
+#include <stdlib.h>
+
+object IntList
+{
+    private int *items;
+    private size_t cap, len;
+
+    void resize( size_t new_cap );
+
+    void append( int i )
+    {
+        if ( this->len + 1 > this->cap )
+            this->resize( this->cap * 2 );
+
+        this->items[ this->len++ ] = i;
+    }
+}
+
+void IntList__resize( object IntList *const self, size_t new_cap )
+{
+    int *const tmp = realloc( self->items, new_cap );
+    if ( tmp == nullptr )
+        exit( 1 );
+
+    self->items = tmp;
+    self->cap   = new_cap;
+}

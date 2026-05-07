@@ -13,7 +13,7 @@ public class TestInputFile {
 
     @Test
     void create() {
-        final InputFile constructed = new InputFile(Path.of(DIRNAME), FILENAME, EXTENSION);
+        final InputFile constructed = InputFile.create(Path.of(DIRNAME), FILENAME, EXTENSION);
         assertEquals(FILENAME + "." + EXTENSION, constructed.fullName());
         assertEquals(FILENAME, constructed.name());
         assertEquals(EXTENSION, constructed.suffix());

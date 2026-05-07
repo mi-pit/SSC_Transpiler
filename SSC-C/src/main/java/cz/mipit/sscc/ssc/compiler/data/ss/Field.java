@@ -19,7 +19,7 @@ public class Field {
     }
 
     public String getName() {
-        return variable.getName();
+        return variable.getIdentifier();
     }
 
     public boolean isPrivate() {

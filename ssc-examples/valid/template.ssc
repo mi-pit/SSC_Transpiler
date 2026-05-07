@@ -1,6 +1,6 @@
 
 tmpl<A, B>
-A static_cast(B val) {
+A scast(B val) {
     return (A) val;
 }
 
@@ -18,15 +18,18 @@ TEST test_tmpl(TEST t) {
     return (TEST) t2 + (TEST) t;
 }
 
-tmpl<NESTED_TEMPLATE_TYPE>
-NESTED_TEMPLATE_TYPE def() {
-    NESTED_TEMPLATE_TYPE default_value = type_default<NESTED_TEMPLATE_TYPE>();
-    return default_value;
-}
 
+flagset FlagSet {
+    F1,
+    F2,
+    F3,
+};
 
 int main() {
-    int a = static_cast<int, long>(0);
+    int a = scast<int, long>(0);
+        a = if (a != 0)
+                then scast<int, flagset FlagSet>(F1)
+                else a;
 
     void *def_ptr = type_default<void *>();
 

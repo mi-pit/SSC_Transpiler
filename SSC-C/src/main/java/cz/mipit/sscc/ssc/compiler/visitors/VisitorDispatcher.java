@@ -1,8 +1,8 @@
 package cz.mipit.sscc.ssc.compiler.visitors;
 
 import antlr.ssc.SSCParser;
-import cz.mipit.sscc.Main;
-import cz.mipit.sscc.file.InputFile;
+import antlr.ssc.Symbol;
+import antlr.ssc.SymbolTable;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.data.var.Typedef;
@@ -12,18 +12,17 @@ import cz.mipit.sscc.ssc.compiler.visitors.convertors.FunctionDefinitionConverto
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.LambdaConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.PostfixExpressionConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.SuperstructConvertor;
-import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateDefinitionConvertor;
+import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TernaryOperatorConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.data.CompilerData;
 import cz.mipit.sscc.ssc.exceptions.children.SSCSyntaxException;
 import cz.mipit.sscc.util.Either;
 import cz.mipit.sscc.util.SSCCUtil;
+import cz.mipit.sscc.util.VisitorInput;
 import cz.mipit.sscc.util.annotations.Nullable;
-import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -32,9 +31,13 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 
+import static cz.mipit.sscc.Main.logger;
+
 
 public class VisitorDispatcher extends BaseConvertorVisitor {
+    private final SymbolTable symbolTable;
     public final CompilerData data;
+    private final List<String> methodsToEmit;
 
     private final Convertor<SSCParser.PostfixExpressionContext> postfixExpressionConvertor;
     private final Convertor<SSCParser.FunctionDefinitionContext> functionConvertor;
@@ -43,19 +46,16 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
 
     private final LambdaConvertor lambdaConvertor;
     private final SuperstructConvertor superstructConvertor;
-    private final TemplateDefinitionConvertor templateConvertor;
-
+    private final TemplateConvertor templateConvertor;
 
     private final VariableCollector collector;
 
-    public final List<String> methodsToEmit;
-    private final Map<String, String> templateTypedefs;
 
-
-    public VisitorDispatcher(CommonTokenStream tokens, InputFile currentFile) {
-        super(tokens, currentFile);
+    public VisitorDispatcher(VisitorInput input) {
+        super(input.tokens(), input.inputFile());
 
         data = new CompilerData();
+        symbolTable = input.symbolTable();
 
         collector = new VariableCollector(this);
 
@@ -66,15 +66,15 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
 
         superstructConvertor = new SuperstructConvertor(this);
         lambdaConvertor = new LambdaConvertor(this);
-        templateConvertor = new TemplateDefinitionConvertor(this);
+        templateConvertor = new TemplateConvertor(this);
 
         methodsToEmit = new ArrayList<>();
-        templateTypedefs = new HashMap<>();
     }
 
     public String visitSuper(final ParserRuleContext ctx) {
         return super.visitChildren(ctx);
     }
+
 
     @Override
     public String visitSuperStructSpecifier(final SSCParser.SuperStructSpecifierContext ctx) {
@@ -126,12 +126,15 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
         return templateConvertor.convertTemplateDispatch(ctx);
     }
 
+    public boolean isInTemplate = false;
+
     @Override
     public String visitFunctionTemplateDefinition(SSCParser.FunctionTemplateDefinitionContext ctx) {
+        isInTemplate = true;
         templateConvertor.visitTemplateDefinition(ctx);
+        isInTemplate = false;
 
-        // templates only exist when called
-        return "";
+        return ""; // templates only exist when called
     }
 
     @Override
@@ -169,24 +172,19 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
         return builder.toString();
     }
 
-    @Override
-    public String visitTypeSpecifier(SSCParser.TypeSpecifierContext ctx) {
-        if (getCurrentFunctionName() == null
-                || !(ctx.getChild(0) instanceof SSCParser.TypedefNameContext typedefName)) {
-            return super.visitTypeSpecifier(ctx);
-        }
-
-        return templateTypedefs.getOrDefault(
-                visitTypedefName(typedefName),
-                super.visitTypeSpecifier(ctx)
-        );
-    }
 
     /* ==== DATA ==== */
 
-    public void addTemplateTypedef(String origName, String newName) {
-        Objects.requireNonNull(getCurrentFunctionName(), "Cannot add typedefs to a non-existent function");
-        templateTypedefs.put(origName, newName);
+    public void addMethodToEmit(String method) {
+        methodsToEmit.add(method);
+    }
+
+    public boolean hasType(String typeName) {
+        return symbolTable.resolve(typeName) != null;
+    }
+
+    public Symbol getSymbol(String ident) {
+        return symbolTable.resolve(ident);
     }
 
     /**
@@ -194,14 +192,14 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
      * @param supplier supplier for an exception in case name was already in use
      */
     public void pushFunction(String name, Supplier<SSCSyntaxException> supplier) {
-        data.functionStack().push(name);
+        data.functionStack().push(Objects.requireNonNull(name, "Function name cannot be null"));
         if (data.functionVariables().put(name, new HashSet<>()) != null) {
             if (supplier != null)
                 throw supplier.get();
         }
     }
 
-    public void pushFunction(String name, ParserRuleContext ctx) {
+    public void pushFunction(String name, SSCParser.FunctionDefinitionContext ctx) {
         pushFunction(
                 name,
                 () -> getSSCSyntaxException("Duplicate function name: '" + name + "'", ctx)
@@ -292,13 +290,13 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
 
     public Optional<SuperstructVariable> findSuperstructVariable(String functionName, String objectName) {
         for (SuperstructVariable var : data.functionVariables().get(functionName)) {
-            if (var.getName().equals(objectName)) {
+            if (var.getIdentifier().equals(objectName)) {
                 return Optional.of(var);
             }
         }
         /* check global variables too */
         for (SuperstructVariable var : data.functionVariables().get(null)) {
-            if (var.getName().equals(objectName)) {
+            if (var.getIdentifier().equals(objectName)) {
                 return Optional.of(var);
             }
         }
@@ -314,14 +312,10 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
                 continue;
             }
 
-            Main.logger.printDebug(() -> "For scope " + (funcName == null ? "global" : "'" + funcName + "'"));
+            logger.printDebug(() -> "For scope " + (funcName == null ? "global" : "'" + funcName + "'"));
             for (final SuperstructVariable variable : variables) {
-                Main.logger.printDebug(() -> "        " + variable);
+                logger.printDebug(() -> "        " + variable);
             }
         }
-    }
-
-    public InputFile getCurrentFile() {
-        return currentFile;
     }
 }

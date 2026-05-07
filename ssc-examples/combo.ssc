@@ -1,0 +1,66 @@
+#include <ssclib.ssch>
+
+object Integer
+{
+    private int value;
+
+    static object Integer of( int value )
+    {
+        return ( object Integer ) { .value = value };
+    }
+
+    pure int get()
+    {
+        return this->value;
+    }
+
+    int inc()
+    {
+        return if this->value == INT_MAX then INT_MAX else ++this->value;
+    }
+
+    int add( int a )
+    {
+        return this->value + a;
+    }
+
+    pure void print()
+    {
+        printf( "%i", this->value );
+    }
+};
+
+int main()
+{
+    object Integer typedef Int;
+
+    const auto getter = | [void] | --> const object Integer *
+    {
+        static object Integer local;
+        local = Integer::of( rand() );
+        return &local;
+    };
+    Int intObj = Integer::of( 123 );
+
+    const auto incremented_adder = | [const object Integer * i] | --> void
+    {
+        flagset Flags{
+            FLAG_1,
+            FLAG_2,
+            FLAG_C = FLAG_1 | FLAG_2,
+        };
+        static int counter = 0;
+        i->add( counter++ );
+    };
+
+    for ( int i = 0; i < 3; ++i )
+    {
+        incremented_adder( &intObj );
+        intObj.print();
+    }
+
+    const object Integer *p = getter();
+    p->print();
+
+    return intObj.get();
+}

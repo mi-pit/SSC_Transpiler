@@ -20,15 +20,15 @@ public class SuperstructVariable extends Variable {
             return true;
         if (obj == null || obj.getClass() != this.getClass())
             return false;
-        var that = (SuperstructVariable) obj;
+        SuperstructVariable that = (SuperstructVariable) obj;
         return Objects.equals(this.ssName, that.ssName) &&
                 this.pointer == that.pointer &&
-                Objects.equals(this.name, that.name);
+                Objects.equals(this.identifier, that.identifier);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(ssName, pointer, name);
+        return Objects.hash(ssName, pointer, identifier);
     }
 
     @Override
@@ -36,6 +36,6 @@ public class SuperstructVariable extends Variable {
         return "SuperstructVariable[" +
                 "ssName=" + ssName + ", " +
                 "pointer=" + pointer + ", " +
-                "name=" + name + ']';
+                "name=" + identifier + ']';
     }
 }

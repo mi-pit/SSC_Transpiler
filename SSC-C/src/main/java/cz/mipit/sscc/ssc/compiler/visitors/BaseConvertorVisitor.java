@@ -36,6 +36,10 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
         return !hasErrors;
     }
 
+    public InputFile getCurrentFile() {
+        return currentFile;
+    }
+
     public SSCSyntaxException getSSCSyntaxException(String message, ParserRuleContext ctx) {
         return new SSCSyntaxException(message, ctx, tokens, currentFile);
     }

@@ -2,6 +2,7 @@ package cz.mipit.sscc.args;
 
 import cz.mipit.sscc.util.annotations.Nullable;
 
+import java.util.List;
 import java.util.Objects;
 
 import static cz.mipit.sscc.util.SSCCUtil.Text.INDENT;
@@ -17,16 +18,21 @@ final class Option<T> {
 
     final NextOperation nextOperation;
 
-    public Option(OptionString optstr, String name,
-                  String description, String argument,
-                  Class<T> type, T defaultValue,
-                  NextOperation nextOperation) {
-        this.strings = Objects.requireNonNull(optstr);
-        this.name = Objects.requireNonNull(name);
-        this.description = Objects.requireNonNull(description);
-        this.argumentDescription = argument;
+    public Option(
+            final OptionString optstr,
+            final String name,
+            final String description,
+            final List<String> arguments,
+            final Class<T> type,
+            final @Nullable T defaultValue,
+            final NextOperation nextOperation
+    ) {
+        this.strings = Objects.requireNonNull(optstr, "option string");
+        this.name = Objects.requireNonNull(name, "name");
+        this.description = Objects.requireNonNull(description, "description");
+        this.argumentDescription = String.join(" ", arguments);
 
-        this.type = type;
+        this.type = Objects.requireNonNull(type, "type class");
         this.defaultValue = defaultValue;
         value = defaultValue;
 
@@ -34,7 +40,7 @@ final class Option<T> {
     }
 
     public String formatted() {
-        boolean hasArgument = argumentDescription != null;
+        boolean hasArgument = !argumentDescription.isEmpty();
 
         final StringBuilder sBuilder = new StringBuilder()
                 .append(INDENT)

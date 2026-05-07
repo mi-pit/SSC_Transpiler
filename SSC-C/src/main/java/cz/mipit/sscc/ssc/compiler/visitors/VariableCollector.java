@@ -2,6 +2,7 @@ package cz.mipit.sscc.ssc.compiler.visitors;
 
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
+import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.data.var.Typedef;
 import cz.mipit.sscc.util.Either;
 
@@ -104,8 +105,8 @@ public class VariableCollector {
         final Either<String, Typedef<SuperStruct>> ssNameOrTypedef = maybeEither.get();
 
         for (final var initDeclarator : ctx.initDeclaratorList().initDeclarator()) {
-            final var declarator = initDeclarator.declarator();
-            final var mapped = ssNameOrTypedef.map(
+            final SSCParser.DeclaratorContext declarator = initDeclarator.declarator();
+            final Optional<SuperstructVariable> mapped = ssNameOrTypedef.map(
                     str -> dispatcher.tryCreateSuperstructVariableFromDeclarator(str, declarator),
                     typedef -> dispatcher.tryCreateSuperstructVariableFromDeclarator(typedef, declarator)
             );

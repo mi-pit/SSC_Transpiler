@@ -2,10 +2,11 @@ package antlr.ssc;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Stack;
 
 public class SymbolTable {
-    private Stack<Symbol> scopeStack = new Stack<>();
+    private final Stack<Symbol> scopeStack = new Stack<>();
     private int blockCounter = 0;
 
     public SymbolTable() {
@@ -207,16 +208,26 @@ public class SymbolTable {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        toStringHelper(sb, scopeStack.get(0), 0);
+        toStringHelper(sb, scopeStack.getFirst(), 0);
+
         return sb.toString();
     }
 
-    private void toStringHelper(StringBuilder sb, Symbol scope, int depth) {
-        String indent = "  ".repeat(depth);
-        for (var entry : scope.getMembers().entrySet()) {
-            Symbol sym = entry.getValue();
+    private void toStringHelper(final StringBuilder sb, final Symbol scope, final int depth) {
+        final String indent = "  ".repeat(depth);
+
+        sb
+                .append(indent)
+                .append(scope.getName())
+                .append(" {\n")
+        ;
+        for (Map.Entry<String, Symbol> entry : scope.getMembers().entrySet()) {
+            final Symbol sym = entry.getValue();
             if (!sym.isPredefined()) {
-                sb.append(indent).append(sym.toString()).append("\n");
+                sb
+                        .append(indent)
+                        .append(sym)
+                        .append("\n");
             }
             // Recursively print nested scopes
             if (sym.getClassification().contains(TypeClassification.Block_) ||
@@ -224,5 +235,9 @@ public class SymbolTable {
                 toStringHelper(sb, sym, depth + 1);
             }
         }
+
+        sb
+                .append(indent)
+                .append("}\n");
     }
 }

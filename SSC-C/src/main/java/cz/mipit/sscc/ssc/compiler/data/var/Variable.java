@@ -3,16 +3,16 @@ package cz.mipit.sscc.ssc.compiler.data.var;
 import java.util.Objects;
 
 public abstract class Variable {
-    protected final String name;
+    protected final String identifier;
     protected final int pointer;
 
-    protected Variable(String name, int pointer) {
-        this.name = Objects.requireNonNull(name);
+    protected Variable(String identifier, int pointer) {
+        this.identifier = Objects.requireNonNull(identifier);
         this.pointer = pointer;
     }
 
-    public String getName() {
-        return name;
+    public String getIdentifier() {
+        return identifier;
     }
 
     public int pointer() {
@@ -20,6 +20,6 @@ public abstract class Variable {
     }
 
     protected final String abstractDeclarator() {
-        return "*".repeat(pointer) + name;
+        return "*".repeat(pointer) + identifier;
     }
 }

@@ -29,25 +29,28 @@ public class FlagsConvertor extends AbstractConvertor<SSCParser.FlagsSpecifierCo
 
         final byte distinctCount = getDistinctFlagsCount(ctx, valuesListCtx, valuesMap);
 
-        final int bitsNeeded = distinctCount <= 8 ? 8
-                : distinctCount <= 16 ? 16
-                : distinctCount <= 32 ? 32
-                : 64;
+
+        final int bitsNeeded =
+                distinctCount <= 8 ? 8
+                        : distinctCount <= 16 ? 16
+                        : distinctCount <= 32 ? 32
+                        : 64;
+
         final String type = "uint" + bitsNeeded + "_t";
 
         final StringBuilder valuesString = new StringBuilder();
         for (final Map.Entry<String, Long> entry : valuesMap.entrySet()) {
-            valuesString.append(SSCCUtil.Text.INDENT)
+            valuesString
+                    .append(SSCCUtil.Text.INDENT)
                     .append("%s = 0x%X,".formatted(entry.getKey(), entry.getValue()))
                     .append(lineSeparator());
         }
 
         return String.format("""
-                        enum %s : %s {
-                        %s}
-                        """,
+                        enum %s%s {
+                        %s}""",
                 identifier,
-                type,
+                dispatcher.hasType(type) ? (" : " + type) : "",
                 valuesString
         );
     }

@@ -4,14 +4,13 @@ import cz.mipit.sscc.args.ArgumentParser;
 import cz.mipit.sscc.args.SSCCOptions;
 import cz.mipit.sscc.ssc.Compiler;
 import cz.mipit.sscc.ssc.compiler.SSCCompiler;
-
-import java.io.IOException;
+import cz.mipit.sscc.util.ExitValue;
 
 public final class Main {
     /**
      * Acts as argv[0]
      */
-    public static final String SSCC_NAME = "SSC Compiler";
+    public static final String SSCC_NAME = "SSC Transpiler";
 
     private Main() {
     }
@@ -24,10 +23,10 @@ public final class Main {
 
         final Compiler compiler = new SSCCompiler(options);
         try {
-            final int rv = compiler.run().ordinal();
-            System.exit(rv);
-        } catch (Exception e) {
-            e.printStackTrace(System.err);
+            final ExitValue ev = compiler.run();
+            System.exit(ev.ordinal());
+        } catch (Throwable e) {
+            logger.printException(e);
             System.exit(1);
         }
     }

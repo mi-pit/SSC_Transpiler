@@ -221,12 +221,14 @@ unaryExpression
     : ('++' | '--' | 'sizeof')* (
         postfixExpression
         | unaryOperator=('&' | '*' | '+' | '-' | '~' | '!'
-		| '__extension__' // GNU
-		| '__real__' // GNU
-		| '__imag__' // GNU
-		) castExpression
-        | ('sizeof' | Alignof) ( '(' typeName ')'
-		| unaryExpression //GNU
+            | '__extension__' // GNU
+            | '__real__' // GNU
+            | '__imag__' // GNU
+		)
+		castExpression
+        | ('sizeof' | Alignof) (
+            '(' typeName ')'
+		    | unaryExpression //GNU
 		)
         | '&&' Identifier // GCC extension address of label
     )
@@ -838,9 +840,9 @@ functionDefinition
 
 // SSC: template definition
 functionTemplateDefinition
-    : Template '<' identifierList '>' {this.EnterTemplate();}
+    : Template '<' Identifier (',' Identifier)* '>' {this.EnterTemplate();}
       functionDefinition
-      {this.ExitTemplate();}
+      //{this.ExitTemplate();}
     ;
 
 // declarationList

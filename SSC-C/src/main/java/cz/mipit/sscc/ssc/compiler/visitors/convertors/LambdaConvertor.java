@@ -24,7 +24,7 @@ public class LambdaConvertor
                         ? dispatcher.visitLambdaAttributes(ctx.lambdaAttributes())
                         : ""
         );
-        dispatcher.methodsToEmit.add(lambda.getDefinition());
+        dispatcher.addMethodToEmit(lambda.getDefinition());
 
         return lambda.getName();
     }
