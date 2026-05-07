@@ -32,6 +32,8 @@ int main() {
                 else a;
 
     void *def_ptr = type_default<void *>();
+    (void) type_default<void *>();
+    (void) type_default<void *>;
 
     int *(*IntPtrGetter)();
     IntPtrGetter = type_default<int *>;

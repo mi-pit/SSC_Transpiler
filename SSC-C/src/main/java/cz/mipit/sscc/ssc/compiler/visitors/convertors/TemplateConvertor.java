@@ -1,6 +1,7 @@
 package cz.mipit.sscc.ssc.compiler.visitors.convertors;
 
 import antlr.ssc.SSCParser;
+import cz.mipit.sscc.Main;
 import cz.mipit.sscc.ssc.compiler.data.Token;
 import cz.mipit.sscc.ssc.compiler.data.tmpl.Template;
 import cz.mipit.sscc.ssc.compiler.visitors.BaseConvertorVisitor;
@@ -11,8 +12,10 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class TemplateConvertor {
     private static final Map<String, String> TYPE_SHORTHANDS = Map.ofEntries(
@@ -55,6 +58,7 @@ public class TemplateConvertor {
     );
 
     private final Map<String, Template> templates;
+    private final Set<String> alreadyEmitted;
 
     private final VisitorDispatcher dispatcher;
 
@@ -62,6 +66,7 @@ public class TemplateConvertor {
         this.dispatcher = dispatcher;
 
         templates = new HashMap<>();
+        alreadyEmitted = new HashSet<>();
     }
 
     public static String typeSpecifyTemplateName(String functionName, List<String> typeArgumentsConverted) {
@@ -94,6 +99,11 @@ public class TemplateConvertor {
             throw dispatcher.getSSCSyntaxException("Unknown template '" + resolved + "'", ctx);
         }
 
+        if (alreadyEmitted.contains(resolved)) {
+            Main.logger.printDebug("Already emitted template '" + resolved + "'");
+            return resolved;
+        }
+
         final List<SSCParser.TypeArgumentContext> typeArgs = ctx.typeArgument();
         final Map<String, String> typeArgMap = new HashMap<>();
         if (!(tmpl.getTypeArgumentAliases().size() == ctx.typeArgument().size())) {
@@ -110,6 +120,7 @@ public class TemplateConvertor {
 
         final String tmplConverted = tmpl.convert(ctx.typeArgument());
         dispatcher.addMethodToEmit(tmplConverted);
+        alreadyEmitted.add(resolved);
 
         return resolved;
     }
