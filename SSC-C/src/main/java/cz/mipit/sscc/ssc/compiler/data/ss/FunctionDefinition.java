@@ -78,10 +78,12 @@ public class FunctionDefinition {
             }
         }
 
+        final String qualifiedName = superstructMemberOfName + "__" + unqualifiedName;
         final ListBuilder<String> tokensBuilder = ListBuilder
                 .from(cDeclarationSpecifiers)
+                .plus("static")
                 .plus(type)
-                .plus(superstructMemberOfName + "__" + unqualifiedName + "(" + selfRef + String.join(", ", params) + ")");
+                .plus(qualifiedName + "(" + selfRef + String.join(", ", params) + ")");
 
         return String.join(" ", tokensBuilder);
     }
