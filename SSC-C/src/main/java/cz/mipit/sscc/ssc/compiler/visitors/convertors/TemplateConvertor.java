@@ -137,7 +137,9 @@ public class TemplateConvertor {
         );
         dispatcher.pushFunction(unqualifiedName, ctx.functionDefinition());
 
-        final List<String> typeAliasIdentifiers = ctx.Identifier()
+        final List<String> typeAliasIdentifiers = ctx
+                .templateTypes()
+                .Identifier()
                 .stream()
                 .map(dispatcher::visitTerminal)
                 .toList();

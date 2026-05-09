@@ -824,7 +824,11 @@ translationUnit
 
 // ISO C: external-declaration (6.9.1)
 externalDeclaration
-    : '__extension__'? (
+    :
+    (
+        '__extension__'
+    )?
+    (
         functionDefinition
         | functionTemplateDefinition // SSC
         | declaration
@@ -840,12 +844,16 @@ functionDefinition
 
 // SSC: template definition
 functionTemplateDefinition
-    : Template '<' Identifier (',' Identifier)* '>' {this.EnterTemplate();}
+    : Template '<' templateTypes '>' {this.EnterTemplate();}
       functionDefinition
-      //{this.ExitTemplate();}
+      {this.ExitTemplate();}
     ;
 
-// declarationList
+templateTypes
+    : Identifier (',' Identifier)*
+    ;
+
+// K&R C: declarationList
 declarationList
     : declaration+
     ;

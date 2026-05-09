@@ -1,7 +1,6 @@
 package antlr.ssc;
 
 import cz.mipit.sscc.args.SSCCOptions;
-import cz.mipit.sscc.util.color.ConsoleColorFactory;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.Parser;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -352,11 +351,9 @@ public abstract class SSCParserBase extends Parser {
         }
         debugPrintln("Entering template function definition");
 
-        debugPrintln("Template types: " + tmplDefCtx.Identifier().stream().map(TerminalNode::getText).toList());
-
         symbolTable.pushBlockScope();
 
-        for (final var identifier : tmplDefCtx.Identifier()) {
+        for (final TerminalNode identifier : tmplDefCtx.templateTypes().Identifier()) {
             final String identifierText = identifier.getText();
 
             final HashSet<TypeClassification> classSet = new HashSet<>(Arrays.asList(
@@ -371,6 +368,11 @@ public abstract class SSCParserBase extends Parser {
             symbolTable.define(symbol);
             debugPrintln("New template type specifier defined: '" + identifierText + "'\t// " + symbol);
         }
+    }
+
+    // SSC
+    public void ExitTemplate() {
+        symbolTable.popBlockScope();
     }
 
     public void EnterDeclaration() {
