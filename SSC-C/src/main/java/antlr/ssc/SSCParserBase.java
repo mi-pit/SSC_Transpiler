@@ -460,7 +460,7 @@ public abstract class SSCParserBase extends Parser {
                 }
             }
             if (context instanceof SSCParser.FunctionDefinitionContext funcdefCtx) {
-                SSCParser.DeclaratorContext de = funcdefCtx.declarator();
+                SSCParser.DeclaratorContext de = funcdefCtx.functionHeader().declarator();
                 SSCParser.DirectDeclaratorContext dd = de != null ? de.directDeclarator() : null;
                 if (dd != null && dd.Identifier() != null) {
                     Token idToken = dd.Identifier().getSymbol();

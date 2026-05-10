@@ -1,11 +1,14 @@
 package cz.mipit.sscc.ssc.compiler.data.ss;
 
+import cz.mipit.sscc.ssc.compiler.data.FunctionHeaderData;
+import cz.mipit.sscc.util.annotations.Nullable;
 import cz.mipit.sscc.util.collection.builder.ListBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
-public class FunctionDefinition {
+public class Function {
     private final String unqualifiedName;
 
     private final boolean isStatic;
@@ -15,7 +18,7 @@ public class FunctionDefinition {
     private final String type;
 
     private final List<String> params;
-    private final String body;
+    private final @Nullable String body;
 
     private final String superstructMemberOfName;
 
@@ -24,23 +27,20 @@ public class FunctionDefinition {
      */
     private final String declaration;
 
-    public FunctionDefinition(
-            final boolean isStatic,
-            final boolean isPure,
+    public Function(
+            final FunctionHeaderData headerData,
             final boolean isPrivate,
-            final List<String> specsWithoutCustom,
             final String type,
-            final String unqualifiedName,
             final List<String> params,
             final String body,
             final String superstructMemberOfName
     ) {
-        this.cDeclarationSpecifiers = specsWithoutCustom;
-        this.isStatic = isStatic;
-        this.isPure = isPure;
+        this.cDeclarationSpecifiers = headerData.cDeclarationSpecifiers();
+        this.isStatic = headerData.isStatic();
+        this.isPure = headerData.isPure();
         this.isPrivate = isPrivate;
+        this.unqualifiedName = headerData.unqualifiedName();
         this.type = type;
-        this.unqualifiedName = unqualifiedName;
         this.params = new ArrayList<>(params);
         this.body = body;
         this.superstructMemberOfName = superstructMemberOfName;
@@ -56,11 +56,16 @@ public class FunctionDefinition {
         return declaration + ";";
     }
 
-    public String getDefinition() {
-        return declaration + System.lineSeparator() + getBody();
+    public Optional<String> getDefinition() {
+        if (body == null) {
+            return Optional.empty();
+        }
+        return Optional.of(declaration + System.lineSeparator() + body);
     }
 
     private String createDeclaration() {
+        final String qualifiedName = superstructMemberOfName + "__" + unqualifiedName;
+
         final StringBuilder selfRef = new StringBuilder();
         if (!isStatic) {
             if (isPure) {
@@ -78,18 +83,12 @@ public class FunctionDefinition {
             }
         }
 
-        final String qualifiedName = superstructMemberOfName + "__" + unqualifiedName;
         final ListBuilder<String> tokensBuilder = ListBuilder
                 .from(cDeclarationSpecifiers)
-                .plus("static")
                 .plus(type)
                 .plus(qualifiedName + "(" + selfRef + String.join(", ", params) + ")");
 
         return String.join(" ", tokensBuilder);
-    }
-
-    private String getBody() {
-        return body;
     }
 
     public String getUnqualifiedName() {

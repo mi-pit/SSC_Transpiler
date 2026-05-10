@@ -186,6 +186,10 @@ Int
     : 'int'
     ;
 
+Interface
+    : 'interface'
+    ;
+
 Label
     : '__label__' // gnu
     ;

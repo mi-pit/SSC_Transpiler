@@ -1,0 +1,82 @@
+package cz.mipit.sscc.ssc.compiler.visitors.convertors;
+
+import antlr.ssc.SSCParser;
+import cz.mipit.sscc.Main;
+import cz.mipit.sscc.ssc.compiler.data.FunctionHeaderData;
+import cz.mipit.sscc.ssc.compiler.data.ss.Function;
+import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
+import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
+
+import java.util.List;
+import java.util.StringJoiner;
+
+import static cz.mipit.sscc.ssc.compiler.visitors.convertors.SuperstructConvertor.getFunctionHeaderData;
+import static cz.mipit.sscc.ssc.compiler.visitors.convertors.SuperstructConvertor.hasDeclarationSpecifier;
+import static cz.mipit.sscc.ssc.compiler.visitors.convertors.SuperstructConvertor.parseFunctionParameters;
+import static cz.mipit.sscc.ssc.compiler.visitors.convertors.SuperstructConvertor.parseType;
+
+public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.SuperStructInterfaceContext> {
+    public SuperstructInterfaceConvertor(VisitorDispatcher dispatcher) {
+        super(dispatcher);
+    }
+
+    /**
+     * 1. Discard `object ‹Ident› interface {}` tokens
+     * 2. Register superstruct if not already
+     * 3. For all functions:
+     * 3.1. Qualify name
+     * 3.2. Add self-ref (if applicable)
+     */
+    @Override
+    public String convert(SSCParser.SuperStructInterfaceContext ctx) {
+        final StringJoiner joiner = new StringJoiner(System.lineSeparator());
+
+        final String ssName = dispatcher.visitTerminal(ctx.Identifier());
+        joiner.add("/* Superstruct Interface `" + ssName + "`; START */");
+
+        SuperStruct interfaceOf = dispatcher.data.superStructs().get(ssName);
+        if (interfaceOf == null) {
+            dispatcher.data.superStructs().put(ssName, interfaceOf = new SuperStruct(ssName));
+        }
+
+        dispatcher.data.setCurrentSS(interfaceOf);
+        Main.logger.printDebug("Added a new superstruct from interface: " + ssName);
+
+        // attributeSpecifierSequence? cDeclarationSpecifiers? declarator ';'
+        for (SSCParser.FunctionHeaderContext context : ctx.functionHeader()) {
+            final List<SSCParser.DeclarationSpecifierContext> declSpecs = context.declarationSpecifiers() == null
+                    ? List.of()
+                    : context.declarationSpecifiers().declarationSpecifier();
+            final List<SSCParser.DeclarationSpecifierContext> noPrivateSpecs = declSpecs
+                    .stream()
+                    .filter(declSpec -> declSpec.functionSpecifier() == null
+                            || declSpec.functionSpecifier().Private() == null)
+                    .toList();
+
+            final boolean isPrivate = hasDeclarationSpecifier(declSpecs,
+                    ds -> ds.functionSpecifier() != null && ds.functionSpecifier().Private() != null
+            );
+
+            final FunctionHeaderData result = getFunctionHeaderData(
+                    dispatcher, context, declSpecs, noPrivateSpecs
+            );
+
+            final Function functionDefinition = new Function(
+                    result,
+                    isPrivate,
+                    parseType(dispatcher, declSpecs, result.declarator()),
+                    parseFunctionParameters(dispatcher, result.declarator()),
+                    null,
+                    ssName
+            );
+            interfaceOf.addFunction(functionDefinition);
+
+            joiner.add(functionDefinition.getDeclaration());
+        }
+
+        dispatcher.data.setCurrentSS(null);
+
+        joiner.add("/* Superstruct Interface `" + ssName + "`; END */");
+        return joiner.toString();
+    }
+}

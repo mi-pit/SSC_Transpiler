@@ -328,10 +328,10 @@ constantExpression
 // ISO C: declaration (6.7.1)
 declaration
     : (
-	declarationSpecifiers initDeclaratorList? ';'
-	| staticAssertDeclaration
-	| attributeDeclaration
-      ) {this.EnterDeclaration();}
+        declarationSpecifiers initDeclaratorList? ';'
+        | staticAssertDeclaration
+        | attributeDeclaration
+    ) {this.EnterDeclaration();}
     ;
 
 // ISO C: declaration-specifiers (6.7.1)
@@ -831,15 +831,26 @@ externalDeclaration
     (
         functionDefinition
         | functionTemplateDefinition // SSC
+        | superStructInterface // SSC
         | declaration
         | ';' // stray ;
         | asmDefinition // GCC
 	)
     ;
 
-// ISO C: function-definition (6.9.2)
+// SSC: superstruct interface
+superStructInterface
+    : Superstruct Identifier Interface '{' (functionHeader ';')+ '}'
+    ;
+
+// ISO C: function-definition (6.9.2) -- header part
+functionHeader
+    : attributeSpecifierSequence? declarationSpecifiers? declarator
+    ;
+
+// ISO C: function-definition (6.9.2) -- complete
 functionDefinition
-    : attributeSpecifierSequence? declarationSpecifiers? declarator functionBody
+    : functionHeader functionBody
     ;
 
 // SSC: template definition

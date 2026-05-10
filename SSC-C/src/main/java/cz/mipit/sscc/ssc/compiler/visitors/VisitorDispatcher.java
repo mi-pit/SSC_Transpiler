@@ -11,6 +11,7 @@ import cz.mipit.sscc.ssc.compiler.visitors.convertors.FunctionDefinitionConverto
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.LambdaConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.PostfixExpressionConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.SuperstructConvertor;
+import cz.mipit.sscc.ssc.compiler.visitors.convertors.SuperstructInterfaceConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TernaryOperatorConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.data.CompilerData;
@@ -34,14 +35,16 @@ import static cz.mipit.sscc.Main.logger;
 
 
 public class VisitorDispatcher extends BaseConvertorVisitor {
-    private final SymbolTable symbolTable;
     public final CompilerData data;
+    private final SymbolTable symbolTable; // TODO: move to data
     private final List<String> methodsToEmit;
 
     private final Convertor<SSCParser.PostfixExpressionContext> postfixExpressionConvertor;
     private final Convertor<SSCParser.FunctionDefinitionContext> functionConvertor;
     private final Convertor<SSCParser.ConditionalExpressionContext> ternaryOperatorConvertor;
     private final Convertor<SSCParser.FlagsSpecifierContext> flagsConvertor;
+
+    private final Convertor<SSCParser.SuperStructInterfaceContext> superstructInterfaceConvertor;
 
     private final LambdaConvertor lambdaConvertor;
     private final SuperstructConvertor superstructConvertor;
@@ -63,6 +66,8 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
         functionConvertor = new FunctionDefinitionConvertor(this);
         postfixExpressionConvertor = new PostfixExpressionConvertor(this);
 
+        superstructInterfaceConvertor = new SuperstructInterfaceConvertor(this);
+
         superstructConvertor = new SuperstructConvertor(this);
         lambdaConvertor = new LambdaConvertor(this);
         templateConvertor = new TemplateConvertor(this);
@@ -78,6 +83,11 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
     @Override
     public String visitSuperStructSpecifier(final SSCParser.SuperStructSpecifierContext ctx) {
         return superstructConvertor.convert(ctx);
+    }
+
+    @Override
+    public String visitSuperStructInterface(SSCParser.SuperStructInterfaceContext ctx) {
+        return superstructInterfaceConvertor.convert(ctx);
     }
 
     @Override
@@ -107,8 +117,7 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
 
     @Override
     public String visitFunctionTemplateDefinition(SSCParser.FunctionTemplateDefinitionContext ctx) {
-        templateConvertor.visitTemplateDefinition(ctx);
-        return ""; // templates only exist when called
+        return templateConvertor.visitTemplateDefinition(ctx);
     }
 
     @Override
@@ -121,9 +130,6 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
         final String external = super.visitExternalDeclaration(ctx);
 
         final StringBuilder res = new StringBuilder();
-
-        res.append(external);
-
         // if superstruct convertor has methods => external is a super struct declaration
         // methods must be defined AFTER the struct
         superstructConvertor.emit().ifPresent(res::append);
@@ -131,7 +137,7 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
         final String emitted = String.join(System.lineSeparator(), methodsToEmit);
         methodsToEmit.clear();
 
-        return emitted + res;
+        return emitted + external + res;
     }
 
     @Override
@@ -169,10 +175,10 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
         }
     }
 
-    public void pushFunction(String name, SSCParser.FunctionDefinitionContext ctx) {
+    public void pushFunction(String name, ParserRuleContext functionCtx) {
         pushFunction(
                 name,
-                () -> getSSCSyntaxException("Duplicate function name: '" + name + "'", ctx)
+                () -> getSSCSyntaxException("Duplicate function name: '" + name + "'", functionCtx)
         );
     }
 

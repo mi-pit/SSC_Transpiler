@@ -23,7 +23,7 @@ public class FunctionDefinitionConvertor extends AbstractConvertor<SSCParser.Fun
         assert ctx.functionBody() != null;
         assert ctx.functionBody().compoundStatement() != null;
 
-        final String unqualifiedName = dispatcher.visitTerminal(ctx.declarator().directDeclarator().Identifier());
+        final String unqualifiedName = dispatcher.visitTerminal(ctx.functionHeader().declarator().directDeclarator().Identifier());
         final String currentFunctionName = dispatcher.data
                 .currentSS()
                 .map(SuperStruct::name)
@@ -41,20 +41,21 @@ public class FunctionDefinitionConvertor extends AbstractConvertor<SSCParser.Fun
 
 
     private void getFunctionSuperstructParams(final SSCParser.FunctionDefinitionContext ctx) {
-        final List<SSCParser.ParameterTypeListContext> ls = ctx.declarator().directDeclarator().parameterTypeList();
+        final SSCParser.DeclaratorContext functionDeclarator = ctx.functionHeader().declarator();
+        final List<SSCParser.ParameterTypeListContext> ls = functionDeclarator.directDeclarator().parameterTypeList();
         if (ls.isEmpty()) {
-            throw getSSCSyntaxException("Function definition has no parameter type list", ctx.declarator());
+            throw getSSCSyntaxException("Function definition has no parameter type list", functionDeclarator);
         }
         final SSCParser.ParameterTypeListContext paramTypeList = ls.getFirst();
         if (paramTypeList == null) {
-            throw getSSCSyntaxException("Function definition has no parameter type list", ctx.declarator());
+            throw getSSCSyntaxException("Function definition has no parameter type list", functionDeclarator);
         }
 
         final List<SSCParser.ParameterDeclarationContext> paramList =
                 paramTypeList.parameterList().parameterDeclaration();
 
         for (final SSCParser.ParameterDeclarationContext paramDecl : paramList) {
-            final var declarator = paramDecl.declarator();
+            final SSCParser.DeclaratorContext parameterDeclarator = paramDecl.declarator();
             if (paramDecl.declarationSpecifiers() == null) {
                 /* no parameters */
                 break;
@@ -67,8 +68,8 @@ public class FunctionDefinitionConvertor extends AbstractConvertor<SSCParser.Fun
                 continue;
             }
             maybeSSName.get().map(
-                    string -> dispatcher.tryCreateSuperstructVariableFromDeclarator(string, declarator),
-                    typedef -> dispatcher.tryCreateSuperstructVariableFromDeclarator(typedef, declarator)
+                    string -> dispatcher.tryCreateSuperstructVariableFromDeclarator(string, parameterDeclarator),
+                    typedef -> dispatcher.tryCreateSuperstructVariableFromDeclarator(typedef, parameterDeclarator)
             ).ifPresent(dispatcher::addFunctionVariable);
         }
     }

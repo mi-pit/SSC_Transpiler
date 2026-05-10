@@ -3,12 +3,10 @@ package cz.mipit.sscc.ssc.compiler.visitors.convertors;
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.Main;
 import cz.mipit.sscc.ssc.compiler.data.ss.Field;
-import cz.mipit.sscc.ssc.compiler.data.ss.FunctionDefinition;
-import cz.mipit.sscc.ssc.compiler.data.ss.SSMember;
+import cz.mipit.sscc.ssc.compiler.data.ss.Function;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
-import cz.mipit.sscc.util.Either;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -63,10 +61,10 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
         Main.logger.printDebug(() -> arrowOrDot + " in: " + dispatcher.getLiteral(ctx));
         assert arrowOrDot != ArrowOrDot.Neither;
 
-        final String objectName = dispatcher.visitPrimaryExpression(ctx.primaryExpression());
         if (ctx.Identifier().isEmpty())
             throw getSSCSyntaxException(arrowOrDot + " expression has no right side expression", ctx);
 
+        final String objectName = dispatcher.visitPrimaryExpression(ctx.primaryExpression());
         final String currentFunctionName = dispatcher.getCurrentFunctionName();
         final Optional<SuperstructVariable> maybeVar = dispatcher.findSuperstructVariable(currentFunctionName, objectName);
         if (maybeVar.isEmpty()) {
@@ -93,17 +91,12 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
         }
 
         final String methodName = dispatcher.visitTerminal(ctx.Identifier(0));
-        final Optional<FunctionDefinition> maybeMethod = superStruct.findMethod(methodName);
+        final Optional<Function> maybeMethod = superStruct.findMethod(methodName);
 
         if (maybeMethod.isEmpty()) {
             Main.logger.printDebug(() -> "Variable does not have such a method");
-            if (superStruct
-                    .members()
+            if (superStruct.fields()
                     .stream()
-                    .map(SSMember::data)
-                    .map(Either::getLeft)
-                    .filter(Optional::isPresent)
-                    .map(Optional::get)
                     .anyMatch(decl -> decl.getName().equals(methodName))
             ) {
                 return dispatcher.visitSuper(ctx);
@@ -209,14 +202,14 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
         }
         final SuperStruct superstruct = maybeSS.get();
 
-        final Optional<FunctionDefinition> maybeMethod = superstruct.findMethod(methodName);
+        final Optional<Function> maybeMethod = superstruct.findMethod(methodName);
         if (maybeMethod.isEmpty()) {
             throw getSSCSyntaxException(
                     "Superstruct with name `" + className
                             + "` has no method called `" + methodName
                             + "`", ctx);
         }
-        final FunctionDefinition method = maybeMethod.get();
+        final Function method = maybeMethod.get();
 
         if (method.isPrivate()) {
             Main.logger.printDebug(() -> "Method '" + methodName + "' is private. Going to check if it may be used here...");
@@ -233,11 +226,8 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
                                         SuperStruct superstruct) {
         final String fieldName = dispatcher.visitTerminal(ctx.Identifier(0));
 
-        final List<Field> allMatching = superstruct.members()
+        final List<Field> allMatching = superstruct.fields()
                 .stream()
-                .map(SSMember::data)
-                .filter(either -> either.getLeft().isPresent())
-                .map(either -> either.getLeft().get())
                 .filter(field -> field.getName().equals(fieldName))
                 .toList();
         if (allMatching.size() > 1) {

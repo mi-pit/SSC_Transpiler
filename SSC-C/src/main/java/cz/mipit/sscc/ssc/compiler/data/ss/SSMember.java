@@ -3,9 +3,9 @@ package cz.mipit.sscc.ssc.compiler.data.ss;
 import cz.mipit.sscc.util.Either;
 
 public class SSMember {
-    private final Either<Field, FunctionDefinition> data;
+    private final Either<Field, Function> data;
 
-    private SSMember(final Either<Field, FunctionDefinition> data) {
+    private SSMember(final Either<Field, Function> data) {
         this.data = data;
     }
 
@@ -13,11 +13,11 @@ public class SSMember {
         return new SSMember(Either.left(value));
     }
 
-    public static SSMember function(final FunctionDefinition value) {
+    public static SSMember function(final Function value) {
         return new SSMember(Either.right(value));
     }
 
-    public Either<Field, FunctionDefinition> data() {
+    public Either<Field, Function> data() {
         return data;
     }
 

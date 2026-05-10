@@ -125,9 +125,9 @@ public class TemplateConvertor {
         return resolved;
     }
 
-    public void visitTemplateDefinition(SSCParser.FunctionTemplateDefinitionContext ctx) {
+    public String visitTemplateDefinition(SSCParser.FunctionTemplateDefinitionContext ctx) {
         final SSCParser.FunctionDefinitionContext funcDefCtx = ctx.functionDefinition();
-        final SSCParser.DirectDeclaratorContext directDeclarator = funcDefCtx.declarator().directDeclarator();
+        final SSCParser.DirectDeclaratorContext directDeclarator = funcDefCtx.functionHeader().declarator().directDeclarator();
         if (directDeclarator.Identifier() == null) {
             throw dispatcher.getSSCSyntaxException(
                     "No function name in template definition", directDeclarator);
@@ -148,16 +148,16 @@ public class TemplateConvertor {
 
         final Template tmpl = new Template(dispatcher,
                 unqualifiedName,
-                funcDefCtx.attributeSpecifierSequence() == null
+                funcDefCtx.functionHeader().attributeSpecifierSequence() == null
                         ? ""
-                        : dispatcher.visitAttributeSpecifierSequence(funcDefCtx.attributeSpecifierSequence()),
+                        : dispatcher.visitAttributeSpecifierSequence(funcDefCtx.functionHeader().attributeSpecifierSequence()),
                 typeAliasIdentifiers,
                 List.of(dispatcher
-                        .visitDeclarationSpecifiers(funcDefCtx.declarationSpecifiers())
+                        .visitDeclarationSpecifiers(funcDefCtx.functionHeader().declarationSpecifiers())
                         .split(" ")),
                 List.of(
                         List.of(dispatcher
-                                .visitParameterTypeList(funcDefCtx.declarator().directDeclarator().parameterTypeList().getFirst())
+                                .visitParameterTypeList(funcDefCtx.functionHeader().declarator().directDeclarator().parameterTypeList().getFirst())
                                 .split(" ")
                         )
                 ),
@@ -167,6 +167,8 @@ public class TemplateConvertor {
         registerTemplate(tmpl);
 
         dispatcher.popFunction();
+
+        return ""; // templates only exist when called
     }
 
     private List<Token> getBodyTokens(
