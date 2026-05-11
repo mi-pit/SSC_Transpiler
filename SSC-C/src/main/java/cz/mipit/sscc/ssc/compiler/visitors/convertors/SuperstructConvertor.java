@@ -180,7 +180,6 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
         dispatcher.pushFunction(qualified, functionCtx);
 
         if (!fnData.isStatic()) {
-            Main.logger.printDebug("Adding self reference variable to function " + fnData.unqualifiedName());
             final SuperstructVariable selfReferenceVariable =
                     new SuperstructVariable(fnData.superStruct().name(), 1, "this");
 
@@ -195,6 +194,8 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
                     .add(selfReferenceVariable);
         }
 
+        final List<String> parameters = parseFunctionParameters(dispatcher, fnData.declarator());
+
         final @Nullable String fnBody = functionCtx.functionBody() == null
                 ? null
                 : dispatcher.visitFunctionBody(functionCtx.functionBody());
@@ -203,7 +204,7 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
                 fnData,
                 isPrivate,
                 parseType(dispatcher, declSpecs, fnData.declarator()),
-                parseFunctionParameters(dispatcher, fnData.declarator()),
+                parameters,
                 fnBody,
                 thisSSName
         );
@@ -336,10 +337,18 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
                 if (declarator.directDeclarator().Identifier() != null) {
                     final String varName = dispatcher.visitTerminal(declarator.directDeclarator().Identifier());
                     if (ssName != null) {
+                        final SuperstructVariable ssVar = new SuperstructVariable(ssName, pointer, varName);
                         dispatcher.data
                                 .functionVariables()
                                 .get(dispatcher.getCurrentFunctionName())
-                                .add(new SuperstructVariable(ssName, pointer, varName));
+                                .add(ssVar);
+                        Main.logger.printDebug(() ->
+                                "Function parameter "
+                                        + ssVar
+                                        + " has been registered in function '"
+                                        + dispatcher.getCurrentFunctionName()
+                                        + "'"
+                        );
                     }
                 }
 

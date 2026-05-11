@@ -68,7 +68,7 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
         final String currentFunctionName = dispatcher.getCurrentFunctionName();
         final Optional<SuperstructVariable> maybeVar = dispatcher.findSuperstructVariable(currentFunctionName, objectName);
         if (maybeVar.isEmpty()) {
-            Main.logger.printDebug(() -> "\tVariable is not superstruct\t\tlocal vars: "
+            Main.logger.printDebug(() -> "\tVariable is not superstruct\tlocal vars (" + currentFunctionName + "): "
                     + dispatcher.data.functionVariables().get(currentFunctionName));
             return dispatcher.visitSuper(ctx);
         }
