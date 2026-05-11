@@ -20,6 +20,10 @@ public class SuperStruct {
         this.functions = new ArrayList<>();
     }
 
+    public String emitStructDeclaration() {
+        return String.format("struct %s;%n", name);
+    }
+
     public String emitStructDefinition() {
         final StringBuilder resultBuilder = new StringBuilder();
 

@@ -23,7 +23,9 @@ public class FunctionDefinitionConvertor extends AbstractConvertor<SSCParser.Fun
         assert ctx.functionBody() != null;
         assert ctx.functionBody().compoundStatement() != null;
 
-        final String unqualifiedName = dispatcher.visitTerminal(ctx.functionHeader().declarator().directDeclarator().Identifier());
+        final String unqualifiedName = dispatcher.visitTerminal(
+                ctx.functionHeader().declarator().directDeclarator().Identifier()
+        );
         final String currentFunctionName = dispatcher.data
                 .currentSS()
                 .map(SuperStruct::name)
@@ -70,7 +72,7 @@ public class FunctionDefinitionConvertor extends AbstractConvertor<SSCParser.Fun
             maybeSSName.get().map(
                     string -> dispatcher.tryCreateSuperstructVariableFromDeclarator(string, parameterDeclarator),
                     typedef -> dispatcher.tryCreateSuperstructVariableFromDeclarator(typedef, parameterDeclarator)
-            ).ifPresent(dispatcher::addFunctionVariable);
+            ).ifPresent(v -> dispatcher.data.functionVariables().get(dispatcher.getCurrentFunctionName()).add(v));
         }
     }
 }

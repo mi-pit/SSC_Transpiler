@@ -31,7 +31,7 @@ public class TestStubs {
 
             Assertions.assertDoesNotThrow(() -> {
                 final var exitValue = compiler.run();
-                Assertions.assertSame(ExitValue.SUCCESS, exitValue, "`%s`".formatted(fileName));
+                Assertions.assertSame(ExitValue.SUCCESS, exitValue, "In file `%s`".formatted(fileName));
             });
         }
     }

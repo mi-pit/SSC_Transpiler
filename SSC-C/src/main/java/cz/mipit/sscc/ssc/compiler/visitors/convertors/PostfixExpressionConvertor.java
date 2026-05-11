@@ -90,7 +90,7 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
             return getFieldAccessString(ctx, superStruct);
         }
 
-        final String methodName = dispatcher.visitTerminal(ctx.Identifier(0));
+        final String methodName = dispatcher.visitTerminal(ctx.Identifier().getFirst());
         final Optional<Function> maybeMethod = superStruct.findMethod(methodName);
 
         if (maybeMethod.isEmpty()) {
@@ -205,9 +205,9 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
         final Optional<Function> maybeMethod = superstruct.findMethod(methodName);
         if (maybeMethod.isEmpty()) {
             throw getSSCSyntaxException(
-                    "Superstruct with name `" + className
-                            + "` has no method called `" + methodName
-                            + "`", ctx);
+                    "Superstruct '" + className
+                            + "' has no method called '" + methodName
+                            + "'", ctx);
         }
         final Function method = maybeMethod.get();
 
@@ -222,8 +222,10 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
         }
     }
 
-    private String getFieldAccessString(SSCParser.PostfixExpressionContext ctx,
-                                        SuperStruct superstruct) {
+    private String getFieldAccessString(
+            final SSCParser.PostfixExpressionContext ctx,
+            final SuperStruct superstruct
+    ) {
         final String fieldName = dispatcher.visitTerminal(ctx.Identifier(0));
 
         final List<Field> allMatching = superstruct.fields()
@@ -237,7 +239,7 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
         }
         if (allMatching.isEmpty()) {
             throw getSSCSyntaxException(
-                    "Found no matching field in superstruct `" + superstruct.name() + "`", ctx
+                    "Found no field '" + fieldName + "' in superstruct `" + superstruct.name() + "`", ctx
             );
         }
 

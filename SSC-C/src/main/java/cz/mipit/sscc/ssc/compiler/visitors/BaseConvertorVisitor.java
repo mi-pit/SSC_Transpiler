@@ -2,6 +2,7 @@ package cz.mipit.sscc.ssc.compiler.visitors;
 
 import antlr.ssc.SSCParser;
 import antlr.ssc.SSCParserBaseVisitor;
+import cz.mipit.sscc.Main;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.ssc.exceptions.children.SSCSyntaxException;
@@ -29,7 +30,7 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
     private boolean hasErrors;
 
 
-    public final Map<TerminalNode, String> replacements = new HashMap<>();
+    public final Map<String, String> replacements = new HashMap<>();
 
 
     protected BaseConvertorVisitor(CommonTokenStream tokens, InputFile currentFile) {
@@ -58,19 +59,21 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
 
     @Override
     public String visitTerminal(TerminalNode node) {
-        return replacements.getOrDefault(
-                node,
-                switch (node.getSymbol().getType()) {
-                    case Token.EOF -> "";
+        if (node.getSymbol().getType() == SSCParser.Identifier
+                && replacements.containsKey(node.getText())) {
+            return replacements.get(node.getText());
+        }
 
-                    case SSCParser.Superstruct -> "struct";
-                    case SSCParser.FlagsSet -> "enum";
+        return switch (node.getSymbol().getType()) {
+            case Token.EOF -> "";
 
-                    case SSCParser.Then -> "?";
+            case SSCParser.Superstruct -> "struct";
+            case SSCParser.FlagsSet -> "enum";
 
-                    default -> node.getText();
-                }
-        );
+            case SSCParser.Then -> "?";
+
+            default -> node.getText();
+        };
     }
 
 
@@ -121,7 +124,7 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
                 childText = visit(child);
             } catch (final SSCTranspilerException e) {
                 hasErrors = true;
-                System.err.println(e.getMessage());
+                Main.logger.printException(e);
                 continue;
             }
 
@@ -133,7 +136,7 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
 
             builder.append(childText);
 
-            if (isClosingBrace) {
+            if (isClosingBrace || child instanceof SSCParser.TemplateHeaderContext) {
                 builder.append(System.lineSeparator());
             }
         }

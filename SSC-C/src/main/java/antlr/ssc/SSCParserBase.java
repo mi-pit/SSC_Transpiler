@@ -353,7 +353,7 @@ public abstract class SSCParserBase extends Parser {
 
         symbolTable.pushBlockScope();
 
-        for (final TerminalNode identifier : tmplDefCtx.templateTypes().Identifier()) {
+        for (final TerminalNode identifier : tmplDefCtx.templateHeader().templateTypes().Identifier()) {
             final String identifierText = identifier.getText();
 
             final HashSet<TypeClassification> classSet = new HashSet<>(Arrays.asList(

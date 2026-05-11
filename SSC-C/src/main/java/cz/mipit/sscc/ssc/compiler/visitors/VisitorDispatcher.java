@@ -12,7 +12,8 @@ import cz.mipit.sscc.ssc.compiler.visitors.convertors.LambdaConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.PostfixExpressionConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.SuperstructConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.SuperstructInterfaceConvertor;
-import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateConvertor;
+import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateDefinitionConvertor;
+import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateDispatchConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TernaryOperatorConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.data.CompilerData;
 import cz.mipit.sscc.ssc.exceptions.children.SSCSyntaxException;
@@ -23,6 +24,7 @@ import cz.mipit.sscc.util.annotations.Nullable;
 import org.antlr.v4.runtime.ParserRuleContext;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +39,13 @@ import static cz.mipit.sscc.Main.logger;
 public class VisitorDispatcher extends BaseConvertorVisitor {
     public final CompilerData data;
     private final SymbolTable symbolTable; // TODO: move to data
-    private final List<String> methodsToEmit;
+
+    public final Map<
+            String /* typeSpecifier.typedefName.Identifier.text */,
+            String /* typeArgument.typeSpec... */
+            > typeReplacements = new HashMap<>();
+
+    private final List<String> methodsToEmit; // to be emitted when exiting the next external declaration
 
     private final Convertor<SSCParser.PostfixExpressionContext> postfixExpressionConvertor;
     private final Convertor<SSCParser.FunctionDefinitionContext> functionConvertor;
@@ -48,7 +56,9 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
 
     private final LambdaConvertor lambdaConvertor;
     private final SuperstructConvertor superstructConvertor;
-    private final TemplateConvertor templateConvertor;
+
+    private final TemplateDispatchConvertor templateDispatchConvertor;
+    private final TemplateDefinitionConvertor templateDefinitionConvertor;
 
     private final VariableCollector collector;
 
@@ -70,7 +80,9 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
 
         superstructConvertor = new SuperstructConvertor(this);
         lambdaConvertor = new LambdaConvertor(this);
-        templateConvertor = new TemplateConvertor(this);
+
+        templateDispatchConvertor = new TemplateDispatchConvertor(this);
+        templateDefinitionConvertor = new TemplateDefinitionConvertor(this);
 
         methodsToEmit = new ArrayList<>();
     }
@@ -112,12 +124,12 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
 
     @Override
     public String visitTemplateDispatch(SSCParser.TemplateDispatchContext ctx) {
-        return templateConvertor.convertTemplateDispatch(ctx);
+        return templateDispatchConvertor.convert(ctx);
     }
 
     @Override
     public String visitFunctionTemplateDefinition(SSCParser.FunctionTemplateDefinitionContext ctx) {
-        return templateConvertor.visitTemplateDefinition(ctx);
+        return templateDefinitionConvertor.convert(ctx);
     }
 
     @Override
@@ -152,6 +164,17 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
         return builder.toString();
     }
 
+    @Override
+    public String visitTypeSpecifier(SSCParser.TypeSpecifierContext ctx) {
+        final String fromSuper = super.visitTypeSpecifier(ctx);
+        if (!typeReplacements.containsKey(fromSuper)) {
+            return fromSuper;
+        }
+
+        final String replaced = typeReplacements.get(fromSuper);
+        logger.printDebug(() -> "Replacing type '" + fromSuper + "' with '" + replaced + "'");
+        return replaced;
+    }
 
     /* ==== DATA ==== */
 
@@ -168,11 +191,14 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
      * @param supplier supplier for an exception in case name was already in use
      */
     public void pushFunction(String name, Supplier<SSCSyntaxException> supplier) {
-        data.functionStack().push(Objects.requireNonNull(name, "Function name cannot be null"));
+        Objects.requireNonNull(name, "Function name cannot be null");
+
         if (data.functionVariables().put(name, new HashSet<>()) != null) {
             if (supplier != null)
                 throw supplier.get();
         }
+
+        data.functionStack().push(name);
     }
 
     public void pushFunction(String name, ParserRuleContext functionCtx) {
@@ -188,10 +214,6 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
 
     public String getCurrentFunctionName() {
         return data.functionStack().peek();
-    }
-
-    public void addFunctionVariable(SuperstructVariable v) {
-        data.functionVariables().get(getCurrentFunctionName()).add(v);
     }
 
 

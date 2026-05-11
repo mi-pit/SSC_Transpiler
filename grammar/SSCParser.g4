@@ -855,9 +855,13 @@ functionDefinition
 
 // SSC: template definition
 functionTemplateDefinition
-    : Template '<' templateTypes '>' {this.EnterTemplate();}
+    : templateHeader {this.EnterTemplate();}
       functionDefinition
       {this.ExitTemplate();}
+    ;
+
+templateHeader
+    : Template '<' templateTypes '>'
     ;
 
 templateTypes

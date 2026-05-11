@@ -168,30 +168,47 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
             List<SSCParser.DeclarationSpecifierContext> noPrivateSpecs,
             boolean isPrivate
     ) {
-        FunctionHeaderData result = getFunctionHeaderData(
+        final FunctionHeaderData fnData = getFunctionHeaderData(
                 dispatcher, functionCtx.functionHeader(),
                 declSpecs, noPrivateSpecs
         );
+
         final String qualified = qualifySuperstructIdentifier(
-                result.superStruct(),
-                result.unqualifiedName()
+                fnData.superStruct(),
+                fnData.unqualifiedName()
         );
         dispatcher.pushFunction(qualified, functionCtx);
 
-        final @Nullable String fnBody = functionCtx.functionBody() != null
-                ? dispatcher.visitFunctionBody(functionCtx.functionBody())
-                : null;
+        if (!fnData.isStatic()) {
+            Main.logger.printDebug("Adding self reference variable to function " + fnData.unqualifiedName());
+            final SuperstructVariable selfReferenceVariable =
+                    new SuperstructVariable(fnData.superStruct().name(), 1, "this");
+
+            Main.logger.printDebug(() -> "Adding self reference variable '"
+                    + selfReferenceVariable
+                    + "' to function '"
+                    + dispatcher.getCurrentFunctionName()
+                    + "'");
+            dispatcher.data
+                    .functionVariables()
+                    .get(dispatcher.getCurrentFunctionName())
+                    .add(selfReferenceVariable);
+        }
+
+        final @Nullable String fnBody = functionCtx.functionBody() == null
+                ? null
+                : dispatcher.visitFunctionBody(functionCtx.functionBody());
 
         final Function functionDefinition = new Function(
-                result,
+                fnData,
                 isPrivate,
-                parseType(dispatcher, declSpecs, result.declarator()),
-                parseFunctionParameters(dispatcher, result.declarator()),
+                parseType(dispatcher, declSpecs, fnData.declarator()),
+                parseFunctionParameters(dispatcher, fnData.declarator()),
                 fnBody,
                 thisSSName
         );
 
-        result.superStruct().addFunction(functionDefinition);
+        fnData.superStruct().addFunction(functionDefinition);
 
         dispatcher.popFunction();
     }
@@ -229,13 +246,6 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
         }
 
         final SuperStruct superStruct = dispatcher.data.currentSS().get();
-
-        if (!isStatic) {
-            final SuperstructVariable selfReferenceVariable =
-                    new SuperstructVariable(superStruct.name(), 1, "this");
-
-            dispatcher.addFunctionVariable(selfReferenceVariable);
-        }
         return new FunctionHeaderData(isStatic, isPure, withoutCustom, declarator, unqualifiedName, superStruct);
     }
 
@@ -326,7 +336,10 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
                 if (declarator.directDeclarator().Identifier() != null) {
                     final String varName = dispatcher.visitTerminal(declarator.directDeclarator().Identifier());
                     if (ssName != null) {
-                        dispatcher.addFunctionVariable(new SuperstructVariable(ssName, pointer, varName));
+                        dispatcher.data
+                                .functionVariables()
+                                .get(dispatcher.getCurrentFunctionName())
+                                .add(new SuperstructVariable(ssName, pointer, varName));
                     }
                 }
 

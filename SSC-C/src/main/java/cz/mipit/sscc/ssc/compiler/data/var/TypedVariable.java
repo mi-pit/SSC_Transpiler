@@ -13,4 +13,9 @@ public class TypedVariable extends Variable {
     public String getDeclarator() {
         return String.join(" ", type) + " " + abstractDeclarator();
     }
+
+    @Override
+    public String toString() {
+        return "TypedVariable{%s %s%s}".formatted(type, "*".repeat(pointer), identifier);
+    }
 }

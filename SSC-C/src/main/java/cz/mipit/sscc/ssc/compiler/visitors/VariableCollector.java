@@ -110,7 +110,7 @@ public class VariableCollector {
                     str -> dispatcher.tryCreateSuperstructVariableFromDeclarator(str, declarator),
                     typedef -> dispatcher.tryCreateSuperstructVariableFromDeclarator(typedef, declarator)
             );
-            mapped.ifPresent(dispatcher::addFunctionVariable);
+            mapped.ifPresent(v -> dispatcher.data.functionVariables().get(dispatcher.getCurrentFunctionName()).add(v));
         }
     }
 }

@@ -10,11 +10,6 @@ import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import java.util.List;
 import java.util.StringJoiner;
 
-import static cz.mipit.sscc.ssc.compiler.visitors.convertors.SuperstructConvertor.getFunctionHeaderData;
-import static cz.mipit.sscc.ssc.compiler.visitors.convertors.SuperstructConvertor.hasDeclarationSpecifier;
-import static cz.mipit.sscc.ssc.compiler.visitors.convertors.SuperstructConvertor.parseFunctionParameters;
-import static cz.mipit.sscc.ssc.compiler.visitors.convertors.SuperstructConvertor.parseType;
-
 public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.SuperStructInterfaceContext> {
     public SuperstructInterfaceConvertor(VisitorDispatcher dispatcher) {
         super(dispatcher);
@@ -39,6 +34,11 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
             dispatcher.data.superStructs().put(ssName, interfaceOf = new SuperStruct(ssName));
         }
 
+        joiner.add(
+                /* declare the struct to be able to use it in the function declarations */
+                interfaceOf.emitStructDeclaration()
+        );
+
         dispatcher.data.setCurrentSS(interfaceOf);
         Main.logger.printDebug("Added a new superstruct from interface: " + ssName);
 
@@ -53,19 +53,20 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
                             || declSpec.functionSpecifier().Private() == null)
                     .toList();
 
-            final boolean isPrivate = hasDeclarationSpecifier(declSpecs,
+            final boolean isPrivate = SuperstructConvertor.hasDeclarationSpecifier(
+                    declSpecs,
                     ds -> ds.functionSpecifier() != null && ds.functionSpecifier().Private() != null
             );
 
-            final FunctionHeaderData result = getFunctionHeaderData(
+            final FunctionHeaderData result = SuperstructConvertor.getFunctionHeaderData(
                     dispatcher, context, declSpecs, noPrivateSpecs
             );
 
             final Function functionDefinition = new Function(
                     result,
                     isPrivate,
-                    parseType(dispatcher, declSpecs, result.declarator()),
-                    parseFunctionParameters(dispatcher, result.declarator()),
+                    SuperstructConvertor.parseType(dispatcher, declSpecs, result.declarator()),
+                    SuperstructConvertor.parseFunctionParameters(dispatcher, result.declarator()),
                     null,
                     ssName
             );
