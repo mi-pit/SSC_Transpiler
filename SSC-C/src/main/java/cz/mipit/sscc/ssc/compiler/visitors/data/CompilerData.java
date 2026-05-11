@@ -1,6 +1,7 @@
 package cz.mipit.sscc.ssc.compiler.visitors.data;
 
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
+import cz.mipit.sscc.ssc.compiler.data.tmpl.Template;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.data.var.Typedef;
 import cz.mipit.sscc.util.annotations.NotNull;
@@ -21,13 +22,19 @@ public final class CompilerData {
     private final Map<@NotNull String, Typedef<SuperStruct>> superstructTypedefs;
     private final Map<@Nullable String, Set<SuperstructVariable>> functionVariables;
 
+    private final Map<String, Template> templates;
+
     private final Deque<@NotNull String> functionCallStack;
 
     public CompilerData() {
         currentSS = null;
+
         superStructs = new HashMap<>();
         superstructTypedefs = new HashMap<>();
         functionVariables = new HashMap<>();
+
+        templates = new HashMap<>();
+
         functionCallStack = new ArrayDeque<>();
 
         functionVariables.put(null, new HashSet<>());
@@ -51,6 +58,10 @@ public final class CompilerData {
 
     public Map<String, Set<SuperstructVariable>> functionVariables() {
         return functionVariables;
+    }
+
+    public Map<String, Template> templates() {
+        return templates;
     }
 
     public Deque<String> functionStack() {

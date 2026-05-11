@@ -280,7 +280,7 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
     }
 
 
-    public void debugPrintFunctionVariables() {
+    public void debugPrintDump() {
         for (final Map.Entry<@Nullable String, Set<SuperstructVariable>> entry : data.functionVariables().entrySet()) {
             final String funcName = entry.getKey();
             final Set<SuperstructVariable> variables = entry.getValue();
@@ -292,6 +292,10 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
             for (final SuperstructVariable variable : variables) {
                 logger.printDebug(() -> "        " + variable);
             }
+        }
+
+        for (final var entry : data.templates().entrySet()) {
+            logger.printDebug(() -> entry.getValue().toString());
         }
     }
 }

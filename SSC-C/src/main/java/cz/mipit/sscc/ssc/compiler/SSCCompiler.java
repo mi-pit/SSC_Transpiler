@@ -204,7 +204,7 @@ public final class SSCCompiler implements Compiler {
         final String result = visitor.visit(data.tree());
 
         if (options.debug()) {
-            visitor.debugPrintFunctionVariables();
+            visitor.debugPrintDump();
         }
 
         Files.writeString(outputFile, result, StandardOpenOption.TRUNCATE_EXISTING);

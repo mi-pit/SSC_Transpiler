@@ -487,7 +487,7 @@ flagsInitializerList
     ;
 
 // SSC
-flagsInitializer
+flagsInitializer // TODO: allow `= 0`
     : Identifier ('=' Identifier ('|' Identifier)*)?
     ;
 

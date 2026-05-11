@@ -1,6 +1,7 @@
 package cz.mipit.sscc.ssc.compiler.data.tmpl;
 
 import antlr.ssc.SSCParser;
+import cz.mipit.sscc.Main;
 import cz.mipit.sscc.ssc.compiler.data.Token;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateConvertor;
@@ -60,6 +61,17 @@ public class Template {
     }
 
     public String convert(List<SSCParser.TypeArgumentContext> calledTypeArguments) {
+        if (calledTypeArguments.size() != typeArgumentAliases.size()) {
+            Main.logger.printDebug(() -> "Type arguments count mismatch while calling `" + this.getName() + "`");
+            Main.logger.printDebug(() -> "\t" + this);
+
+            throw dispatcher.getSSCSyntaxException(
+                    "Invalid number of type arguments (expected " + typeArgumentAliases.size()
+                            + ", got " + calledTypeArguments.size() + ")",
+                    calledTypeArguments.get(0)
+            );
+        }
+
         final List<String> params = parameters
                 .stream()
                 .map(
@@ -92,5 +104,17 @@ public class Template {
                 ")" +
                 convertedBody
                 ;
+    }
+
+    @Override
+    public String toString() {
+        return "Template{" +
+                "name='" + name + '\'' +
+                ", fnAttributes='" + fnAttributes + '\'' +
+                ", returnType=" + returnType +
+                ", parameters=" + parameters +
+                ", typeArgumentAliases=" + typeArgumentAliases +
+                ", body=" + body +
+                '}';
     }
 }

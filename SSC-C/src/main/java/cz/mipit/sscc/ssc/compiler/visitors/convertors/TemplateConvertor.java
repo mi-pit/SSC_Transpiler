@@ -57,7 +57,6 @@ public class TemplateConvertor {
             Map.entry("union", "u")
     );
 
-    private final Map<String, Template> templates;
     private final Set<String> alreadyEmitted;
 
     private final VisitorDispatcher dispatcher;
@@ -65,7 +64,6 @@ public class TemplateConvertor {
     public TemplateConvertor(VisitorDispatcher dispatcher) {
         this.dispatcher = dispatcher;
 
-        templates = new HashMap<>();
         alreadyEmitted = new HashSet<>();
     }
 
@@ -85,6 +83,8 @@ public class TemplateConvertor {
 
     // Called `func<t1, t2>`
     public String convertTemplateDispatch(SSCParser.TemplateDispatchContext ctx) {
+        Main.logger.printDebug(() -> "Converting template dispatch: " + dispatcher.getLiteral(ctx));
+
         final String unqualified = getMangledFunctionName(dispatcher.visitTerminal(ctx.Identifier()));
         final String resolved = typeSpecifyTemplateName(
                 unqualified,
@@ -93,14 +93,16 @@ public class TemplateConvertor {
                         .map(o -> TemplateConvertor.convertTypeArgumentToShorthand(o, dispatcher))
                         .toList()
         );
+        Main.logger.printDebug(() -> "\tResolved template call name: " + resolved);
 
-        final Template tmpl = templates.get(unqualified);
+        final Template tmpl = dispatcher.data.templates().get(unqualified);
+        Main.logger.printDebug(() -> "\t\tTemplate: " + tmpl);
         if (tmpl == null) {
             throw dispatcher.getSSCSyntaxException("Unknown template '" + resolved + "'", ctx);
         }
 
         if (alreadyEmitted.contains(resolved)) {
-            Main.logger.printDebug("Already emitted template '" + resolved + "'");
+            Main.logger.printDebug("\tAlready emitted template '" + resolved + "'");
             return resolved;
         }
 
@@ -117,8 +119,17 @@ public class TemplateConvertor {
                 throw dispatcher.getSSCSyntaxException("Duplicate type alias", ctx);
             }
         }
+        Main.logger.printDebug(() -> "\tType argument map: '" + typeArgMap + "'");
 
-        final String tmplConverted = tmpl.convert(ctx.typeArgument());
+        final List<SSCParser.TypeArgumentContext> typeArgumentCtxList = ctx.typeArgument();
+        Main.logger.printDebug(() ->
+                "\tCalled Type Arguments (literal): "
+                        + typeArgumentCtxList
+                        .stream()
+                        .map(dispatcher::getLiteral)
+                        .toList()
+        );
+        final String tmplConverted = tmpl.convert(typeArgumentCtxList);
         dispatcher.addMethodToEmit(tmplConverted);
         alreadyEmitted.add(resolved);
 
@@ -176,11 +187,11 @@ public class TemplateConvertor {
             List<String> typeAliasIdentifiers
     ) {
         final List<Token> bodyTokens = new ArrayList<>();
-        getBodyTokens(bodyTokens, funcDefCtx.functionBody(), typeAliasIdentifiers);
+        getBodyTokens_(bodyTokens, funcDefCtx.functionBody(), typeAliasIdentifiers);
         return bodyTokens;
     }
 
-    private void getBodyTokens(
+    private void getBodyTokens_(
             final List<Token> tokens,
             final ParserRuleContext ctx,
             final List<String> typeAliasIdentifiers
@@ -205,21 +216,38 @@ public class TemplateConvertor {
                 throw new IllegalStateException("ParseTree not instanceof ParserRuleContext (`" + raw.getText() + "`)");
             }
 
-            switch (raw) {
+            switch (prc) {
                 case SSCParser.LambdaFunctionContext lf -> tokens.add(Token.other(dispatcher.visitLambdaFunction(lf)));
                 case SSCParser.SuperStructSpecifierContext sss ->
                         tokens.add(Token.other(dispatcher.visitSuperStructSpecifier(sss)));
 
                 case SSCParser.TemplateDispatchContext tmplDispatchCtx -> {
-                    final Template tmpl = templates.get(
-                            getMangledFunctionName(dispatcher.visitTerminal(tmplDispatchCtx.Identifier()))
-                    );
+                    final String unqualifiedName = dispatcher.visitTerminal(tmplDispatchCtx.Identifier());
+                    final String mangled = getMangledFunctionName(unqualifiedName);
+                    final Template tmpl = dispatcher.data.templates().get(mangled);
                     if (tmpl == null) {
                         throw dispatcher.getSSCSyntaxException(
                                 "Unknown template '" + tmplDispatchCtx.Identifier() + "'", ctx);
                     }
-                    tokens.add(Token.template(tmpl));
+
+                    final List<SSCParser.TypeArgumentContext> typeArgs = tmplDispatchCtx.typeArgument();
+                    final List<Token> typeArgStrings = typeArgs.stream()
+                            .map(dispatcher::visitTypeArgument)
+                            .map(typeArg -> {
+                                if (typeAliasIdentifiers.contains(typeArg)) {
+                                    return Token.type(typeArg);
+                                } else {
+                                    return Token.other(typeArg);
+                                }
+                            })
+                            .toList();
+
+                    tokens.add(Token.template(
+                            tmpl,
+                            typeArgs
+                    ));
                 }
+
                 case SSCParser.TypeSpecifierContext typeSpecCtx -> {
                     final String typeSpecString = dispatcher.visitTypeSpecifier(typeSpecCtx);
                     final Token token = typeAliasIdentifiers.contains(typeSpecString)
@@ -228,9 +256,9 @@ public class TemplateConvertor {
 
                     tokens.add(token);
                 }
-                default -> getBodyTokens(tokens, prc, typeAliasIdentifiers);
-            }
 
+                default -> getBodyTokens_(tokens, prc, typeAliasIdentifiers);
+            }
         }
     }
 
@@ -239,7 +267,28 @@ public class TemplateConvertor {
         return "SSC_TEMPLATE__" + identifier;
     }
 
-    public static String convertTypeArgumentToShorthand(SSCParser.TypeArgumentContext ctx, BaseConvertorVisitor visitor) {
+    public static String convertTypeArgumentToShorthand(String ctx) {
+        final List<String> ls = List.of(ctx.split("\\s+"));
+        final StringBuilder builder = new StringBuilder();
+        for (String s : ls) {
+            builder.append(
+                    TYPE_SHORTHANDS.getOrDefault(
+                            s,
+                            COMPOUND_SHORTHANDS.getOrDefault(
+                                    s,
+                                    QUALIFIER_SHORTHANDS.getOrDefault(s, s)
+                            )
+                    )
+            );
+        }
+
+        return builder.toString();
+    }
+
+    public static String convertTypeArgumentToShorthand(
+            SSCParser.TypeArgumentContext ctx,
+            BaseConvertorVisitor visitor
+    ) {
         final String literal = visitor.getLiteral(ctx.typeSpecifier());
 
         String shorthand = TYPE_SHORTHANDS.get(literal);
@@ -277,6 +326,6 @@ public class TemplateConvertor {
     }
 
     private void registerTemplate(Template template) {
-        templates.put(template.getName(), template);
+        dispatcher.data.templates().put(template.getName(), template);
     }
 }
