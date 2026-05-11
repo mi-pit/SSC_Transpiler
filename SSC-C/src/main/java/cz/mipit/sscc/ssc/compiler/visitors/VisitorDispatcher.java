@@ -24,7 +24,6 @@ import cz.mipit.sscc.util.annotations.Nullable;
 import org.antlr.v4.runtime.ParserRuleContext;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -39,11 +38,6 @@ import static cz.mipit.sscc.Main.logger;
 public class VisitorDispatcher extends BaseConvertorVisitor {
     public final CompilerData data;
     private final SymbolTable symbolTable; // TODO: move to data
-
-    public final Map<
-            String /* typeSpecifier.typedefName.Identifier.text */,
-            String /* typeArgument.typeSpec... */
-            > typeReplacements = new HashMap<>();
 
     private final List<String> methodsToEmit; // to be emitted when exiting the next external declaration
 
@@ -164,17 +158,6 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
         return builder.toString();
     }
 
-    @Override
-    public String visitTypeSpecifier(SSCParser.TypeSpecifierContext ctx) {
-        final String fromSuper = super.visitTypeSpecifier(ctx);
-        if (!typeReplacements.containsKey(fromSuper)) {
-            return fromSuper;
-        }
-
-        final String replaced = typeReplacements.get(fromSuper);
-        logger.printDebug(() -> "Replacing type '" + fromSuper + "' with '" + replaced + "'");
-        return replaced;
-    }
 
     /* ==== DATA ==== */
 
@@ -303,6 +286,9 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
 
 
     public void debugPrintDump() {
+        logger.printDebug("");
+        logger.printDebug("Dumping debug info...");
+
         for (final Map.Entry<@Nullable String, Set<SuperstructVariable>> entry : data.functionVariables().entrySet()) {
             final String funcName = entry.getKey();
             final Set<SuperstructVariable> variables = entry.getValue();
@@ -319,5 +305,23 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
         for (final var entry : data.templates().entrySet()) {
             logger.printDebug(() -> entry.getValue().toString());
         }
+    }
+
+    public void addReplacements(Map<String, String> typeArgMap) {
+        this.replacements.putAll(typeArgMap);
+    }
+
+    public void addReplacement(String key, String value) {
+        this.replacements.put(key, value);
+    }
+
+    public void removeReplacements(Map<String, String> typeArgMap) {
+        for (final String key : typeArgMap.keySet()) {
+            this.replacements.remove(key);
+        }
+    }
+
+    public void removeReplacement(String key) {
+        this.replacements.remove(key);
     }
 }

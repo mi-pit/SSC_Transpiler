@@ -120,7 +120,7 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
             }
         }
 
-        dispatcher.typeReplacements.putAll(typeArgMap);
+        dispatcher.addReplacements(typeArgMap);
         Main.logger.printDebug(() -> "\tType replacements: '" + typeArgMap + "'");
         Main.logger.printDebug(() ->
                 "\tCalled Type Arguments (literal): "
@@ -131,7 +131,7 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
         );
 
         final String toReplace = dispatcher.visitTerminal(ctx.Identifier());
-        dispatcher.replacements.put(toReplace, nameTypeResolved);
+        dispatcher.addReplacement(toReplace, nameTypeResolved);
         Main.logger.printDebug(() -> "\tAdded identifier replacement: `" + toReplace
                 + "` -> `" + nameTypeResolved + "`");
 
@@ -141,10 +141,9 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
 
         emitTemplateDispatch(tmplConverted, nameTypeResolved);
 
-        for (String key : typeArgMap.keySet()) {
-            dispatcher.typeReplacements.remove(key);
-        }
-        dispatcher.replacements.remove(toReplace);
+        dispatcher.removeReplacements(typeArgMap);
+        dispatcher.removeReplacement(toReplace);
+
         Main.logger.printDebug(() -> "\tRemoved identifier replacement: `" + toReplace + "`");
 
         return nameTypeResolved;

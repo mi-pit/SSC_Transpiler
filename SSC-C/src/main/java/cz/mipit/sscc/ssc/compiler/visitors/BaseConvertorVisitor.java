@@ -30,7 +30,7 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
     private boolean hasErrors;
 
 
-    public final Map<String, String> replacements = new HashMap<>();
+    protected final Map<String, String> replacements = new HashMap<>();
 
 
     protected BaseConvertorVisitor(CommonTokenStream tokens, InputFile currentFile) {
@@ -149,10 +149,6 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
 
     private boolean nodeIsTerminal(ParseTree ctx, int val) {
         return ctx instanceof TerminalNode t && t.getSymbol().getType() == val;
-    }
-
-    public String getLiteral(final ParserRuleContext ctx) {
-        return SSCCUtil.Text.getLiteral(ctx, tokens);
     }
 
     public String getLiteral(final RuleNode node) {
