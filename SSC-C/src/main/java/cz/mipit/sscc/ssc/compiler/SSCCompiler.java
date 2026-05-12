@@ -259,7 +259,7 @@ public final class SSCCompiler implements Compiler {
         return doProcess(args);
     }
 
-    private static int doProcess(final List<String> args)
+    synchronized private static int doProcess(final List<String> args)
             throws IOException, InterruptedException {
         logger.printDebug(() -> "Creating a new process: " + String.join(" ", args));
         return new ProcessBuilder(args)
