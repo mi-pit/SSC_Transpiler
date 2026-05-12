@@ -8,13 +8,13 @@ import cz.mipit.sscc.ssc.compiler.data.ss.Function;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.data.var.TypedVariable;
-import cz.mipit.sscc.ssc.compiler.data.var.Typedef;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import cz.mipit.sscc.util.SSCCUtil;
 import cz.mipit.sscc.util.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -286,93 +286,56 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
             final VisitorDispatcher dispatcher,
             final SSCParser.DeclaratorContext ctx
     ) {
-        final List<String> args = new ArrayList<>();
-        final var directDecl = ctx.directDeclarator();
-        final List<SSCParser.ParameterTypeListContext> paramTypeList = directDecl.parameterTypeList();
-        if (paramTypeList.size() > 1) {
-            throw dispatcher.getSSCSyntaxException("Parameter type list has more than one parameter type", directDecl);
-        }
-
-        final SSCParser.ParameterTypeListContext paramType = paramTypeList.getFirst();
-        for (final var param : paramType.parameterList().parameterDeclaration()) {
-            if (param.declarationSpecifiers() == null) {
-                /* Function with no parameters */
-                break;
-            }
-            String ssName = null;
-            int pointer = 0;
-
-            final List<String> curr = new ArrayList<>();
-            for (final var declSpec : param.declarationSpecifiers().declarationSpecifier()) {
-                if (declSpec.typeSpecifier() == null) {
-                    curr.add(dispatcher.visitDeclarationSpecifier(declSpec));
-                    continue;
-                }
-                final var typeSpecCtx = declSpec.typeSpecifier();
-                if (typeSpecCtx.superStructSpecifier() == null) {
-                    final Typedef<SuperStruct> val = dispatcher.data
-                            .superstructTypedefs()
-                            .get(dispatcher.visitTypeSpecifier(typeSpecCtx));
-
-                    if (val == null) {
-                        curr.add(dispatcher.visitTypeSpecifier(typeSpecCtx));
-                        continue;
+        final List<String> ls = new ArrayList<>(ctx.directDeclarator()
+                .parameterTypeList()
+                .stream()
+                .map(SSCParser.ParameterTypeListContext::parameterList)
+                .filter(Objects::nonNull)
+                .flatMap(pl -> pl.parameterDeclaration().stream())
+                .map(paramDeclCtx -> {
+                    if (paramDeclCtx.declarationSpecifiers() == null) {
+                        return dispatcher.visitParameterDeclaration(paramDeclCtx);
                     }
 
-                    pointer += val.pointer();
-                    ssName = val.getIdentifier();
-                }
+                    for (SSCParser.DeclarationSpecifierContext declSpec
+                            : paramDeclCtx.declarationSpecifiers().declarationSpecifier()) {
+                        if (declSpec.typeSpecifier() == null) {
+                            continue;
+                        }
+                        final SSCParser.TypeSpecifierContext typeSpec = declSpec.typeSpecifier();
+                        if (typeSpec.superStructSpecifier() != null) {
+                            final String ssName = dispatcher.visitTerminal(typeSpec.superStructSpecifier().Identifier());
+                            final SuperstructVariable ssVar = new SuperstructVariable(
+                                    ssName,
+                                    SSCCUtil.getPointerLevel(paramDeclCtx.declarator()),
+                                    dispatcher.visitTerminal(paramDeclCtx.declarator().directDeclarator().Identifier())
+                            );
+                            dispatcher.data
+                                    .functionVariables()
+                                    .get(dispatcher.getCurrentFunctionName())
+                                    .add(ssVar);
+                            break;
+                        }
 
-                if (ssName != null) {
-                    throw dispatcher.getSSCSyntaxException("Duplicate super struct specifier", declSpec);
-                }
-                final var superStructSpecCtx = typeSpecCtx.superStructSpecifier();
-                ssName = dispatcher.visitTerminal(superStructSpecCtx.Identifier());
-                curr.add("struct " + ssName);
-            }
-            final var declarator = param.declarator();
-            if (declarator != null) {
-                pointer += SSCCUtil.getPointerLevel(declarator);
-
-                if (declarator.directDeclarator().Identifier() != null) {
-                    final String varName = dispatcher.visitTerminal(declarator.directDeclarator().Identifier());
-                    if (ssName != null) {
-                        final SuperstructVariable ssVar = new SuperstructVariable(ssName, pointer, varName);
-                        dispatcher.data
-                                .functionVariables()
-                                .get(dispatcher.getCurrentFunctionName())
-                                .add(ssVar);
-                        Main.logger.printDebug(() ->
-                                "Function parameter "
-                                        + ssVar
-                                        + " has been registered in function '"
-                                        + dispatcher.getCurrentFunctionName()
-                                        + "'"
-                        );
+                        final String str = dispatcher.visitTypeSpecifier(typeSpec);
+                        if (dispatcher.data.superstructTypedefs().containsKey(str)) {
+                            break;
+                        }
                     }
-                }
 
-                curr.add(dispatcher.visitDeclarator(declarator));
-            }
+                    return dispatcher.visitParameterDeclaration(paramDeclCtx);
+                })
+                .filter(s -> !s.isBlank())
+                .toList());
 
-            final String paramStr = String.join(" ", curr);
-            if (!paramStr.isBlank()) {
-                args.add(paramStr);
-            }
+        if (ctx.directDeclarator()
+                .parameterTypeList()
+                .stream()
+                .anyMatch(ptl -> ptl.Ellipsis() != null)) {
+            ls.add("...");
         }
 
-        if (paramType.Ellipsis() != null) {
-            if (args.isEmpty()) {
-                throw dispatcher.getSSCSyntaxException("Variable arguments list requires at least one parameter", directDecl);
-            }
-
-            args.add("...");
-        }
-        if (args.isEmpty()) {
-            args.add("void");
-        }
-
-        return args;
+        return ls;
     }
 
     public static boolean hasDeclarationSpecifier(List<SSCParser.DeclarationSpecifierContext> declSpecs,
