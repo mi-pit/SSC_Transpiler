@@ -18,6 +18,7 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
             Map.entry("bool", "b"),
             Map.entry("void", "v"),
 
+            Map.entry("char", "c"),
             Map.entry("signed char", "Sc"),
             Map.entry("unsigned char", "Uc"),
 

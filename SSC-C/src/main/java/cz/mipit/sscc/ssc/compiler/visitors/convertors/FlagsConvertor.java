@@ -4,6 +4,7 @@ import antlr.ssc.SSCParser;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import cz.mipit.sscc.util.SSCCUtil;
 import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.List;
 import java.util.Map;
@@ -36,7 +37,10 @@ public class FlagsConvertor extends AbstractConvertor<SSCParser.FlagsSpecifierCo
                         : distinctCount <= 32 ? 32
                         : 64;
 
-        final String type = "uint" + bitsNeeded + "_t";
+        final String desiredType = "uint" + bitsNeeded + "_t";
+        final String usedType = dispatcher.hasType(desiredType)
+                ? (" : " + desiredType)
+                : "";
 
         final StringBuilder valuesString = new StringBuilder();
         for (final Map.Entry<String, Long> entry : valuesMap.entrySet()) {
@@ -50,7 +54,7 @@ public class FlagsConvertor extends AbstractConvertor<SSCParser.FlagsSpecifierCo
                         enum %s%s {
                         %s}""",
                 identifier,
-                dispatcher.hasType(type) ? (" : " + type) : "",
+                usedType,
                 valuesString
         );
     }
@@ -61,7 +65,8 @@ public class FlagsConvertor extends AbstractConvertor<SSCParser.FlagsSpecifierCo
         byte distinctCount = 0;
         long nextValue = 1;
         for (final SSCParser.FlagsInitializerContext initializer : valuesListCtx.flagsInitializer()) {
-            final List<String> identifiers = initializer
+            final String currentFlagIdentifier = dispatcher.visitTerminal(initializer.Identifier(0));
+            final List<String> assignedIdentifiers = initializer
                     .Identifier()
                     .stream()
                     .skip(1)
@@ -69,15 +74,18 @@ public class FlagsConvertor extends AbstractConvertor<SSCParser.FlagsSpecifierCo
                     .toList();
 
             final long currValue;
-            if (initializer.Identifier().size() > 1) {
-                currValue = getFlagValue(valuesMap, identifiers, initializer);
+            if (!assignedIdentifiers.isEmpty()) {
+                currValue = getFlagValue(valuesMap, assignedIdentifiers, initializer);
+            } else if (initializer.IntegerConstant() != null) {
+                currValue = getFlagValueNumeric(initializer);
             } else {
+                assert initializer.Assign() == null;
                 currValue = nextValue;
                 nextValue *= 2;
                 assert (nextValue & (nextValue - 1)) == 0;
             }
 
-            if (valuesMap.put(dispatcher.visitTerminal(initializer.Identifier(0)), currValue) != null) {
+            if (valuesMap.put(currentFlagIdentifier, currValue) != null) {
                 throw getSSCSyntaxException("Duplicate identifier in flags specifier", initializer);
             }
 
@@ -87,6 +95,17 @@ public class FlagsConvertor extends AbstractConvertor<SSCParser.FlagsSpecifierCo
             }
         }
         return distinctCount;
+    }
+
+    private long getFlagValueNumeric(SSCParser.FlagsInitializerContext initializer) {
+        final TerminalNode integerConstantNode = initializer.IntegerConstant();
+        final long v = Long.parseLong(dispatcher.visitTerminal(integerConstantNode));
+
+        if (v != 0) {
+            throw getSSCSyntaxException("Numeric value of a flags initializer must be zero", initializer);
+        }
+
+        return v;
     }
 
     private long getFlagValue(final Map<String, Long> valuesMap,

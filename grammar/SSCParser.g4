@@ -488,7 +488,12 @@ flagsInitializerList
 
 // SSC
 flagsInitializer // TODO: allow `= 0`
-    : Identifier ('=' Identifier ('|' Identifier)*)?
+    : Identifier (
+        '=' (
+            Identifier ('|' Identifier)*
+            | IntegerConstant // zero
+        )
+    )?
     ;
 
 // ISO C: enumerator-list (6.7.3.3)
