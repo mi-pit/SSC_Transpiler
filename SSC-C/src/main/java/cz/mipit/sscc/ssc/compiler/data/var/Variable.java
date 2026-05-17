@@ -1,25 +1,27 @@
 package cz.mipit.sscc.ssc.compiler.data.var;
 
+import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public abstract class Variable {
     protected final String identifier;
-    protected final int pointer;
+    protected final List<Pointer> pointers;
 
-    protected Variable(String identifier, int pointer) {
+    protected Variable(String identifier, List<Pointer> pointers) {
         this.identifier = Objects.requireNonNull(identifier);
-        this.pointer = pointer;
+        this.pointers = pointers;
     }
 
     public String getIdentifier() {
         return identifier;
     }
 
-    public int pointer() {
-        return pointer;
+    public List<Pointer> getPointers() {
+        return pointers;
     }
 
-    protected final String abstractDeclarator() {
-        return "*".repeat(pointer) + identifier;
+    protected final String createAbstractDeclarator() {
+        return pointers.stream().map(Pointer::toCString).collect(Collectors.joining(" ")) + " " + identifier;
     }
 }

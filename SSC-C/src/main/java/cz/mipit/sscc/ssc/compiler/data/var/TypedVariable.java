@@ -5,17 +5,21 @@ import java.util.List;
 public class TypedVariable extends Variable {
     private final List<String> type;
 
-    public TypedVariable(List<String> type, int pointer, String name) {
-        super(name, pointer);
+    public TypedVariable(
+            final List<String> type,
+            final List<Pointer> pointers,
+            final String name
+    ) {
+        super(name, pointers);
         this.type = type;
     }
 
     public String getDeclarator() {
-        return String.join(" ", type) + " " + abstractDeclarator();
+        return String.join(" ", type) + " " + createAbstractDeclarator();
     }
 
     @Override
     public String toString() {
-        return "TypedVariable{%s %s%s}".formatted(type, "*".repeat(pointer), identifier);
+        return "TypedVariable{%s %s}".formatted(type, createAbstractDeclarator());
     }
 }

@@ -1,7 +1,5 @@
 package cz.mipit.sscc.ssc.compiler.data.lambda;
 
-import cz.mipit.sscc.file.InputFile;
-
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -16,9 +14,14 @@ public final class LambdaFunction implements Comparable<LambdaFunction> {
     private final long id;
     private static final AtomicLong nextId = new AtomicLong(0);
 
+    public static String createName(
+            final String surroundingFunctionName
+    ) {
+        return "SSC_LAMBDA_DeclaredIn__" + surroundingFunctionName;
+    }
+
     public LambdaFunction(
-            InputFile inFile,
-            String functionName,
+            String prettifiedName,
             String returnType,
             String params,
             String ctx,
@@ -29,22 +32,9 @@ public final class LambdaFunction implements Comparable<LambdaFunction> {
         this.body = Objects.requireNonNull(ctx);
         this.attributes = Objects.requireNonNull(attributes);
 
-        final String fileNamePrettifier =
-                (inFile.name() + "_" + inFile.suffix())
-                        .chars()
-                        .mapToObj(i -> {
-                            if ((i >= 'A' && i <= 'Z') || (i >= 'a' && i <= 'z'))
-                                return (char) i;
-                            else
-                                return '_';
-                        })
-                        .collect(StringBuilder::new, StringBuilder::append, StringBuilder::append)
-                        .toString();
-
-        final String prettifier = fileNamePrettifier + "__" + functionName;
         id = nextId.getAndIncrement();
 
-        name = "SSC_LAMBDA_FUNCTION__" + id + "__" + prettifier;
+        this.name = prettifiedName + "__ID" + id;
     }
 
     public String getName() {

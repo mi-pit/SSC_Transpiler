@@ -1,5 +1,6 @@
 package cz.mipit.sscc.ssc.compiler.visitors.data;
 
+import antlr.ssc.SymbolTable;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.tmpl.Template;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
@@ -18,6 +19,8 @@ import java.util.Set;
 public final class CompilerData {
     private @Nullable SuperStruct currentSS;
 
+    private final SymbolTable symbolTable; // TODO: move to data
+
     private final Map<@NotNull String, SuperStruct> superStructs;
     private final Map<@NotNull String, Typedef<SuperStruct>> superstructTypedefs;
     private final Map<@Nullable String, Set<SuperstructVariable>> functionVariables;
@@ -26,7 +29,9 @@ public final class CompilerData {
 
     private final Deque<@NotNull String> functionCallStack;
 
-    public CompilerData() {
+    public CompilerData(SymbolTable symbolTable) {
+        this.symbolTable = symbolTable;
+
         currentSS = null;
 
         superStructs = new HashMap<>();
@@ -40,15 +45,15 @@ public final class CompilerData {
         functionVariables.put(null, new HashSet<>());
     }
 
-    public void setCurrentSS(final SuperStruct currentSS) {
-        this.currentSS = currentSS;
-    }
-
     public Map<String, SuperStruct> superStructs() {
         return superStructs;
     }
 
-    public Optional<SuperStruct> currentSS() {
+    public void setCurrentSuperstruct(final SuperStruct currentSS) {
+        this.currentSS = currentSS;
+    }
+
+    public Optional<SuperStruct> currentSuperstruct() {
         return Optional.ofNullable(currentSS);
     }
 
@@ -66,5 +71,9 @@ public final class CompilerData {
 
     public Deque<String> functionStack() {
         return functionCallStack;
+    }
+
+    public SymbolTable symbolTable() {
+        return symbolTable;
     }
 }

@@ -6,10 +6,10 @@ import cz.mipit.sscc.ssc.compiler.data.FunctionHeaderData;
 import cz.mipit.sscc.ssc.compiler.data.ss.Field;
 import cz.mipit.sscc.ssc.compiler.data.ss.Function;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
+import cz.mipit.sscc.ssc.compiler.data.var.Pointer;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.data.var.TypedVariable;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
-import cz.mipit.sscc.util.SSCCUtil;
 import cz.mipit.sscc.util.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -44,13 +44,13 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
 
         final SuperStruct superStruct = got != null ? got : new SuperStruct(thisSSName);
         dispatcher.data.superStructs().put(thisSSName, superStruct);
-        dispatcher.data.setCurrentSS(superStruct);
+        dispatcher.data.setCurrentSuperstruct(superStruct);
 
         for (SSCParser.SuperStructMemberContext memberCtx : ctx.superStructBody().superStructMember()) {
             processMemberCtx(dispatcher, memberCtx, thisSSName);
         }
 
-        dispatcher.data.setCurrentSS(null);
+        dispatcher.data.setCurrentSuperstruct(null);
 
         if (lastSuperstruct != null) {
             Main.logger.printDebug("A non-emitted superstruct with name '"
@@ -152,11 +152,12 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
                 );
             }
 
-            final int ptrs = SSCCUtil.getPointerLevel(declarator);
+            final List<Pointer> ptrs = dispatcher.getPointersFromDeclarator(declarator);
+
             final String name = dispatcher.visitTerminal(declarator.directDeclarator().Identifier());
 
             final Field field = new Field(isPrivate, new TypedVariable(type, ptrs, name));
-            dispatcher.data.currentSS().ifPresent(ss -> ss.addField(field));
+            dispatcher.data.currentSuperstruct().ifPresent(ss -> ss.addField(field));
         }
     }
 
@@ -181,7 +182,7 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
 
         if (!fnData.isStatic()) {
             final SuperstructVariable selfReferenceVariable =
-                    new SuperstructVariable(fnData.superStruct().name(), 1, "this");
+                    new SuperstructVariable(fnData.superStruct().name(), Pointer.oneConst(), "this");
 
             Main.logger.printDebug(() -> "Adding self reference variable '"
                     + selfReferenceVariable
@@ -221,7 +222,7 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
             List<SSCParser.DeclarationSpecifierContext> noPrivateSpecs
     ) {
         assert functionCtx != null;
-        assert dispatcher.data.currentSS().isPresent() : "Member of no struct";
+        assert dispatcher.data.currentSuperstruct().isPresent() : "Member of no struct";
 
         final boolean isStatic = hasDeclarationSpecifier(declSpecs, ds ->
                 ds.storageClassSpecifier() != null && ds.storageClassSpecifier().Static() != null);
@@ -246,7 +247,7 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
             throw dispatcher.getSSCSyntaxException("Missing declarator identifier in function definition", directDecl);
         }
 
-        final SuperStruct superStruct = dispatcher.data.currentSS().get();
+        final SuperStruct superStruct = dispatcher.data.currentSuperstruct().get();
         return new FunctionHeaderData(isStatic, isPure, withoutCustom, declarator, unqualifiedName, superStruct);
     }
 
@@ -307,7 +308,7 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
                             final String ssName = dispatcher.visitTerminal(typeSpec.superStructSpecifier().Identifier());
                             final SuperstructVariable ssVar = new SuperstructVariable(
                                     ssName,
-                                    SSCCUtil.getPointerLevel(paramDeclCtx.declarator()),
+                                    dispatcher.getPointersFromDeclarator(paramDeclCtx.declarator()),
                                     dispatcher.visitTerminal(paramDeclCtx.declarator().directDeclarator().Identifier())
                             );
                             dispatcher.data

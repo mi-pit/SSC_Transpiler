@@ -14,17 +14,28 @@ public class LambdaConvertor
 
     @Override
     public String convert(SSCParser.LambdaFunctionContext ctx) {
+        final String surroundingFunctionName = dispatcher.getCurrentFunctionName();
+        final String lambdaName = LambdaFunction.createName(surroundingFunctionName);
+
+        dispatcher.pushFunction(lambdaName);
+
+        final String returnType = dispatcher.visitTypeName(ctx.typeName());
+        final String parameters = dispatcher.visitParameterTypeList(ctx.parameterTypeList());
+        final String body = dispatcher.visitFunctionBody(ctx.functionBody());
+        final String lambdaAttributes = ctx.lambdaAttributes() != null
+                ? dispatcher.visitLambdaAttributes(ctx.lambdaAttributes())
+                : "";
+
         final LambdaFunction lambda = new LambdaFunction(
-                dispatcher.getCurrentFile(),
-                dispatcher.getCurrentFunctionName(),
-                dispatcher.visitTypeName(ctx.typeName()),
-                dispatcher.visitParameterTypeList(ctx.parameterTypeList()),
-                dispatcher.visitFunctionBody(ctx.functionBody()),
-                ctx.lambdaAttributes() != null
-                        ? dispatcher.visitLambdaAttributes(ctx.lambdaAttributes())
-                        : ""
+                lambdaName,
+                returnType,
+                parameters,
+                body,
+                lambdaAttributes
         );
-        dispatcher.addMethodToEmit(lambda.getDefinition());
+
+        dispatcher.popFunction();
+        dispatcher.addExternalDeclarationToEmit(lambda.getDefinition());
 
         return lambda.getName();
     }

@@ -1,11 +1,12 @@
 package cz.mipit.sscc.ssc.compiler.data.var;
 
+import java.util.List;
 import java.util.Objects;
 
 public class SuperstructVariable extends Variable {
     private final String ssName;
 
-    public SuperstructVariable(String ssName, int pointer, String name) {
+    public SuperstructVariable(String ssName, List<Pointer> pointer, String name) {
         super(name, pointer);
         this.ssName = Objects.requireNonNull(ssName);
     }
@@ -22,20 +23,20 @@ public class SuperstructVariable extends Variable {
             return false;
         SuperstructVariable that = (SuperstructVariable) obj;
         return Objects.equals(this.ssName, that.ssName) &&
-                this.pointer == that.pointer &&
+                this.pointers == that.pointers &&
                 Objects.equals(this.identifier, that.identifier);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(ssName, pointer, identifier);
+        return Objects.hash(ssName, pointers, identifier);
     }
 
     @Override
     public String toString() {
         return "SuperstructVariable[" +
                 "ssName=" + ssName + ", " +
-                "pointer=" + pointer + ", " +
+                "pointer=" + pointers + ", " +
                 "name=" + identifier + ']';
     }
 }

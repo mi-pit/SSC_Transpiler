@@ -3,7 +3,6 @@ package cz.mipit.sscc.ssc.compiler.visitors.convertors;
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.Main;
 import cz.mipit.sscc.ssc.compiler.data.tmpl.Template;
-import cz.mipit.sscc.ssc.compiler.visitors.BaseConvertorVisitor;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
@@ -151,7 +150,7 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
     }
 
     private void emitTemplateDispatch(String tmplConverted, String nameTypeResolved) {
-        dispatcher.addMethodToEmit(tmplConverted);
+        dispatcher.addExternalDeclarationToEmit(tmplConverted);
         alreadyEmitted.add(nameTypeResolved);
     }
 
@@ -162,14 +161,14 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
 
     public static String convertTypeArgumentToShorthand(
             SSCParser.TypeArgumentContext ctx,
-            BaseConvertorVisitor visitor
+            VisitorDispatcher dispatcher
     ) {
-        final String literal = visitor.visitTypeSpecifier(ctx.typeSpecifier());
+        final String literal = dispatcher.visitTypeSpecifier(ctx.typeSpecifier());
 
         String shorthand = TYPE_SHORTHANDS.get(literal);
         if (shorthand == null) {
             final StringBuilder builder = new StringBuilder();
-            final String[] spl = literal.split(" ");
+            final String[] spl = literal.split("\\s+");
             for (String sub : spl) {
                 builder.append(COMPOUND_SHORTHANDS.getOrDefault(sub, sub));
             }
@@ -181,7 +180,7 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
         for (SSCParser.TypeQualifierContext typeQual : ctx.typeQualifier()) {
             resultBuilder.append(
                     QUALIFIER_SHORTHANDS.get(
-                            visitor.getLiteral(typeQual)
+                            dispatcher.getLiteral(typeQual)
                     )
             );
         }
@@ -191,7 +190,7 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
             if (pointer.typeQualifierList() != null) {
                 for (var typeQual : pointer.typeQualifierList()) {
                     resultBuilder.append(
-                            QUALIFIER_SHORTHANDS.get(visitor.getLiteral(typeQual))
+                            QUALIFIER_SHORTHANDS.get(dispatcher.getLiteral(typeQual))
                     );
                 }
             }

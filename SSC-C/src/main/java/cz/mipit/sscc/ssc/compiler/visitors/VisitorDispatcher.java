@@ -1,8 +1,8 @@
 package cz.mipit.sscc.ssc.compiler.visitors;
 
 import antlr.ssc.SSCParser;
-import antlr.ssc.SymbolTable;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
+import cz.mipit.sscc.ssc.compiler.data.var.Pointer;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.data.var.Typedef;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.Convertor;
@@ -18,7 +18,6 @@ import cz.mipit.sscc.ssc.compiler.visitors.convertors.TernaryOperatorConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.data.CompilerData;
 import cz.mipit.sscc.ssc.exceptions.children.SSCSyntaxException;
 import cz.mipit.sscc.util.Either;
-import cz.mipit.sscc.util.SSCCUtil;
 import cz.mipit.sscc.util.VisitorInput;
 import cz.mipit.sscc.util.annotations.Nullable;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -37,9 +36,8 @@ import static cz.mipit.sscc.Main.logger;
 
 public class VisitorDispatcher extends BaseConvertorVisitor {
     public final CompilerData data;
-    private final SymbolTable symbolTable; // TODO: move to data
 
-    private final List<String> methodsToEmit; // to be emitted when exiting the next external declaration
+    private final List<String> externalDeclarationsToEmit; // to be emitted when exiting the next external declaration
 
     private final Convertor<SSCParser.PostfixExpressionContext> postfixExpressionConvertor;
     private final Convertor<SSCParser.FunctionDefinitionContext> functionConvertor;
@@ -48,11 +46,13 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
 
     private final Convertor<SSCParser.SuperStructInterfaceContext> superstructInterfaceConvertor;
 
-    private final LambdaConvertor lambdaConvertor;
+    private final Convertor<SSCParser.TemplateDispatchContext> templateDispatchConvertor;
+    private final Convertor<SSCParser.FunctionTemplateDefinitionContext> templateDefinitionConvertor;
+
+    private final Convertor<SSCParser.LambdaFunctionContext> lambdaConvertor;
+
     private final SuperstructConvertor superstructConvertor;
 
-    private final TemplateDispatchConvertor templateDispatchConvertor;
-    private final TemplateDefinitionConvertor templateDefinitionConvertor;
 
     private final VariableCollector collector;
 
@@ -60,8 +60,7 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
     public VisitorDispatcher(VisitorInput input) {
         super(input.tokens(), input.inputFile());
 
-        data = new CompilerData();
-        symbolTable = input.symbolTable();
+        data = new CompilerData(input.symbolTable());
 
         collector = new VariableCollector(this);
 
@@ -78,8 +77,9 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
         templateDispatchConvertor = new TemplateDispatchConvertor(this);
         templateDefinitionConvertor = new TemplateDefinitionConvertor(this);
 
-        methodsToEmit = new ArrayList<>();
+        externalDeclarationsToEmit = new ArrayList<>();
     }
+
 
     public String visitSuper(final ParserRuleContext ctx) {
         return super.visitChildren(ctx);
@@ -140,8 +140,8 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
         // methods must be defined AFTER the struct
         superstructConvertor.emit().ifPresent(res::append);
 
-        final String emitted = String.join(System.lineSeparator(), methodsToEmit);
-        methodsToEmit.clear();
+        final String emitted = String.join(System.lineSeparator(), externalDeclarationsToEmit);
+        externalDeclarationsToEmit.clear();
 
         return emitted + external + res;
     }
@@ -158,15 +158,20 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
         return builder.toString();
     }
 
+    @Override
+    public String visitParameterDeclaration(SSCParser.ParameterDeclarationContext ctx) {
+        collector.collect(ctx);
+        return super.visitParameterDeclaration(ctx);
+    }
 
     /* ==== DATA ==== */
 
-    public void addMethodToEmit(String method) {
-        methodsToEmit.add(method);
+    public void addExternalDeclarationToEmit(String method) {
+        externalDeclarationsToEmit.add(method);
     }
 
     public boolean hasType(String typeName) {
-        return symbolTable.resolve(typeName) != null;
+        return data.symbolTable().resolve(typeName) != null;
     }
 
     /**
@@ -191,6 +196,10 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
         );
     }
 
+    public void pushFunction(String name) {
+        pushFunction(name, (Supplier<SSCSyntaxException>) null);
+    }
+
     public void popFunction() {
         data.functionStack().poll();
     }
@@ -202,53 +211,74 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
 
     /* ==== GETTERS ==== */
 
+    public List<Pointer> getPointersFromDeclarator(SSCParser.DeclaratorContext declarator) {
+        return declarator
+                .pointer()
+                .stream()
+                .map(pointerCtx -> pointerCtx
+                        .typeQualifierList()
+                        .stream()
+                        .flatMap(tqLs -> tqLs.typeQualifier().stream())
+                        .map(this::visitTypeQualifier)
+                        .toList()
+                )
+                .map(Pointer::qualified)
+                .toList();
+    }
+
+
     public Optional<SuperstructVariable> tryCreateSuperstructVariableFromDeclarator(
             final String ssName,
             final SSCParser.DeclaratorContext declarator
     ) {
-        return tryCreateSuperstructVariableFromDeclarator(ssName, 0, declarator);
+        return tryCreateSuperstructVariableFromDeclarator(ssName, Pointer.none(), declarator);
     }
 
     public Optional<SuperstructVariable> tryCreateSuperstructVariableFromDeclarator(
             final Typedef<SuperStruct> typedef,
             final SSCParser.DeclaratorContext declarator
     ) {
+        final SuperStruct ss = typedef.getRepresentedType();
         return tryCreateSuperstructVariableFromDeclarator(
-                typedef.getRepresentedType().name(),
-                typedef.pointer(),
+                ss.name(),
+                typedef.getPointers(),
                 declarator
         );
     }
 
     public Optional<SuperstructVariable> tryCreateSuperstructVariableFromDeclarator(
             final String ssName,
-            final int pointerBase,
+            final List<Pointer> pointerBase,
             final SSCParser.DeclaratorContext declarator
     ) {
         if (declarator == null) {
             return Optional.empty();
         }
-        final var directDecl = declarator.directDeclarator();
+        final SSCParser.DirectDeclaratorContext directDecl = declarator.directDeclarator();
         if (directDecl.Identifier() == null) {
             return Optional.empty();
         }
 
-        final int declaratorPointer = SSCCUtil.getPointerLevel(declarator);
+        final List<Pointer> declaratorPointers = getPointersFromDeclarator(declarator);
         final String varName = this.visitTerminal(directDecl.Identifier());
 
-        final SuperstructVariable ssVar = new SuperstructVariable(ssName, pointerBase + declaratorPointer, varName);
+        final SuperstructVariable ssVar = new SuperstructVariable(
+                ssName,
+                Pointer.combine(pointerBase, declaratorPointers),
+                varName
+        );
         return Optional.of(ssVar);
     }
 
     public Optional<Either<String, Typedef<SuperStruct>>> findSSNameInDeclSpecs(
             final List<SSCParser.DeclarationSpecifierContext> declSpecs
     ) {
-        for (final var declSpec : declSpecs) {
+        for (final SSCParser.DeclarationSpecifierContext declSpec : declSpecs) {
             if (declSpec.typeSpecifier() == null) {
                 continue;
             }
 
-            final var typeSpec = declSpec.typeSpecifier();
+            final SSCParser.TypeSpecifierContext typeSpec = declSpec.typeSpecifier();
             if (typeSpec.superStructSpecifier() == null) {
                 final Typedef<SuperStruct> typedef = data.superstructTypedefs().get(this.visitTypeSpecifier(typeSpec));
                 if (typedef == null) {
@@ -257,7 +287,7 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
                 return Optional.of(Either.right(typedef));
             }
 
-            final var ssCtx = typeSpec.superStructSpecifier();
+            final SSCParser.SuperStructSpecifierContext ssCtx = typeSpec.superStructSpecifier();
             final String ssName = this.visitTerminal(ssCtx.Identifier());
             return Optional.of(Either.left(ssName));
         }

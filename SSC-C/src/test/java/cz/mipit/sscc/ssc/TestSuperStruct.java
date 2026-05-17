@@ -2,6 +2,7 @@ package cz.mipit.sscc.ssc;
 
 import cz.mipit.sscc.ssc.compiler.data.ss.Field;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
+import cz.mipit.sscc.ssc.compiler.data.var.Pointer;
 import cz.mipit.sscc.ssc.compiler.data.var.TypedVariable;
 import org.junit.jupiter.api.Test;
 
@@ -25,7 +26,7 @@ public class TestSuperStruct {
         struct.addField(
                 new Field(
                         true,
-                        new TypedVariable(List.of("int"), 0, "num")
+                        new TypedVariable(List.of("int"), Pointer.none(), "num")
                 )
         );
 

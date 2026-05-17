@@ -1,6 +1,9 @@
 package cz.mipit.sscc.ssc.compiler.data.tmpl;
 
 import antlr.ssc.SSCParser;
+import org.antlr.v4.runtime.tree.TerminalNode;
+
+import java.util.StringJoiner;
 
 public class Template {
     private final SSCParser.FunctionTemplateDefinitionContext ctx;
@@ -23,6 +26,11 @@ public class Template {
 
     @Override
     public String toString() {
-        return "Template='" + name + '\'';
+        final StringJoiner joiner = new StringJoiner(", ");
+        for (TerminalNode ident : ctx.templateHeader().templateTypes().Identifier()) {
+            joiner.add(ident.getText());
+        }
+
+        return "Template='%s<%s>'".formatted(name, joiner);
     }
 }

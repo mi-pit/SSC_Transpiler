@@ -39,7 +39,7 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
                 interfaceOf.emitStructDeclaration()
         );
 
-        dispatcher.data.setCurrentSS(interfaceOf);
+        dispatcher.data.setCurrentSuperstruct(interfaceOf);
         Main.logger.printDebug("Added a new superstruct from interface: " + ssName);
 
         // attributeSpecifierSequence? cDeclarationSpecifiers? declarator ';'
@@ -75,7 +75,7 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
             joiner.add(functionDefinition.getDeclaration());
         }
 
-        dispatcher.data.setCurrentSS(null);
+        dispatcher.data.setCurrentSuperstruct(null);
 
         joiner.add("/* Superstruct Interface `" + ssName + "`; END */");
         return joiner.toString();
