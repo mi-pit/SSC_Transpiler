@@ -132,7 +132,8 @@ primaryExpression
     | StringLiteral+
     | '(' expression ')'
     | genericSelection
-    | lambdaFunction // SSC
+    | lambdaFunction    // SSC
+    | templateDispatch  // SSC
     // GNU
     // https://github.com/gcc-mirror/gcc/blob/5d69161a7c36a2da8565967eb0cc2df1322a05a3/gcc/c/c-parser.cc#L11715-L11734
     | '__func__' //GNU
@@ -182,8 +183,7 @@ genericAssociation
 // ISO C: postfix-expression (6.5.3.1)
 postfixExpression
     : (
-        templateDispatch // SSC
-         | primaryExpression
+        primaryExpression
          | '__extension__'? '(' typeName ')' '{' initializerList ','? '}'
     ) (
         '[' expression ']'
@@ -191,7 +191,7 @@ postfixExpression
          | '::'          Identifier '(' argumentExpressionList? ')'  // SSC: Static superstruct function call
          | '::'          Identifier                                  // SSC: Superstruct function reference
          | ('.' | '->')  Identifier '(' argumentExpressionList? ')'  // SSC: Object method call
-         | ('.' | '->')  Identifier                                  // Attribute access (plain C)
+         | ('.' | '->')  Identifier                                  /* Attribute access (plain C) */
          | '++'
          | '--'
     )*
