@@ -8,7 +8,7 @@ flagset Flags{
     NAMED_VAL7_COMP = NAMED_VAL3 | NAMED_VAL4,
 };
 
-flagset{ NO_IDENTIFIER_OR_COMMA };
+flagset { NO_IDENTIFIER_OR_COMMA };
 
 flagset Long {
     UV_001, UV_002, UV_004, UV_008, UV_016, UV_032, UV_064, UV_128, UV_256,
@@ -41,18 +41,23 @@ flagset All {
     A_ALL = A_001 | A_002 | A_004 | A_008 | A_016 | A_032 | A_064 | A_128,
 };
 
-flagset{ VE };
+flagset { VE };
 
 constexpr int INTEGER = 123;
 
-flagset{
+flagset {
     LEGIT,
-    FROM_VIS_ENUM = VE,
+    FROM_VIS_ENUM   = VE,
     FROM_INVIS_ENUM = A_128,
     FROM_MACRO      = INTEGER,
 };
 
-flagset{
+flagset {
     DUP,
     DUP,
 };
+
+flagset {
+    NA_VALID = 0,
+    NA_INVAL = 123,
+}
