@@ -346,7 +346,7 @@ public abstract class SSCParserBase extends Parser {
 
     // SSC
     public void EnterTemplate() {
-        if (!(this.getContext() instanceof SSCParser.FunctionTemplateDefinitionContext tmplDefCtx)) {
+        if (!(this.getContext() instanceof SSCParser.TemplateDefinitionContext tmplDefCtx)) {
             return;
         }
         debugPrintln("Entering template function definition");

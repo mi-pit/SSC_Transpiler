@@ -5,8 +5,7 @@ import cz.mipit.sscc.ssc.compiler.data.lambda.LambdaFunction;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 
 public class LambdaConvertor
-        extends AbstractConvertor<SSCParser.LambdaFunctionContext>
-        implements Convertor<SSCParser.LambdaFunctionContext> {
+        extends AbstractConvertor<SSCParser.LambdaFunctionContext> {
 
     public LambdaConvertor(VisitorDispatcher dispatcher) {
         super(dispatcher);
@@ -35,7 +34,7 @@ public class LambdaConvertor
         );
 
         dispatcher.popFunction();
-        dispatcher.addExternalDeclarationToEmit(lambda.getDefinition());
+        dispatcher.addExternalDeclarationToEmitBefore(lambda.getDefinition());
 
         return lambda.getName();
     }

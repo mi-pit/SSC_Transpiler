@@ -15,7 +15,6 @@ import cz.mipit.sscc.ssc.compiler.visitors.convertors.SuperstructInterfaceConver
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateDefinitionConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateDispatchConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TernaryOperatorConvertor;
-import cz.mipit.sscc.ssc.compiler.visitors.data.CompilerData;
 import cz.mipit.sscc.ssc.exceptions.children.SSCSyntaxException;
 import cz.mipit.sscc.util.Either;
 import cz.mipit.sscc.util.VisitorInput;
@@ -37,7 +36,8 @@ import static cz.mipit.sscc.Main.logger;
 public class VisitorDispatcher extends BaseConvertorVisitor {
     public final CompilerData data;
 
-    private final List<String> externalDeclarationsToEmit; // to be emitted when exiting the next external declaration
+    private final List<String> externalDeclarationsToEmitBefore;
+    private final List<String> externalDeclarationsToEmitAfter;
 
     private final Convertor<SSCParser.PostfixExpressionContext> postfixExpressionConvertor;
     private final Convertor<SSCParser.FunctionDefinitionContext> functionConvertor;
@@ -47,11 +47,11 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
     private final Convertor<SSCParser.SuperStructInterfaceContext> superstructInterfaceConvertor;
 
     private final Convertor<SSCParser.TemplateDispatchContext> templateDispatchConvertor;
-    private final Convertor<SSCParser.FunctionTemplateDefinitionContext> templateDefinitionConvertor;
+    private final Convertor<SSCParser.TemplateDefinitionContext> templateDefinitionConvertor;
 
     private final Convertor<SSCParser.LambdaFunctionContext> lambdaConvertor;
 
-    private final SuperstructConvertor superstructConvertor;
+    private final Convertor<SSCParser.SuperStructSpecifierContext> superstructConvertor;
 
 
     private final VariableCollector collector;
@@ -77,7 +77,8 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
         templateDispatchConvertor = new TemplateDispatchConvertor(this);
         templateDefinitionConvertor = new TemplateDefinitionConvertor(this);
 
-        externalDeclarationsToEmit = new ArrayList<>();
+        externalDeclarationsToEmitBefore = new ArrayList<>();
+        externalDeclarationsToEmitAfter = new ArrayList<>();
     }
 
 
@@ -122,7 +123,7 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
     }
 
     @Override
-    public String visitFunctionTemplateDefinition(SSCParser.FunctionTemplateDefinitionContext ctx) {
+    public String visitTemplateDefinition(SSCParser.TemplateDefinitionContext ctx) {
         return templateDefinitionConvertor.convert(ctx);
     }
 
@@ -135,27 +136,19 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
     public String visitExternalDeclaration(SSCParser.ExternalDeclarationContext ctx) {
         final String external = super.visitExternalDeclaration(ctx);
 
-        final StringBuilder res = new StringBuilder();
-        // if superstruct convertor has methods => external is a super struct declaration
-        // methods must be defined AFTER the struct
-        superstructConvertor.emit().ifPresent(res::append);
+        final String before = String.join(System.lineSeparator(), externalDeclarationsToEmitBefore);
+        externalDeclarationsToEmitBefore.clear();
 
-        final String emitted = String.join(System.lineSeparator(), externalDeclarationsToEmit);
-        externalDeclarationsToEmit.clear();
+        final String after = String.join(System.lineSeparator(), externalDeclarationsToEmitAfter);
+        externalDeclarationsToEmitAfter.clear();
 
-        return emitted + external + res;
+        return before + external + after;
     }
 
     @Override
     public String visitDeclaration(SSCParser.DeclarationContext ctx) {
         collector.collect(ctx);
-        final String converted = super.visitDeclaration(ctx);
-
-        final StringBuilder builder = new StringBuilder(converted);
-
-        superstructConvertor.emitDeclarations().ifPresent(builder::append);
-
-        return builder.toString();
+        return super.visitDeclaration(ctx);
     }
 
     @Override
@@ -164,10 +157,15 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
         return super.visitParameterDeclaration(ctx);
     }
 
+
     /* ==== DATA ==== */
 
-    public void addExternalDeclarationToEmit(String method) {
-        externalDeclarationsToEmit.add(method);
+    public void addExternalDeclarationToEmitAfter(String code) {
+        externalDeclarationsToEmitAfter.add(code);
+    }
+
+    public void addExternalDeclarationToEmitBefore(String code) {
+        externalDeclarationsToEmitBefore.add(code);
     }
 
     public boolean hasType(String typeName) {

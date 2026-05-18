@@ -5,6 +5,7 @@ import cz.mipit.sscc.file.DirectoryTreeParser;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.compiler.SSCCompiler;
 import cz.mipit.sscc.util.ExitValue;
+import cz.mipit.sscc.util.collection.Box;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -29,10 +30,11 @@ public class TestStubs {
         for (final InputFile fileName : files) {
             final SSCCompiler compiler = getCompilerOfFile(fileName);
 
+            final Box<ExitValue> exitValue = new Box<>();
             Assertions.assertDoesNotThrow(() -> {
-                final var exitValue = compiler.run();
-                Assertions.assertSame(ExitValue.SUCCESS, exitValue, "In file `%s`".formatted(fileName));
+                exitValue.item = (compiler.run());
             });
+            Assertions.assertSame(ExitValue.SUCCESS, exitValue.item, "In file `%s`".formatted(fileName));
         }
     }
 
@@ -42,14 +44,15 @@ public class TestStubs {
         for (final InputFile fileName : files) {
             final SSCCompiler compiler = getCompilerOfFile(fileName);
 
+            final Box<ExitValue> exitValue = new Box<>();
             Assertions.assertDoesNotThrow(() -> {
-                final ExitValue exitValue = compiler.run();
-                Assertions.assertTrue(
-                        exitValue == ExitValue.C_COMPILATION_FAIL
-                                || exitValue == ExitValue.TRANSPILATION_FAIL,
-                        "`%s`".formatted(fileName)
-                );
+                exitValue.item = compiler.run();
             });
+            Assertions.assertTrue(
+                    exitValue.item == ExitValue.C_COMPILATION_FAIL
+                            || exitValue.item == ExitValue.TRANSPILATION_FAIL,
+                    "`%s`".formatted(fileName)
+            );
         }
     }
 

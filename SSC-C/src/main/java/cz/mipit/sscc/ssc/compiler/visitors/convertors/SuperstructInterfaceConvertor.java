@@ -24,6 +24,8 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
      */
     @Override
     public String convert(SSCParser.SuperStructInterfaceContext ctx) {
+        Main.logger.printDebug("Entering Superstruct Interface");
+
         final StringJoiner joiner = new StringJoiner(System.lineSeparator());
 
         final String ssName = dispatcher.visitTerminal(ctx.Identifier());

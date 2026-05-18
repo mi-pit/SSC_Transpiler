@@ -86,12 +86,12 @@ public class FlagsConvertor extends AbstractConvertor<SSCParser.FlagsSpecifierCo
             }
 
             if (valuesMap.put(currentFlagIdentifier, currValue) != null) {
-                throw getSSCSyntaxException("Duplicate identifier in flags specifier", initializer);
+                throw dispatcher.getSSCSyntaxException("Duplicate identifier in flags specifier", initializer);
             }
 
             ++distinctCount;
             if (distinctCount > 64) {
-                throw getSSCSyntaxException("Too many flags in flags specifier (max is 64)", ctx);
+                throw dispatcher.getSSCSyntaxException("Too many flags in flags specifier (max is 64)", ctx);
             }
         }
         return distinctCount;
@@ -102,7 +102,7 @@ public class FlagsConvertor extends AbstractConvertor<SSCParser.FlagsSpecifierCo
         final long v = Long.parseLong(dispatcher.visitTerminal(integerConstantNode));
 
         if (v != 0) {
-            throw getSSCSyntaxException("Numeric value of a flags initializer must be zero", initializer);
+            throw dispatcher.getSSCSyntaxException("Numeric value of a flags initializer must be zero", initializer);
         }
 
         return v;
@@ -115,9 +115,7 @@ public class FlagsConvertor extends AbstractConvertor<SSCParser.FlagsSpecifierCo
         for (final String identifier : identifiers) {
             final Long value = valuesMap.get(identifier);
             if (value == null) {
-                throw getSSCSyntaxException(
-                        "Flags may only be initialized with values from the same set",
-                        ctx);
+                throw dispatcher.getSSCSyntaxException("Flags may only be initialized with values from the same set", ctx);
             }
             total |= value;
         }

@@ -61,7 +61,7 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
         Main.logger.printDebug(() -> arrowOrDot + " in: " + dispatcher.getLiteral(ctx));
 
         if (ctx.Identifier().isEmpty())
-            throw getSSCSyntaxException(arrowOrDot + " expression has no right side expression", ctx);
+            throw dispatcher.getSSCSyntaxException(arrowOrDot + " expression has no right side expression", ctx);
 
         final String objectName = dispatcher.visitPrimaryExpression(ctx.primaryExpression());
         final String currentFunctionName = dispatcher.getCurrentFunctionName();
@@ -108,10 +108,10 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
         }
 
         if (arrowOrDot == ArrowOrDot.Dot && !var.getPointers().isEmpty()) {
-            throw getSSCSyntaxException("Cannot access non-local superstruct variable using `.`", ctx);
+            throw dispatcher.getSSCSyntaxException("Cannot access non-local superstruct variable using `.`", ctx);
         }
         if (arrowOrDot == ArrowOrDot.Arrow && var.getPointers().size() != 1) {
-            throw getSSCSyntaxException("Variable '" + var.getIdentifier() + "' is not a pointer to struct", ctx);
+            throw dispatcher.getSSCSyntaxException("Variable '" + var.getIdentifier() + "' is not a pointer to struct", ctx);
         }
 
         maybeMethod.ifPresent(functionDefinition -> {
@@ -119,7 +119,7 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
                 Main.logger.printDebug(() -> "Method '" + methodName + "' is private. Going to check if it may be used here...");
                 if (dispatcher.data.currentSuperstruct().isEmpty()
                         || !dispatcher.data.currentSuperstruct().get().name().equals(superStruct.name())) {
-                    throw getSSCSyntaxException(
+                    throw dispatcher.getSSCSyntaxException(
                             "Cannot access private method `" + methodName + "` from outside the superstruct", ctx);
                 }
             }
@@ -162,12 +162,12 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
         Main.logger.printDebug(() -> "Double colon in: " + dispatcher.getLiteral(ctx));
 
         if (ctx.primaryExpression() == null) {
-            throw getSSCSyntaxException("Double colon expression has no left side (Superstruct name) expression", ctx);
+            throw dispatcher.getSSCSyntaxException("Double colon expression has no left side (Superstruct name) expression", ctx);
         }
         final String className = dispatcher.visitPrimaryExpression(ctx.primaryExpression());
 
         if (ctx.Identifier().isEmpty()) {
-            throw getSSCSyntaxException("Double colon expression has no right side (function) expression", ctx);
+            throw dispatcher.getSSCSyntaxException("Double colon expression has no right side (function) expression", ctx);
         }
         final String methodName = ctx.Identifier().getFirst().toString();
 
@@ -197,14 +197,13 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
                                   final String methodName) {
         final SuperStruct superstruct = dispatcher
                 .findSuperstructByName(className)
-                .orElseThrow(() -> getSSCSyntaxException("Could not find superstruct with name `" + className + "`", ctx));
+                .orElseThrow(() -> dispatcher.getSSCSyntaxException("Could not find superstruct with name `" + className + "`", ctx));
 
         final Optional<Function> maybeMethod = superstruct.findMethod(methodName);
         if (maybeMethod.isEmpty()) {
-            throw getSSCSyntaxException(
-                    "Superstruct '" + className
-                            + "' has no method called '" + methodName
-                            + "'", ctx);
+            throw dispatcher.getSSCSyntaxException("Superstruct '" + className
+                    + "' has no method called '" + methodName
+                    + "'", ctx);
         }
         final Function method = maybeMethod.get();
 
@@ -212,7 +211,7 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
             Main.logger.printDebug(() -> "Method '" + methodName + "' is private. Going to check if it may be used here...");
             if (dispatcher.data.currentSuperstruct().isEmpty()
                     || !dispatcher.data.currentSuperstruct().get().name().equals(className)) {
-                throw getSSCSyntaxException(
+                throw dispatcher.getSSCSyntaxException(
                         "Cannot access private static method `" + methodName + "` from outside the superstruct", ctx
                 );
             }
@@ -230,12 +229,12 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
                 .filter(field -> field.getName().equals(fieldName))
                 .toList();
         if (allMatching.size() > 1) {
-            throw getSSCSyntaxException(
+            throw dispatcher.getSSCSyntaxException(
                     "Found more than one matching field in superstruct `" + superstruct.name() + "`", ctx
             );
         }
         if (allMatching.isEmpty()) {
-            throw getSSCSyntaxException(
+            throw dispatcher.getSSCSyntaxException(
                     "Found no field '" + fieldName + "' in superstruct `" + superstruct.name() + "`", ctx
             );
         }
@@ -251,7 +250,7 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
                     + "` is private. Going to check if it may be used here...");
 
             if (!inSSMethod) {
-                throw getSSCSyntaxException(
+                throw dispatcher.getSSCSyntaxException(
                         "Cannot access private field `" + fieldName + "` from outside the superstruct", ctx
                 );
             }

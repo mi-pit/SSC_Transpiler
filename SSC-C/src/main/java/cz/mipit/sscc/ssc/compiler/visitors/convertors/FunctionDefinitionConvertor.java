@@ -13,7 +13,7 @@ public class FunctionDefinitionConvertor extends AbstractConvertor<SSCParser.Fun
     public String convert(SSCParser.FunctionDefinitionContext ctx) {
         // Set currentFunctionName
         if (ctx.functionBody() == null) {
-            throw getSSCSyntaxException("Function definition without body", ctx);
+            throw dispatcher.getSSCSyntaxException("Function definition without body", ctx);
         }
         assert ctx.functionBody() != null;
         assert ctx.functionBody().compoundStatement() != null;

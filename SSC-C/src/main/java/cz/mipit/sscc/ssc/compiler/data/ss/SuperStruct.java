@@ -1,5 +1,6 @@
 package cz.mipit.sscc.ssc.compiler.data.ss;
 
+import cz.mipit.sscc.Main;
 import cz.mipit.sscc.util.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -36,7 +37,7 @@ public class SuperStruct {
                     .append(";")
                     .append(System.lineSeparator());
         }
-        resultBuilder.append("}");
+        resultBuilder.append("};");
 
         return resultBuilder.toString();
     }

@@ -10,22 +10,15 @@ import cz.mipit.sscc.ssc.compiler.data.var.Pointer;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.data.var.TypedVariable;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
-import cz.mipit.sscc.util.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStructSpecifierContext> {
-
-    private SuperStruct lastSuperstruct;
-
     public SuperstructConvertor(VisitorDispatcher dispatcher) {
         super(dispatcher);
-        lastSuperstruct = null;
     }
 
     @Override
@@ -35,6 +28,7 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
         if (ctx.superStructBody() == null) {
             return dispatcher.visitSuper(ctx);
         }
+        Main.logger.printDebug("Entering Superstruct Body");
 
         final SuperStruct got = dispatcher.data.superStructs().get(thisSSName);
         // superstructs only have fields if they are defined
@@ -47,45 +41,28 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
         dispatcher.data.setCurrentSuperstruct(superStruct);
 
         for (SSCParser.SuperStructMemberContext memberCtx : ctx.superStructBody().superStructMember()) {
-            processMemberCtx(dispatcher, memberCtx, thisSSName);
+            processMemberCtx(memberCtx, thisSSName);
         }
 
         dispatcher.data.setCurrentSuperstruct(null);
 
-        if (lastSuperstruct != null) {
-            Main.logger.printDebug("A non-emitted superstruct with name '"
-                    + lastSuperstruct.name()
-                    + "' is still present while processing superstruct '"
-                    + thisSSName + "'"
-            );
-        }
-        lastSuperstruct = superStruct;
-        return lastSuperstruct.emitStructDefinition();
-    }
+        final String structDeclaration = superStruct.emitStructDeclaration();
+        final String methodDeclarations = superStruct.emitMethodDeclarations();
+        final String methodDefinitions = superStruct.emitMethodDefinitions();
 
-    public Optional<String> emitDeclarations() {
-        if (lastSuperstruct == null) {
-            return Optional.empty();
-        }
-        return Optional.of(lastSuperstruct.emitMethodDeclarations());
-    }
+        dispatcher.addExternalDeclarationToEmitBefore(structDeclaration);
+        dispatcher.addExternalDeclarationToEmitBefore(methodDeclarations);
 
-    public Optional<String> emit() {
-        if (lastSuperstruct == null) {
-            return Optional.empty();
-        }
-        final String methods = lastSuperstruct.emitMethodDefinitions();
-        lastSuperstruct = null;
+        dispatcher.addExternalDeclarationToEmitAfter(methodDefinitions);
 
-        return Optional.of(methods);
+        return superStruct.emitStructDefinition();
     }
 
     public static String qualifySuperstructIdentifier(SuperStruct superStruct, String unqualifiedName) {
         return superStruct.name() + "__" + unqualifiedName;
     }
 
-    public static void processMemberCtx(
-            final VisitorDispatcher dispatcher,
+    private void processMemberCtx(
             final SSCParser.SuperStructMemberContext memberCtx,
             final String thisSSName
     ) {
@@ -109,7 +86,7 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
         }
 
         if (memberCtx.functionDefinition() != null) {
-            processMemberFunction(dispatcher, memberCtx.functionDefinition(), thisSSName, declSpecs, noPrivateSpecs, isPrivate);
+            processMemberFunction(memberCtx.functionDefinition(), thisSSName, declSpecs, noPrivateSpecs, isPrivate);
         } else {
             assert memberCtx.declaration() != null;
             processMemberField(dispatcher, memberCtx.declaration(), noPrivateSpecs, isPrivate);
@@ -161,8 +138,7 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
         }
     }
 
-    public static void processMemberFunction(
-            final VisitorDispatcher dispatcher,
+    private void processMemberFunction(
             SSCParser.FunctionDefinitionContext functionCtx,
             String thisSSName,
             List<SSCParser.DeclarationSpecifierContext> declSpecs,
@@ -197,18 +173,17 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
 
         final List<String> parameters = parseFunctionParameters(dispatcher, fnData.declarator());
 
-        final @Nullable String fnBody = functionCtx.functionBody() == null
-                ? null
-                : dispatcher.visitFunctionBody(functionCtx.functionBody());
-
         final Function functionDefinition = new Function(
                 fnData,
                 isPrivate,
                 parseType(dispatcher, declSpecs, fnData.declarator()),
                 parameters,
-                fnBody,
+                functionCtx.functionBody() == null
+                        ? null
+                        : dispatcher.visitFunctionBody(functionCtx.functionBody()),
                 thisSSName
         );
+        System.out.println("Parsed function definition: " + functionDefinition.getDefinition().orElse(functionDefinition.getDeclaration()));
 
         fnData.superStruct().addFunction(functionDefinition);
 
@@ -287,56 +262,24 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
             final VisitorDispatcher dispatcher,
             final SSCParser.DeclaratorContext ctx
     ) {
-        final List<String> ls = new ArrayList<>(ctx.directDeclarator()
+        final List<String> params = new ArrayList<>(ctx
+                .directDeclarator()
                 .parameterTypeList()
                 .stream()
-                .map(SSCParser.ParameterTypeListContext::parameterList)
-                .filter(Objects::nonNull)
-                .flatMap(pl -> pl.parameterDeclaration().stream())
-                .map(paramDeclCtx -> {
-                    if (paramDeclCtx.declarationSpecifiers() == null) {
-                        return dispatcher.visitParameterDeclaration(paramDeclCtx);
-                    }
-
-                    for (SSCParser.DeclarationSpecifierContext declSpec
-                            : paramDeclCtx.declarationSpecifiers().declarationSpecifier()) {
-                        if (declSpec.typeSpecifier() == null) {
-                            continue;
-                        }
-                        final SSCParser.TypeSpecifierContext typeSpec = declSpec.typeSpecifier();
-                        if (typeSpec.superStructSpecifier() != null) {
-                            final String ssName = dispatcher.visitTerminal(typeSpec.superStructSpecifier().Identifier());
-                            final SuperstructVariable ssVar = new SuperstructVariable(
-                                    ssName,
-                                    dispatcher.getPointersFromDeclarator(paramDeclCtx.declarator()),
-                                    dispatcher.visitTerminal(paramDeclCtx.declarator().directDeclarator().Identifier())
-                            );
-                            dispatcher.data
-                                    .functionVariables()
-                                    .get(dispatcher.getCurrentFunctionName())
-                                    .add(ssVar);
-                            break;
-                        }
-
-                        final String str = dispatcher.visitTypeSpecifier(typeSpec);
-                        if (dispatcher.data.superstructTypedefs().containsKey(str)) {
-                            break;
-                        }
-                    }
-
-                    return dispatcher.visitParameterDeclaration(paramDeclCtx);
-                })
-                .filter(s -> !s.isBlank())
-                .toList());
+                .map(paramTypeLsCtx -> paramTypeLsCtx.parameterList().parameterDeclaration())
+                .flatMap(paramsCtxLs -> paramsCtxLs.stream().map(dispatcher::visitParameterDeclaration))
+                .filter(str -> !str.isBlank())
+                .toList()
+        );
 
         if (ctx.directDeclarator()
                 .parameterTypeList()
                 .stream()
                 .anyMatch(ptl -> ptl.Ellipsis() != null)) {
-            ls.add("...");
+            params.add("...");
         }
 
-        return ls;
+        return params;
     }
 
     public static boolean hasDeclarationSpecifier(List<SSCParser.DeclarationSpecifierContext> declSpecs,

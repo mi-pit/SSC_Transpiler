@@ -105,58 +105,63 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
             return nameTypeResolved;
         }
 
-        final Map<String, String> typeArgMap = new HashMap<>();
-        if (tmpl.getContext().templateHeader().templateTypes().Identifier().size() != typeArgs.size()) {
-            throw dispatcher.getSSCSyntaxException("Invalid number of type arguments", ctx);
-        }
+        final List<SSCParser.TemplateDefinitionContext> tmplContexts = tmpl.contexts();
 
-        for (int i = 0; i < typeArgs.size(); i++) {
-            final String actualType = dispatcher.visitTypeArgument(typeArgs.get(i));
-            final TerminalNode typeAliasIdent = tmpl.getContext().templateHeader().templateTypes().Identifier().get(i);
-            final String typeAlias = dispatcher.visitTerminal(typeAliasIdent);
-
-            if (typeArgMap.put(typeAlias, actualType) != null) {
-                throw dispatcher.getSSCSyntaxException("Duplicate type alias", ctx);
+        for (final SSCParser.TemplateDefinitionContext tmplContext : tmplContexts) {
+            final Map<String, String> typeArgMap = new HashMap<>();
+            if (tmplContext.templateHeader().templateTypes().Identifier().size() != typeArgs.size()) {
+                throw dispatcher.getSSCSyntaxException("Invalid number of type arguments", ctx);
             }
+
+            for (int i = 0; i < typeArgs.size(); i++) {
+                final String actualType = dispatcher.visitTypeArgument(typeArgs.get(i));
+                final TerminalNode typeAliasIdent = tmplContext.templateHeader().templateTypes().Identifier().get(i);
+                final String typeAlias = dispatcher.visitTerminal(typeAliasIdent);
+
+                if (typeArgMap.put(typeAlias, actualType) != null) {
+                    throw dispatcher.getSSCSyntaxException("Duplicate type alias", ctx);
+                }
+            }
+
+            dispatcher.addReplacements(typeArgMap);
+            Main.logger.printDebug(() -> "\tType replacements: '" + typeArgMap + "'");
+            Main.logger.printDebug(() ->
+                    "\tCalled Type Arguments (literal): "
+                            + typeArgs
+                            .stream()
+                            .map(dispatcher::getLiteral)
+                            .toList()
+            );
+
+            final String toReplace = dispatcher.visitTerminal(ctx.Identifier());
+            dispatcher.addReplacement(toReplace, nameTypeResolved);
+            Main.logger.printDebug(() -> "\tAdded identifier replacement: `" + toReplace
+                    + "` -> `" + nameTypeResolved + "`");
+
+            final String tmplConverted;
+            if (tmplContext.functionDefinition() != null) {
+                tmplConverted = (dispatcher.visitFunctionDefinition(tmplContext.functionDefinition()));
+            } else if (tmplContext.superStructInterface() != null) {
+                tmplConverted = dispatcher.visitSuperStructInterface(tmplContext.superStructInterface());
+            } else {
+                tmplConverted = dispatcher.visitSuperStructSpecifier(tmplContext.superStructSpecifier());
+            }
+
+            dispatcher.addExternalDeclarationToEmitBefore(tmplConverted);
+            alreadyEmitted.add(nameTypeResolved);
+
+            dispatcher.removeReplacements(typeArgMap);
+            dispatcher.removeReplacement(toReplace);
+
+            Main.logger.printDebug(() -> "\tRemoved identifier replacement: `" + toReplace + "`");
         }
-
-        dispatcher.addReplacements(typeArgMap);
-        Main.logger.printDebug(() -> "\tType replacements: '" + typeArgMap + "'");
-        Main.logger.printDebug(() ->
-                "\tCalled Type Arguments (literal): "
-                        + typeArgs
-                        .stream()
-                        .map(dispatcher::getLiteral)
-                        .toList()
-        );
-
-        final String toReplace = dispatcher.visitTerminal(ctx.Identifier());
-        dispatcher.addReplacement(toReplace, nameTypeResolved);
-        Main.logger.printDebug(() -> "\tAdded identifier replacement: `" + toReplace
-                + "` -> `" + nameTypeResolved + "`");
-
-        final String tmplConverted = dispatcher.visitFunctionDefinition(
-                tmpl.getContext().functionDefinition()
-        );
-
-        emitTemplateDispatch(tmplConverted, nameTypeResolved);
-
-        dispatcher.removeReplacements(typeArgMap);
-        dispatcher.removeReplacement(toReplace);
-
-        Main.logger.printDebug(() -> "\tRemoved identifier replacement: `" + toReplace + "`");
 
         return nameTypeResolved;
     }
 
-    private void emitTemplateDispatch(String tmplConverted, String nameTypeResolved) {
-        dispatcher.addExternalDeclarationToEmit(tmplConverted);
-        alreadyEmitted.add(nameTypeResolved);
-    }
-
     /// Creates a generic (not type specified) template name from an identifier
     public static String mangleFunctionName(String identifier) {
-        return "SSC_TEMPLATE__" + identifier;
+        return "SSC_TMPL__" + identifier;
     }
 
     public static String convertTypeArgumentToShorthand(

@@ -1,4 +1,4 @@
-package cz.mipit.sscc.ssc.compiler.visitors.data;
+package cz.mipit.sscc.ssc.compiler.visitors;
 
 import antlr.ssc.SymbolTable;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
@@ -19,13 +19,13 @@ import java.util.Set;
 public final class CompilerData {
     private @Nullable SuperStruct currentSS;
 
-    private final SymbolTable symbolTable; // TODO: move to data
+    private final SymbolTable symbolTable;
 
     private final Map<@NotNull String, SuperStruct> superStructs;
     private final Map<@NotNull String, Typedef<SuperStruct>> superstructTypedefs;
     private final Map<@Nullable String, Set<SuperstructVariable>> functionVariables;
 
-    private final Map<String, Template> templates;
+    private final Map<@NotNull String, Template> templates;
 
     private final Deque<@NotNull String> functionCallStack;
 

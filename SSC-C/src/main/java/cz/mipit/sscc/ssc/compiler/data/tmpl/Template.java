@@ -3,34 +3,51 @@ package cz.mipit.sscc.ssc.compiler.data.tmpl;
 import antlr.ssc.SSCParser;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.StringJoiner;
 
 public class Template {
-    private final SSCParser.FunctionTemplateDefinitionContext ctx;
-
     private final String name;
+    private final List<SSCParser.TemplateDefinitionContext> contexts;
 
     public Template(String name,
-                    SSCParser.FunctionTemplateDefinitionContext ctx) {
-        this.ctx = ctx;
+                    SSCParser.TemplateDefinitionContext ctx) {
         this.name = name;
+        this.contexts = new ArrayList<>();
+        this.contexts.add(ctx);
     }
 
-    public SSCParser.FunctionTemplateDefinitionContext getContext() {
-        return ctx;
-    }
-
-    public String getName() {
+    public String name() {
         return name;
     }
 
-    @Override
-    public String toString() {
-        final StringJoiner joiner = new StringJoiner(", ");
-        for (TerminalNode ident : ctx.templateHeader().templateTypes().Identifier()) {
-            joiner.add(ident.getText());
+    public List<SSCParser.TemplateDefinitionContext> contexts() {
+        return List.copyOf(contexts);
+    }
+
+    public void addContext(SSCParser.TemplateDefinitionContext context) {
+        if (contexts.size() != 1
+                || contexts.getFirst().superStructInterface() == null
+                || context.superStructSpecifier() == null) {
+            throw new UnsupportedOperationException("Can only add ss-specifier to ss-interface");
         }
 
-        return "Template='%s<%s>'".formatted(name, joiner);
+        contexts.add(context);
+    }
+
+
+    @Override
+    public String toString() {
+        final StringJoiner outer = new StringJoiner(" | ");
+        for (SSCParser.TemplateDefinitionContext context : contexts) {
+            final StringJoiner inner = new StringJoiner(", ");
+            for (TerminalNode ident : context.templateHeader().templateTypes().Identifier()) {
+                inner.add(ident.getText());
+            }
+            outer.add("'%s<%s>'".formatted(name, inner));
+        }
+
+        return "Template={" + outer + "}";
     }
 }

@@ -829,18 +829,34 @@ translationUnit
 
 // ISO C: external-declaration (6.9.1)
 externalDeclaration
-    :
-    (
-        '__extension__'
-    )?
+    : '__extension__'?
     (
         functionDefinition
-        | functionTemplateDefinition // SSC
-        | superStructInterface // SSC
+        | templateDefinition    // SSC
+        | superStructInterface  // SSC
         | declaration
         | ';' // stray ;
         | asmDefinition // GCC
 	)
+    ;
+
+// SSC: template definition
+templateDefinition
+    : templateHeader {this.EnterTemplate();}
+    (
+        functionDefinition
+        | superStructSpecifier
+        | superStructInterface
+    )
+      {this.ExitTemplate();}
+    ;
+
+templateHeader
+    : Template '<' templateTypes '>'
+    ;
+
+templateTypes
+    : Identifier (',' Identifier)*
     ;
 
 // SSC: superstruct interface
@@ -856,21 +872,6 @@ functionHeader
 // ISO C: function-definition (6.9.2) -- complete
 functionDefinition
     : functionHeader functionBody
-    ;
-
-// SSC: template definition
-functionTemplateDefinition
-    : templateHeader {this.EnterTemplate();}
-      functionDefinition
-      {this.ExitTemplate();}
-    ;
-
-templateHeader
-    : Template '<' templateTypes '>'
-    ;
-
-templateTypes
-    : Identifier (',' Identifier)*
     ;
 
 // K&R C: declarationList

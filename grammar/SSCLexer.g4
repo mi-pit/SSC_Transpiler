@@ -156,6 +156,7 @@ False_
     : 'false'
     ;
 
+// SSC
 FlagsSet
     : 'flagset'
     ;
@@ -186,6 +187,7 @@ Int
     : 'int'
     ;
 
+// SSC
 Interface
     : 'interface'
     ;
@@ -264,6 +266,7 @@ Then
     : 'then'
     ;
 
+// SSC
 Template
     : 'tmpl'
     ;
