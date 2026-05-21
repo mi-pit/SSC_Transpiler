@@ -183,7 +183,6 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
                         : dispatcher.visitFunctionBody(functionCtx.functionBody()),
                 thisSSName
         );
-        System.out.println("Parsed function definition: " + functionDefinition.getDefinition().orElse(functionDefinition.getDeclaration()));
 
         fnData.superStruct().addFunction(functionDefinition);
 

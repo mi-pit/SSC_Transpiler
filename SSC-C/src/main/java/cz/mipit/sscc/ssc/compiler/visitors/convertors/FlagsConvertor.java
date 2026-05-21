@@ -6,6 +6,7 @@ import cz.mipit.sscc.util.SSCCUtil;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -13,6 +14,10 @@ import java.util.TreeMap;
 import static java.lang.System.lineSeparator;
 
 public class FlagsConvertor extends AbstractConvertor<SSCParser.FlagsSpecifierContext> {
+    private static final String[] POSSIBLE_INTEGER_INITIALIZERS = new String[]{
+            "0", "0u", "0l", "0ll", "0ull",
+    };
+
     public FlagsConvertor(VisitorDispatcher dispatcher) {
         super(dispatcher);
     }
@@ -99,23 +104,32 @@ public class FlagsConvertor extends AbstractConvertor<SSCParser.FlagsSpecifierCo
 
     private long getFlagValueNumeric(SSCParser.FlagsInitializerContext initializer) {
         final TerminalNode integerConstantNode = initializer.IntegerConstant();
-        final long v = Long.parseLong(dispatcher.visitTerminal(integerConstantNode));
 
-        if (v != 0) {
-            throw dispatcher.getSSCSyntaxException("Numeric value of a flags initializer must be zero", initializer);
+        final String string = dispatcher.visitTerminal(integerConstantNode)
+                .toLowerCase();
+        for (String value : POSSIBLE_INTEGER_INITIALIZERS) {
+            if (string.equals(value)) {
+                return 0;
+            }
         }
 
-        return v;
+        throw dispatcher.getSSCSyntaxException(
+                "Value of a flags initializer must be one of "
+                        + Arrays.toString(POSSIBLE_INTEGER_INITIALIZERS),
+                initializer
+        );
     }
 
     private long getFlagValue(final Map<String, Long> valuesMap,
-                              List<String> identifiers,
-                              ParserRuleContext ctx) {
+                              final List<String> identifiers,
+                              final ParserRuleContext ctx) {
         long total = 0;
         for (final String identifier : identifiers) {
             final Long value = valuesMap.get(identifier);
             if (value == null) {
-                throw dispatcher.getSSCSyntaxException("Flags may only be initialized with values from the same set", ctx);
+                throw dispatcher.getSSCSyntaxException(
+                        "Flags may only be initialized with values from the same set", ctx
+                );
             }
             total |= value;
         }

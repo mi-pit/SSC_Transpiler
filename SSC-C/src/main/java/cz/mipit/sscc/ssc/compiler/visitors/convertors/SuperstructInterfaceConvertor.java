@@ -31,10 +31,8 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
         final String ssName = dispatcher.visitTerminal(ctx.Identifier());
         joiner.add("/* Superstruct Interface `" + ssName + "`; START */");
 
-        SuperStruct interfaceOf = dispatcher.data.superStructs().get(ssName);
-        if (interfaceOf == null) {
-            dispatcher.data.superStructs().put(ssName, interfaceOf = new SuperStruct(ssName));
-        }
+        final SuperStruct interfaceOf = dispatcher.data.superStructs()
+                .computeIfAbsent(ssName, SuperStruct::new);
 
         joiner.add(
                 /* declare the struct to be able to use it in the function declarations */

@@ -58,6 +58,17 @@ flagset {
 };
 
 flagset {
-    NA_VALID = 0,
-    NA_INVAL = 123,
-}
+    INT_VALID  = 0,
+};
+
+flagset {
+    INT_INVAL_HEX = 0xFF,
+};
+
+flagset {
+    INT_INVAL_OCT = 05,
+};
+
+flagset {
+    INT_INVAL_DEC = 123,
+};

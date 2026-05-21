@@ -129,16 +129,24 @@ public class SSCTranspilerException extends RuntimeException {
 
     /// Creates a locator highlighting a context
     protected static String getLocator(ParserRuleContext ctx) {
-        final int line = ctx.getStart().getLine();
-        final int offset = getLineNumberOffset(line);
+        final int startLine = ctx.getStart().getLine();
+        final int endLine = ctx.getStop().getLine();
+
+        final int offset = getLineNumberOffset(startLine);
 
         final int start = ctx.getStart().getCharPositionInLine();
         final int stop = ctx.getStop().getCharPositionInLine();
 
-        final String spaces = " ".repeat(offset + start);
-        final String carets = ctx.getStop().getLine() == line
-                ? "^".repeat(Math.max(stop - start, 1))
-                : "^".repeat(ctx.getSourceInterval().length());
+        final int nSpaces = offset + start;
+        final int nCarets = Math.max(
+                1,
+                endLine == startLine
+                        ? stop - start
+                        : 1
+        );
+
+        final String spaces = " ".repeat(nSpaces);
+        final String carets = "^".repeat(nCarets);
 
         return spaces + carets + " here";
     }

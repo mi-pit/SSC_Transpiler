@@ -76,8 +76,7 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
         final SuperStruct superStruct = dispatcher.data.superStructs().get(var.ssName());
         if (superStruct == null) {
             throw dispatcher.getSSCSyntaxException(
-                    "`superstruct " + var.ssName() + "` "
-                            + "(type of variable \"" + var.getIdentifier() + "\") is not properly defined",
+                    "Could not find superstruct named '" + var.ssName() + "'",
                     ctx
             );
         }
@@ -94,6 +93,7 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
 
         if (maybeMethod.isEmpty()) {
             Main.logger.printDebug(() -> "Variable does not have such a method");
+            // fixme
             if (superStruct.fields()
                     .stream()
                     .anyMatch(decl -> decl.getName().equals(methodName))
@@ -195,8 +195,7 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
     private void verifyStaticCall(final SSCParser.PostfixExpressionContext ctx,
                                   final String className,
                                   final String methodName) {
-        final SuperStruct superstruct = dispatcher
-                .findSuperstructByName(className)
+        final SuperStruct superstruct = Optional.ofNullable(dispatcher.data.superStructs().get(className))
                 .orElseThrow(() -> dispatcher.getSSCSyntaxException("Could not find superstruct with name `" + className + "`", ctx));
 
         final Optional<Function> maybeMethod = superstruct.findMethod(methodName);

@@ -110,6 +110,8 @@ public final class Logger {
     }
 
     private void printException(final boolean isUnexpected, Throwable e) {
+        System.out.flush();
+
         if (isUnexpected) {
             System.err.print("Unexpected exception caught: ");
         }
@@ -126,6 +128,7 @@ public final class Logger {
         }
 
         System.err.println();
+        System.err.flush();
     }
 
     /**

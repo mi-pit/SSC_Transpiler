@@ -127,13 +127,13 @@ predefinedConstant
 
 // ISO C: primary-expression (6.5.2)
 primaryExpression
-    : Identifier {this.LookupSymbol();}
+    : templateDispatch  // SSC: template dispatch as primary expression
+    | Identifier {this.LookupSymbol();}
     | constant
     | StringLiteral+
     | '(' expression ')'
     | genericSelection
-    | lambdaFunction    // SSC
-    | templateDispatch  // SSC
+    | lambdaFunction    // SSC: lambda definition as primary expression
     // GNU
     // https://github.com/gcc-mirror/gcc/blob/5d69161a7c36a2da8565967eb0cc2df1322a05a3/gcc/c/c-parser.cc#L11715-L11734
     | '__func__' //GNU
@@ -148,13 +148,14 @@ primaryExpression
     | '__builtin_complex' '(' assignmentExpression ',' assignmentExpression ')'
     ;
 
-/* SSC */
+// SSC: Lambda function definition
 lambdaFunction
     : '|' '[' parameterTypeList ']' '|' '->' typeName
         lambdaAttributes?
     functionBody
     ;
 
+// SSC: Lambda attributes
 lambdaAttributes
     : (attributeSpecifier | gnuAttribute | declarationSpecifier)+
     ;
@@ -475,19 +476,19 @@ enumSpecifier
     | 'enum' Identifier enumTypeSpecifier?
     ;
 
-// SSC
+// SSC: Flag set specifier
 flagsSpecifier
     : FlagsSet attributeSpecifierSequence? gnuAttributes? Identifier? '{' flagsInitializerList ','? '}'
     | FlagsSet Identifier
     ;
 
-// SSC
+// SSC: Flag initializer list
 flagsInitializerList
     : flagsInitializer (',' flagsInitializer)*
     ;
 
-// SSC
-flagsInitializer // TODO: allow `= 0`
+// SSC: Flag initializer
+flagsInitializer
     : Identifier (
         '=' (
             Identifier ('|' Identifier)*
@@ -546,7 +547,7 @@ functionSpecifier
 		| 'deprecated' '(' StringLiteral? ')'
 		) ')'
     | Pure      // SSC
-    | Private   // SSC
+    | Private   // SSC TODO: move (to storage-class-spec ?)
     ;
 
 // ISO C: alignment-specifier (6.7.6)
