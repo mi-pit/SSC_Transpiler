@@ -4,6 +4,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+/**
+ * Represents stuff like `*const * ‹identifier›`, which is common between all kinds of variables
+ */
 public abstract class Variable {
     protected final String identifier;
     protected final List<Pointer> pointers;

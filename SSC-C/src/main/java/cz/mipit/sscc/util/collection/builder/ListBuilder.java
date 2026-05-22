@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.StringJoiner;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -74,5 +75,15 @@ public final class ListBuilder<T>
      */
     public static <T> List<T> listCopy(List<T> list) {
         return new ArrayList<>(Objects.requireNonNull(list, "no list to copy"));
+    }
+
+
+    @Override
+    public String toString() {
+        final StringJoiner joiner = new StringJoiner(", ");
+        for (T item : _collection) {
+            joiner.add(item.toString());
+        }
+        return "ListBuilder{" + joiner + "}";
     }
 }

@@ -53,8 +53,7 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
                             || declSpec.functionSpecifier().Private() == null)
                     .toList();
 
-            final boolean isPrivate = SuperstructConvertor.hasDeclarationSpecifier(
-                    declSpecs,
+            final boolean isPrivate = declSpecs.stream().anyMatch(
                     ds -> ds.functionSpecifier() != null && ds.functionSpecifier().Private() != null
             );
 

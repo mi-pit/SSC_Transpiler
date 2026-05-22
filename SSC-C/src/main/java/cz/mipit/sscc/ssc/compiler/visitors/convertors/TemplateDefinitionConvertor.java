@@ -1,8 +1,12 @@
 package cz.mipit.sscc.ssc.compiler.visitors.convertors;
 
 import antlr.ssc.SSCParser;
+import cz.mipit.sscc.Main;
 import cz.mipit.sscc.ssc.compiler.data.tmpl.Template;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
+import org.antlr.v4.runtime.RuleContext;
+
+import java.util.stream.Collectors;
 
 public class TemplateDefinitionConvertor extends AbstractConvertor<SSCParser.TemplateDefinitionContext> {
     public TemplateDefinitionConvertor(VisitorDispatcher dispatcher) {
@@ -27,13 +31,34 @@ public class TemplateDefinitionConvertor extends AbstractConvertor<SSCParser.Tem
         }
 
         final Template definedBefore = dispatcher.data.templates().get(name);
+        if (definedBefore.contexts().isEmpty()) {
+            throw new IllegalStateException("Template '" + name + "' has no contexts, yet it exists");
+        }
 
-        final boolean justFinishingSSDefinition = definedBefore.contexts().size() == 1
-                && definedBefore.contexts().getFirst().superStructInterface() != null
-                && ctx.superStructSpecifier() != null;
+        Main.logger.printDebug("Template with name \"" + name + "\" has been seen before. Trying to see if it's valid...");
+        final boolean justFinishingSSDefinition;
+        if (definedBefore.contexts().size() > 1) {
+            Main.logger.printDebug(() ->
+                    "\tPreviously defined in too many contexts: \""
+                            + definedBefore.contexts().stream().map(RuleContext::getText).collect(Collectors.joining(", "))
+                            + "\""
+            );
+            justFinishingSSDefinition = false;
+        } else if (definedBefore.contexts().getFirst().superStructInterface() == null) {
+            Main.logger.printDebug("\tPrevious context was not a superstruct interface");
+            justFinishingSSDefinition = false;
+        } else if (ctx.superStructSpecifier() == null) {
+            Main.logger.printDebug("\tCurrent context is not a superstruct specifier");
+            justFinishingSSDefinition = false;
+        } else {
+            Main.logger.printDebug("\tTemplate definition is valid in this context, continuing...");
+            justFinishingSSDefinition = true;
+        }
 
         if (!justFinishingSSDefinition) {
-            throw dispatcher.getSSCSyntaxException("Template '" + name + "' already exists", ctx);
+            throw dispatcher.getSSCSyntaxException(
+                    "Template '" + name + "' already exists", ctx
+            );
         }
 
         definedBefore.addContext(ctx);
