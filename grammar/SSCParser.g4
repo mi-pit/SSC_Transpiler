@@ -198,9 +198,13 @@ postfixExpression
     )*
     ;
 
+templateDispatchTypeArguments
+    : '<' typeArgument (',' typeArgument)* '>'
+    ;
+
 // SSC: template call
 templateDispatch
-    : Identifier '<' typeArgument (',' typeArgument)* '>'
+    : Identifier templateDispatchTypeArguments
     ;
 
 // SSC: template type argument
@@ -394,7 +398,8 @@ typeSpecifier
     | A__uint128_t
     | '__extension__' '(' ('__m128' | '__m128d' | '__m128i') ')'
     | atomicTypeSpecifier
-    | superStructSpecifier // SSC
+    | superStructSpecifier // SSC: superstruct as type specifier
+    | (Superstruct | Struct) templateDispatch // SSC: superstruct template as type specifier
     | structOrUnionSpecifier
     | enumSpecifier
     | flagsSpecifier // SSC

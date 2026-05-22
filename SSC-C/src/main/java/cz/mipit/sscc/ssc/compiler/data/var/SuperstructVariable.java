@@ -16,23 +16,6 @@ public class SuperstructVariable extends Variable {
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (obj == this)
-            return true;
-        if (obj == null || obj.getClass() != this.getClass())
-            return false;
-        SuperstructVariable that = (SuperstructVariable) obj;
-        return Objects.equals(this.ssName, that.ssName) &&
-                this.pointers == that.pointers &&
-                Objects.equals(this.identifier, that.identifier);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(ssName, pointers, identifier);
-    }
-
-    @Override
     public String toString() {
         return "SuperstructVariable[" +
                 "ssName=" + ssName + ", " +

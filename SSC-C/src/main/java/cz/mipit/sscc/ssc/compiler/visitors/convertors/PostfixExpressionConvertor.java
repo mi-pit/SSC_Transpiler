@@ -3,8 +3,8 @@ package cz.mipit.sscc.ssc.compiler.visitors.convertors;
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.Main;
 import cz.mipit.sscc.ssc.compiler.data.ss.Field;
-import cz.mipit.sscc.ssc.compiler.data.ss.Function;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
+import cz.mipit.sscc.ssc.compiler.data.ss.SuperstructMethod;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 
@@ -58,7 +58,7 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
                 ? ArrowOrDot.Arrow
                 : ArrowOrDot.Dot;
 
-        Main.logger.printDebug(() -> arrowOrDot + " in: " + dispatcher.getLiteral(ctx));
+        Main.logger.printDebug(() -> arrowOrDot + " in: '" + dispatcher.getLiteral(ctx) + "'");
 
         if (ctx.Identifier().isEmpty())
             throw dispatcher.getSSCSyntaxException(arrowOrDot + " expression has no right side expression", ctx);
@@ -89,7 +89,7 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
         }
 
         final String methodName = dispatcher.visitTerminal(ctx.Identifier().getFirst());
-        final Optional<Function> maybeMethod = superStruct.findMethod(methodName);
+        final Optional<SuperstructMethod> maybeMethod = superStruct.findMethod(methodName);
 
         if (maybeMethod.isEmpty()) {
             Main.logger.printDebug(() -> "Variable does not have such a method");
@@ -198,13 +198,13 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
         final SuperStruct superstruct = Optional.ofNullable(dispatcher.data.superStructs().get(className))
                 .orElseThrow(() -> dispatcher.getSSCSyntaxException("Could not find superstruct with name `" + className + "`", ctx));
 
-        final Optional<Function> maybeMethod = superstruct.findMethod(methodName);
+        final Optional<SuperstructMethod> maybeMethod = superstruct.findMethod(methodName);
         if (maybeMethod.isEmpty()) {
             throw dispatcher.getSSCSyntaxException("Superstruct '" + className
                     + "' has no method called '" + methodName
                     + "'", ctx);
         }
-        final Function method = maybeMethod.get();
+        final SuperstructMethod method = maybeMethod.get();
 
         if (method.isPrivate()) {
             Main.logger.printDebug(() -> "Method '" + methodName + "' is private. Going to check if it may be used here...");

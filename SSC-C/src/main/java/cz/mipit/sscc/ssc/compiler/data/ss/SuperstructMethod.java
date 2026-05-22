@@ -1,51 +1,48 @@
 package cz.mipit.sscc.ssc.compiler.data.ss;
 
 import cz.mipit.sscc.ssc.compiler.data.FunctionHeaderData;
+import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
+import cz.mipit.sscc.ssc.compiler.visitors.convertors.SuperstructConvertor;
 import cz.mipit.sscc.util.annotations.Nullable;
 import cz.mipit.sscc.util.collection.builder.ListBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
-public class Function {
-    private final String unqualifiedName;
+public class SuperstructMethod {
+    private final VisitorDispatcher dispatcher;
+    private final FunctionHeaderData functionHeaderData;
 
-    private final boolean isStatic;
-    private final boolean isPure;
     private final boolean isPrivate;
-    private final List<String> cDeclarationSpecifiers;
-    private final String type;
 
     private final List<String> params;
     private final @Nullable String body;
 
-    private final String superstructMemberOfName;
+    private final SuperStruct superstructMemberOf;
 
     /**
      * Declaration is cached since it's queried multiple times and immutable.
      */
     private final String declaration;
 
-    public Function(
+    public SuperstructMethod(
+            final VisitorDispatcher dispatcher,
             final FunctionHeaderData headerData,
             final boolean isPrivate,
-            final String type,
             final List<String> params,
-            final String body,
-            final String superstructMemberOfName
+            final String body
     ) {
-        this.cDeclarationSpecifiers = headerData.cDeclarationSpecifiers();
-        this.isStatic = headerData.isStatic();
-        this.isPure = headerData.isPure();
+        this.dispatcher = dispatcher;
+
+        this.functionHeaderData = headerData;
         this.isPrivate = isPrivate;
-        this.unqualifiedName = headerData.unqualifiedName();
-        this.type = type;
         this.params = new ArrayList<>(params);
         this.body = body;
-        this.superstructMemberOfName = superstructMemberOfName;
+        this.superstructMemberOf = headerData.superStruct();
 
-        if (!isStatic && params.size() == 1 && params.getFirst().equals("void")) {
+        if (!headerData.isStatic() && params.size() == 1 && params.getFirst().equals("void")) {
             this.params.removeFirst();
         }
 
@@ -64,16 +61,32 @@ public class Function {
     }
 
     private String createDeclaration() {
-        final String qualifiedName = superstructMemberOfName + "__" + unqualifiedName;
+        final String declSpecs = String.join(" ", functionHeaderData.cDeclarationSpecifiers());
 
+        final String pointers = functionHeaderData.declarator()
+                .pointer()
+                .stream()
+                .map(dispatcher::visitPointer)
+                .collect(Collectors.joining(" "));
+        final String qualifiedName = SuperstructConvertor.qualifySuperstructIdentifier(
+                superstructMemberOf, getUnqualifiedName()
+        );
+        final String selfRef = getSelfReferenceVariableDeclaration();
+        final String parametersString = "( " + selfRef + String.join(", ", params) + " )";
+        final String declarator = pointers + qualifiedName + parametersString;
+
+        return declSpecs + " " + declarator;
+    }
+
+    private String getSelfReferenceVariableDeclaration() {
         final StringBuilder selfRef = new StringBuilder();
-        if (!isStatic) {
-            if (isPure) {
+        if (!functionHeaderData.isStatic()) {
+            if (functionHeaderData.isPure()) {
                 selfRef.append("const ");
             }
             selfRef
                     .append("struct ")
-                    .append(superstructMemberOfName)
+                    .append(superstructMemberOf.name())
                     .append(" *");
 
             selfRef.append("const this");
@@ -82,17 +95,11 @@ public class Function {
                 selfRef.append(", ");
             }
         }
-
-        final ListBuilder<String> tokensBuilder = ListBuilder
-                .from(cDeclarationSpecifiers)
-                .plus(type)
-                .plus(qualifiedName + "(" + selfRef + String.join(", ", params) + ")");
-
-        return String.join(" ", tokensBuilder);
+        return selfRef.toString();
     }
 
     public String getUnqualifiedName() {
-        return unqualifiedName;
+        return functionHeaderData.unqualifiedName();
     }
 
     public boolean isPrivate() {

@@ -1,24 +1,24 @@
 package cz.mipit.sscc.ssc.compiler.data.ss;
 
-import cz.mipit.sscc.Main;
 import cz.mipit.sscc.util.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.StringJoiner;
 
 public class SuperStruct {
     private final String name;
 
     private final List<Field> fields;
-    private final List<Function> functions;
+    private final List<SuperstructMethod> methods;
 
     public SuperStruct(@NotNull final String name) {
         this.name = Objects.requireNonNull(name);
 
         this.fields = new ArrayList<>();
-        this.functions = new ArrayList<>();
+        this.methods = new ArrayList<>();
     }
 
     public String emitStructDeclaration() {
@@ -43,25 +43,25 @@ public class SuperStruct {
     }
 
     public String emitMethodDeclarations() {
-        return emitMethods(Function::getDeclaration);
-    }
-
-    public String emitMethodDefinitions() {
-        return emitMethods(fd -> fd.getDefinition().orElse(""));
-    }
-
-    private String emitMethods(final java.util.function.Function<Function, String> functionFunction) {
-        final StringBuilder resultBuilder = new StringBuilder();
-        for (final Function fnDef : functions) {
+        final StringJoiner resultBuilder = new StringJoiner(System.lineSeparator());
+        for (final SuperstructMethod fnDef : methods) {
             resultBuilder
-                    .append(functionFunction.apply(fnDef))
-                    .append(System.lineSeparator());
+                    .add(fnDef.getDeclaration());
         }
         return resultBuilder.toString();
     }
 
-    public List<Function> functions() {
-        return functions;
+    public String emitMethodDefinitions() {
+        final StringJoiner resultBuilder = new StringJoiner(System.lineSeparator());
+        for (final SuperstructMethod fnDef : methods) {
+            fnDef.getDefinition()
+                    .ifPresent(resultBuilder::add);
+        }
+        return resultBuilder.toString();
+    }
+
+    public List<SuperstructMethod> methods() {
+        return methods;
     }
 
     public String name() {
@@ -72,21 +72,28 @@ public class SuperStruct {
         return fields;
     }
 
-    public void addFunction(Function fn) {
-        functions.add(fn);
+    public void addFunction(SuperstructMethod fn) {
+        methods.add(fn);
     }
 
     public void addField(Field field) {
         fields.add(field);
     }
 
-    public Optional<Function> findMethod(final String methodName) {
-        for (final Function func : this.functions()) {
+    public Optional<SuperstructMethod> findMethod(final String methodName) {
+        for (final SuperstructMethod func : this.methods()) {
             if (func.getUnqualifiedName().equals(methodName)) {
                 return Optional.of(func);
             }
         }
 
         return Optional.empty();
+    }
+
+
+    @Override
+    public String toString() {
+        return "SuperStruct{" +
+                "name='" + name + '\'' + '}';
     }
 }

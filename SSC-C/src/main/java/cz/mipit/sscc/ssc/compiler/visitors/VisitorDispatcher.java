@@ -2,6 +2,7 @@ package cz.mipit.sscc.ssc.compiler.visitors;
 
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
+import cz.mipit.sscc.ssc.compiler.data.tmpl.Template;
 import cz.mipit.sscc.ssc.compiler.data.var.Pointer;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.data.var.Typedef;
@@ -15,20 +16,21 @@ import cz.mipit.sscc.ssc.compiler.visitors.convertors.SuperstructInterfaceConver
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateDefinitionConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateDispatchConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TernaryOperatorConvertor;
+import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.ssc.exceptions.children.SSCSyntaxException;
-import cz.mipit.sscc.util.Either;
+import cz.mipit.sscc.util.SSCCUtil;
 import cz.mipit.sscc.util.VisitorInput;
 import cz.mipit.sscc.util.annotations.Nullable;
 import org.antlr.v4.runtime.ParserRuleContext;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Supplier;
 
 import static cz.mipit.sscc.Main.logger;
 
@@ -172,30 +174,39 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
         return data.symbolTable().resolve(typeName) != null;
     }
 
-    /**
-     * @param name     (fully qualified if applicable) function name
-     * @param supplier supplier for an exception in case name was already in use
-     */
-    public void pushFunction(String name, Supplier<SSCSyntaxException> supplier) {
+
+    private final Map<String, ParserRuleContext> _functionDefinitions = new HashMap<>();
+
+    public void pushFunction(String name, ParserRuleContext functionCtx) {
         Objects.requireNonNull(name, "Function name cannot be null");
 
         if (data.functionVariables().put(name, new HashSet<>()) != null) {
-            if (supplier != null)
-                throw supplier.get();
+            class StackedException extends SSCTranspilerException {
+                StackedException(SSCTranspilerException exception) {
+                    super(
+                            Type.Syntax,
+                            exception.getMessage()
+                                    + System.lineSeparator()
+                                    + COLOR_LOCATOR
+                                    + SSCCUtil.Text.INDENT
+                                    + "Previous definition here: ",
+                            _functionDefinitions.get(name),
+                            tokens,
+                            currentFile
+                    );
+                }
+            }
+
+            final SSCSyntaxException exception = getSSCSyntaxException("Duplicate function name: '" + name + "'", functionCtx);
+            throw new StackedException(exception);
         }
 
         data.functionStack().push(name);
-    }
-
-    public void pushFunction(String name, ParserRuleContext functionCtx) {
-        pushFunction(
-                name,
-                () -> getSSCSyntaxException("Duplicate function name: '" + name + "'", functionCtx)
-        );
+        _functionDefinitions.put(name, functionCtx);
     }
 
     public void pushFunction(String name) {
-        pushFunction(name, (Supplier<SSCSyntaxException>) null);
+        pushFunction(name, null);
     }
 
     public void popFunction() {
@@ -268,35 +279,6 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
         return Optional.of(ssVar);
     }
 
-    public Optional<Either<String, Typedef<SuperStruct>>> findSSNameInDeclSpecs(
-            final List<SSCParser.DeclarationSpecifierContext> declSpecs
-    ) {
-        for (final SSCParser.DeclarationSpecifierContext declSpec : declSpecs) {
-            if (declSpec.typeSpecifier() == null) {
-                continue;
-            }
-
-            final SSCParser.TypeSpecifierContext typeSpec = declSpec.typeSpecifier();
-            if (typeSpec.superStructSpecifier() == null) {
-                final Typedef<SuperStruct> typedef = data.superstructTypedefs().get(this.visitTypeSpecifier(typeSpec));
-                if (typedef == null) {
-                    continue;
-                }
-                return Optional.of(Either.right(typedef));
-            }
-
-            final SSCParser.SuperStructSpecifierContext ssCtx = typeSpec.superStructSpecifier();
-            final String ssName = this.visitTerminal(ssCtx.Identifier());
-            return Optional.of(Either.left(ssName));
-        }
-
-        return Optional.empty();
-    }
-
-    public Optional<SuperStruct> findSuperstructByName(final String className) {
-        return Optional.ofNullable(data.superStructs().get(className));
-    }
-
     public Optional<SuperstructVariable> findSuperstructVariable(String functionName, String objectName) {
         for (SuperstructVariable var : data.functionVariables().get(functionName)) {
             if (var.getIdentifier().equals(objectName)) {
@@ -316,23 +298,34 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
     public void debugPrintDump() {
         logger.printDebug("");
         logger.printDebug("Dumping debug info...");
+        logger.printDebug("Function variables:");
 
-        for (final Map.Entry<@Nullable String, Set<SuperstructVariable>> entry : data.functionVariables().entrySet()) {
-            final String funcName = entry.getKey();
-            final Set<SuperstructVariable> variables = entry.getValue();
+        for (final Map.Entry<@Nullable String, Set<SuperstructVariable>> fnNameToSSVars : data.functionVariables().entrySet()) {
+            final String funcDisplayName = fnNameToSSVars.getKey() == null ? "<global>" : "'" + fnNameToSSVars.getKey() + "'";
+            final Set<SuperstructVariable> variables = fnNameToSSVars.getValue();
+
             if (variables.isEmpty()) {
+                logger.printDebug("\tEmpty scope " + funcDisplayName);
                 continue;
             }
 
-            logger.printDebug(() -> "For scope " + (funcName == null ? "global" : "'" + funcName + "'"));
+            logger.printDebug(() -> "\tFor scope " + funcDisplayName + ":");
             for (final SuperstructVariable variable : variables) {
                 logger.printDebug(() -> "        " + variable);
             }
         }
 
-        for (final var entry : data.templates().entrySet()) {
-            logger.printDebug(() -> entry.getValue().toString());
+        logger.printDebug("Templates:");
+        for (final Map.Entry<String, Template> entry : data.templates().entrySet()) {
+            logger.printDebug(() -> "\t" + entry.getValue());
         }
+
+        logger.printDebug("Typedefs:");
+        for (final Map.Entry<String, Typedef<SuperStruct>> entry : data.superstructTypedefs().entrySet()) {
+            logger.printDebug(() -> "\t" + entry.getKey() + " -> " + entry.getValue());
+        }
+
+        logger.printDebug("Debug dump complete");
     }
 
     public void addReplacements(Map<String, String> typeArgMap) {

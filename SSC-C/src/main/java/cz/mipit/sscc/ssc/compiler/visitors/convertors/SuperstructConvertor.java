@@ -4,8 +4,8 @@ import antlr.ssc.SSCParser;
 import cz.mipit.sscc.Main;
 import cz.mipit.sscc.ssc.compiler.data.FunctionHeaderData;
 import cz.mipit.sscc.ssc.compiler.data.ss.Field;
-import cz.mipit.sscc.ssc.compiler.data.ss.Function;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
+import cz.mipit.sscc.ssc.compiler.data.ss.SuperstructMethod;
 import cz.mipit.sscc.ssc.compiler.data.var.Pointer;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.data.var.TypedVariable;
@@ -13,8 +13,6 @@ import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStructSpecifierContext> {
     public SuperstructConvertor(VisitorDispatcher dispatcher) {
@@ -41,7 +39,7 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
         dispatcher.data.setCurrentSuperstruct(superStruct);
 
         for (SSCParser.SuperStructMemberContext memberCtx : ctx.superStructBody().superStructMember()) {
-            processMemberCtx(memberCtx, thisSSName);
+            processMemberCtx(memberCtx);
         }
 
         dispatcher.data.setCurrentSuperstruct(null);
@@ -63,18 +61,33 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
     }
 
     private void processMemberCtx(
-            final SSCParser.SuperStructMemberContext memberCtx,
-            final String thisSSName
+            final SSCParser.SuperStructMemberContext memberCtx
     ) {
-        final var declSpecsCtx = (memberCtx.functionDefinition() != null
+        final SSCParser.DeclarationSpecifiersContext declSpecsCtx = (memberCtx.functionDefinition() != null
                 ? memberCtx.functionDefinition().functionHeader().declarationSpecifiers()
                 : memberCtx.declaration().declarationSpecifiers());
-        final var declSpecs = declSpecsCtx.declarationSpecifier();
+        final List<SSCParser.DeclarationSpecifierContext> declSpecs = declSpecsCtx.declarationSpecifier();
 
         final boolean isPrivate = declSpecs
                 .stream()
                 .anyMatch(ds -> ds.functionSpecifier() != null
                         && ds.functionSpecifier().Private() != null);
+
+        if (memberCtx.functionDefinition() != null) {
+            processMemberFunction(memberCtx.functionDefinition(), declSpecs, isPrivate);
+        } else {
+            assert memberCtx.declaration() != null;
+            processMemberField(memberCtx.declaration(), declSpecs, isPrivate);
+        }
+    }
+
+    private void processMemberField(
+            SSCParser.DeclarationContext memberCtx,
+            List<SSCParser.DeclarationSpecifierContext> declSpecs,
+            boolean isPrivate
+    ) {
+        final SSCParser.InitDeclaratorListContext initDeclaratorList =
+                memberCtx.initDeclaratorList();
 
         final List<SSCParser.DeclarationSpecifierContext> noPrivateSpecs = declSpecs
                 .stream()
@@ -84,23 +97,6 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
         if (noPrivateSpecs.isEmpty()) {
             throw dispatcher.getSSCSyntaxException("No type specifier for superstruct member", memberCtx);
         }
-
-        if (memberCtx.functionDefinition() != null) {
-            processMemberFunction(memberCtx.functionDefinition(), thisSSName, declSpecs, noPrivateSpecs, isPrivate);
-        } else {
-            assert memberCtx.declaration() != null;
-            processMemberField(dispatcher, memberCtx.declaration(), noPrivateSpecs, isPrivate);
-        }
-    }
-
-    private static void processMemberField(
-            final VisitorDispatcher dispatcher,
-            SSCParser.DeclarationContext memberCtx,
-            List<SSCParser.DeclarationSpecifierContext> noPrivateSpecs,
-            boolean isPrivate
-    ) {
-        final SSCParser.InitDeclaratorListContext initDeclaratorList =
-                memberCtx.initDeclaratorList();
 
         final List<String> type = noPrivateSpecs
                 .stream()
@@ -140,14 +136,13 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
 
     private void processMemberFunction(
             SSCParser.FunctionDefinitionContext functionCtx,
-            String thisSSName,
             List<SSCParser.DeclarationSpecifierContext> declSpecs,
-            List<SSCParser.DeclarationSpecifierContext> noPrivateSpecs,
             boolean isPrivate
     ) {
-        final FunctionHeaderData fnData = getFunctionHeaderData(
-                dispatcher, functionCtx.functionHeader(),
-                declSpecs, noPrivateSpecs
+        final FunctionHeaderData fnData = FunctionHeaderData.getFunctionHeaderData(
+                dispatcher,
+                functionCtx.functionHeader(),
+                declSpecs
         );
 
         final String qualified = qualifySuperstructIdentifier(
@@ -173,15 +168,14 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
 
         final List<String> parameters = parseFunctionParameters(dispatcher, fnData.declarator());
 
-        final Function functionDefinition = new Function(
+        final SuperstructMethod functionDefinition = new SuperstructMethod(
+                dispatcher,
                 fnData,
                 isPrivate,
-                parseType(dispatcher, declSpecs, fnData.declarator()),
                 parameters,
                 functionCtx.functionBody() == null
                         ? null
-                        : dispatcher.visitFunctionBody(functionCtx.functionBody()),
-                thisSSName
+                        : dispatcher.visitFunctionBody(functionCtx.functionBody())
         );
 
         fnData.superStruct().addFunction(functionDefinition);
@@ -189,73 +183,6 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
         dispatcher.popFunction();
     }
 
-    public static FunctionHeaderData getFunctionHeaderData(
-            VisitorDispatcher dispatcher,
-            SSCParser.FunctionHeaderContext functionCtx,
-            List<SSCParser.DeclarationSpecifierContext> declSpecs,
-            List<SSCParser.DeclarationSpecifierContext> noPrivateSpecs
-    ) {
-        assert functionCtx != null;
-        assert dispatcher.data.currentSuperstruct().isPresent() : "Member of no struct";
-
-        final boolean isStatic = hasDeclarationSpecifier(declSpecs, ds ->
-                ds.storageClassSpecifier() != null && ds.storageClassSpecifier().Static() != null);
-        final boolean isPure = hasDeclarationSpecifier(declSpecs, ds ->
-                ds.functionSpecifier() != null && ds.functionSpecifier().Pure() != null);
-
-        final List<String> withoutCustom = getDeclSpecsWithoutCustom(noPrivateSpecs, dispatcher);
-
-        var declarator = functionCtx.declarator();
-        var directDecl = declarator.directDeclarator();
-        if (directDecl == null) {
-            throw dispatcher.getSSCSyntaxException("Direct declarator is null", functionCtx);
-        }
-
-        final String unqualifiedName;
-        if (directDecl.Identifier() != null) {
-            unqualifiedName = dispatcher.visitTerminal(directDecl.Identifier());
-        } else if (directDecl.LeftParen() == null || directDecl.RightParen() == null) {
-            Main.logger.printDebug("No declarator parentheses. Trying to parse declarator.");
-            unqualifiedName = dispatcher.visitDeclarator(declarator);
-        } else {
-            throw dispatcher.getSSCSyntaxException("Missing declarator identifier in function definition", directDecl);
-        }
-
-        final SuperStruct superStruct = dispatcher.data.currentSuperstruct().get();
-        return new FunctionHeaderData(isStatic, isPure, withoutCustom, declarator, unqualifiedName, superStruct);
-    }
-
-    public static String parseType(
-            final VisitorDispatcher dispatcher,
-            List<SSCParser.DeclarationSpecifierContext> declSpecs,
-            SSCParser.DeclaratorContext decl
-    ) {
-        final List<String> builder = new ArrayList<>();
-
-        for (var spec : declSpecs) {
-            if (spec.typeSpecifier() == null) {
-                continue;
-            }
-            final SSCParser.TypeSpecifierContext typeSpec = spec.typeSpecifier();
-            if (typeSpec.superStructSpecifier() == null) {
-                builder.add(dispatcher.visitTypeSpecifier(spec.typeSpecifier()));
-                continue;
-            }
-            final SSCParser.SuperStructSpecifierContext superStructSpec = typeSpec.superStructSpecifier();
-            builder.add(dispatcher.visitSuperStructSpecifier(superStructSpec));
-        }
-
-        if (decl.pointer() != null) {
-            builder.add(decl
-                    .pointer()
-                    .stream()
-                    .map(dispatcher::visitPointer)
-                    .collect(Collectors.joining(""))
-            );
-        }
-
-        return String.join(" ", builder);
-    }
 
     public static List<String> parseFunctionParameters(
             final VisitorDispatcher dispatcher,
@@ -279,38 +206,5 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
         }
 
         return params;
-    }
-
-    public static boolean hasDeclarationSpecifier(List<SSCParser.DeclarationSpecifierContext> declSpecs,
-                                                  Predicate<SSCParser.DeclarationSpecifierContext> matcher) {
-        for (SSCParser.DeclarationSpecifierContext declSpec : declSpecs) {
-            if (matcher.test(declSpec)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * filter out types & {@code pure} and {@code static}
-     */
-    public static List<String> getDeclSpecsWithoutCustom(
-            final List<SSCParser.DeclarationSpecifierContext> noPrivateSpecs,
-            final VisitorDispatcher dispatcher
-    ) {
-        final List<String> withoutCustom = new ArrayList<>();
-        for (SSCParser.DeclarationSpecifierContext declSpec : noPrivateSpecs) {
-            if (declSpec.typeSpecifier() != null) {
-                continue;
-            }
-
-            if ((declSpec.functionSpecifier() == null || declSpec.functionSpecifier().Pure() == null)
-                    && (declSpec.storageClassSpecifier() == null || declSpec.storageClassSpecifier().Static() == null)) {
-                withoutCustom.add(
-                        dispatcher.visitDeclarationSpecifier(declSpec)
-                );
-            }
-        }
-        return withoutCustom;
     }
 }

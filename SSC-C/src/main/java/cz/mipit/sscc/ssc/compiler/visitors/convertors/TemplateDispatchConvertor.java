@@ -4,6 +4,7 @@ import antlr.ssc.SSCParser;
 import cz.mipit.sscc.Main;
 import cz.mipit.sscc.ssc.compiler.data.tmpl.Template;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
+import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.HashMap;
@@ -14,8 +15,12 @@ import java.util.Set;
 
 public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.TemplateDispatchContext> {
     private static final Map<String, String> TYPE_SHORTHANDS = Map.ofEntries(
-            Map.entry("bool", "b"),
+            // type
             Map.entry("void", "v"),
+
+            Map.entry("bool", "b"),
+            Map.entry("signed", "S"),
+            Map.entry("unsigned", "U"),
 
             Map.entry("char", "c"),
             Map.entry("signed char", "Sc"),
@@ -25,7 +30,7 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
             Map.entry("unsigned short", "Us"),
 
             Map.entry("int", "Si"),
-            Map.entry("unsigned", "Ui"),
+            Map.entry("unsigned int", "Ui"),
 
             Map.entry("long", "Sl"),
             Map.entry("unsigned long", "Ul"),
@@ -35,17 +40,15 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
 
             Map.entry("float", "f"),
             Map.entry("double", "d"),
-            Map.entry("long double", "ld")
-    );
+            Map.entry("long double", "ld"),
 
-    private static final Map<String, String> QUALIFIER_SHORTHANDS = Map.ofEntries(
+            // Qual
             Map.entry("const", "C"),
             Map.entry("volatile", "V"),
             Map.entry("restrict", "R"),
-            Map.entry("_Atomic", "A")
-    );
+            Map.entry("_Atomic", "A"),
 
-    private static final Map<String, String> COMPOUND_SHORTHANDS = Map.ofEntries(
+            // Compound
             Map.entry("struct", "s"),
             Map.entry("object", "o"),
             Map.entry("enum", "e"),
@@ -79,7 +82,7 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
     @Override
     public String convert(SSCParser.TemplateDispatchContext ctx) {
         Main.logger.printDebug(() -> "Converting template dispatch: " + dispatcher.getLiteral(ctx));
-        final List<SSCParser.TypeArgumentContext> typeArgs = ctx.typeArgument();
+        final List<SSCParser.TypeArgumentContext> typeArgs = ctx.templateDispatchTypeArguments().typeArgument();
 
         final String nameRaw = dispatcher.visitTerminal(ctx.Identifier());
         Main.logger.printDebug(() -> "\tRaw name: " + nameRaw);
@@ -168,39 +171,74 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
             SSCParser.TypeArgumentContext ctx,
             VisitorDispatcher dispatcher
     ) {
-        final String literal = dispatcher.visitTypeSpecifier(ctx.typeSpecifier());
-
-        String shorthand = TYPE_SHORTHANDS.get(literal);
-        if (shorthand == null) {
-            final StringBuilder builder = new StringBuilder();
-            final String[] spl = literal.split("\\s+");
-            for (String sub : spl) {
-                builder.append(COMPOUND_SHORTHANDS.getOrDefault(sub, sub));
-            }
-            shorthand = builder.toString();
+        final StringBuilder builder = new StringBuilder();
+        for (ParseTree child : ctx.children) {
+            final String type = dispatcher.visit(child);
+            final String converted = convertTypeToShorthand(type);
+            builder.append(converted);
         }
 
-        final StringBuilder resultBuilder = new StringBuilder(shorthand);
+        return builder.toString();
+    }
 
-        for (SSCParser.TypeQualifierContext typeQual : ctx.typeQualifier()) {
-            resultBuilder.append(
-                    QUALIFIER_SHORTHANDS.get(
-                            dispatcher.getLiteral(typeQual)
-                    )
+    /**
+     * If `type` is present as a key in {@link TemplateDispatchConvertor#TYPE_SHORTHANDS}, return the value.
+     * Else, return a string converted char-by-char according to this contract:
+     * <table>
+     *   <tr>
+     *     <th>Condition</th>
+     *     <th>Conversion</th>
+     *   </tr>
+     *   <tr>
+     *     <td>char is c-identifier-part</td>
+     *     <td>no conversion</td>
+     *   </tr>
+     *   <tr>
+     *     <td>char is '*'</td>
+     *     <td>'p'</td>
+     *   </tr>
+     *   <tr>
+     *     <td>any other char (invalid identifier part, not a pointer)</td>
+     *     <td>'0'</td>
+     *   </tr>
+     * </table>
+     *
+     * @param type String representation of the type. Preferably should be only a single keyword (like `int` or `size_t`),
+     *             but this function is made to
+     */
+    private static String convertTypeToShorthand(
+            String type
+    ) {
+        if (TYPE_SHORTHANDS.containsKey(type)) {
+            return TYPE_SHORTHANDS.get(type);
+        }
+
+        final StringBuilder builder = new StringBuilder();
+        for (final char ch : type.toCharArray()) {
+            if (Character.isAlphabetic(ch) || ch == '_') {
+                builder.append(ch);
+            } else if (ch == '*') {
+                builder.append('p');
+            } else {
+                // '0' is an invalid start of an identifier => must be coming from here
+                builder.append('0');
+            }
+        }
+
+        for (int i = 0; i < builder.length(); i++) {
+            final char c = builder.charAt(i);
+
+            if (Character.isAlphabetic(c) || c == '_')
+                continue;
+            if (i != 0 && Character.isDigit(c))
+                continue;
+
+            throw new IllegalStateException(
+                    "Something went wrong while converting template type: \"" + type + "\". " +
+                            "Convertor emitted an invalid c-identifier character '" + c + "'"
             );
         }
 
-        for (SSCParser.PointerContext pointer : ctx.pointer()) {
-            resultBuilder.append("p");
-            if (pointer.typeQualifierList() != null) {
-                for (var typeQual : pointer.typeQualifierList()) {
-                    resultBuilder.append(
-                            QUALIFIER_SHORTHANDS.get(dispatcher.getLiteral(typeQual))
-                    );
-                }
-            }
-        }
-
-        return resultBuilder.toString();
+        return builder.toString();
     }
 }

@@ -13,4 +13,13 @@ public class Typedef<T> extends Variable {
     public T getRepresentedType() {
         return of;
     }
+
+    @Override
+    public String toString() {
+        return "Typedef{"
+                + "of=" + of
+                + ", "
+                + createAbstractDeclarator()
+                + '}';
+    }
 }

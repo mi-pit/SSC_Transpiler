@@ -21,7 +21,7 @@ public class TestSuperStruct {
 
         assertEquals(SS_NAME, struct.name());
 
-        assertTrue(struct.fields().isEmpty() && struct.functions().isEmpty());
+        assertTrue(struct.fields().isEmpty() && struct.methods().isEmpty());
 
         struct.addField(
                 new Field(
@@ -31,6 +31,6 @@ public class TestSuperStruct {
         );
 
         assertFalse(struct.fields().isEmpty());
-        assertTrue(struct.functions().isEmpty());
+        assertTrue(struct.methods().isEmpty());
     }
 }

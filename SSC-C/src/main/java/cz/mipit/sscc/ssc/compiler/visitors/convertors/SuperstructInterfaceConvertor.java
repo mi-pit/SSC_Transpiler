@@ -3,8 +3,8 @@ package cz.mipit.sscc.ssc.compiler.visitors.convertors;
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.Main;
 import cz.mipit.sscc.ssc.compiler.data.FunctionHeaderData;
-import cz.mipit.sscc.ssc.compiler.data.ss.Function;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
+import cz.mipit.sscc.ssc.compiler.data.ss.SuperstructMethod;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 
 import java.util.List;
@@ -16,14 +16,20 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
     }
 
     /**
-     * 1. Discard `object ‹Ident› interface {}` tokens
-     * 2. Register superstruct if not already
-     * 3. For all functions:
-     * 3.1. Qualify name
-     * 3.2. Add self-ref (if applicable)
+     * <ol>
+     *  <li> Discard `object ‹Ident› interface {}` tokens </li>
+     *      <li> Register superstruct if not already </li>
+     *      <li> For all functions:
+     *          <ol>
+     *              <li> Qualify name </li>
+     *              <li> Add self-ref (if applicable) </li
+     *          </ol>
+     *  </li>
+     * </ol>
      */
     @Override
     public String convert(SSCParser.SuperStructInterfaceContext ctx) {
+        // TODO: check if methods declared here are implemented
         Main.logger.printDebug("Entering Superstruct Interface");
 
         final StringJoiner joiner = new StringJoiner(System.lineSeparator());
@@ -47,27 +53,21 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
             final List<SSCParser.DeclarationSpecifierContext> declSpecs = context.declarationSpecifiers() == null
                     ? List.of()
                     : context.declarationSpecifiers().declarationSpecifier();
-            final List<SSCParser.DeclarationSpecifierContext> noPrivateSpecs = declSpecs
-                    .stream()
-                    .filter(declSpec -> declSpec.functionSpecifier() == null
-                            || declSpec.functionSpecifier().Private() == null)
-                    .toList();
 
             final boolean isPrivate = declSpecs.stream().anyMatch(
                     ds -> ds.functionSpecifier() != null && ds.functionSpecifier().Private() != null
             );
 
-            final FunctionHeaderData result = SuperstructConvertor.getFunctionHeaderData(
-                    dispatcher, context, declSpecs, noPrivateSpecs
+            final FunctionHeaderData result = FunctionHeaderData.getFunctionHeaderData(
+                    dispatcher, context, declSpecs
             );
 
-            final Function functionDefinition = new Function(
+            final SuperstructMethod functionDefinition = new SuperstructMethod(
+                    dispatcher,
                     result,
                     isPrivate,
-                    SuperstructConvertor.parseType(dispatcher, declSpecs, result.declarator()),
                     SuperstructConvertor.parseFunctionParameters(dispatcher, result.declarator()),
-                    null,
-                    ssName
+                    null
             );
             interfaceOf.addFunction(functionDefinition);
 
