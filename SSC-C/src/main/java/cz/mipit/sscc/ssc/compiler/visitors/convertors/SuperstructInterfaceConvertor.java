@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.StringJoiner;
 
 public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.SuperStructInterfaceContext> {
+    private static int COUNTER = 0;
+
     public SuperstructInterfaceConvertor(VisitorDispatcher dispatcher) {
         super(dispatcher);
     }
@@ -49,29 +51,35 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
         Main.logger.printDebug("Added a new superstruct from interface: " + ssName);
 
         // attributeSpecifierSequence? cDeclarationSpecifiers? declarator ';'
-        for (SSCParser.FunctionHeaderContext context : ctx.functionHeader()) {
-            final List<SSCParser.DeclarationSpecifierContext> declSpecs = context.declarationSpecifiers() == null
+        for (SSCParser.FunctionHeaderContext fnHeaderCtx : ctx.functionHeader()) {
+            final List<SSCParser.DeclarationSpecifierContext> declSpecs = fnHeaderCtx.declarationSpecifiers() == null
                     ? List.of()
-                    : context.declarationSpecifiers().declarationSpecifier();
+                    : fnHeaderCtx.declarationSpecifiers().declarationSpecifier();
 
-            final boolean isPrivate = declSpecs.stream().anyMatch(
-                    ds -> ds.functionSpecifier() != null && ds.functionSpecifier().Private() != null
-            );
+            final FunctionHeaderData functionData = FunctionHeaderData.parse(dispatcher, fnHeaderCtx, declSpecs);
 
-            final FunctionHeaderData result = FunctionHeaderData.getFunctionHeaderData(
-                    dispatcher, context, declSpecs
+            // Fixme: think of an elegant solution to avoid interface parameters
+            //  getting attributed to their surrounding functions
+            dispatcher.pushFunction(
+                    "<function interface>: '" + functionData.unqualifiedName()
+                            + "' (" + COUNTER++ + ")"
             );
 
             final SuperstructMethod functionDefinition = new SuperstructMethod(
                     dispatcher,
-                    result,
-                    isPrivate,
-                    SuperstructConvertor.parseFunctionParameters(dispatcher, result.declarator()),
+                    interfaceOf,
+                    functionData,
+                    declSpecs.stream().anyMatch(ds ->
+                            ds.functionSpecifier() != null && ds.functionSpecifier().Private() != null
+                    ),
+                    SuperstructConvertor.parseFunctionParameters(dispatcher, functionData.declarator()),
                     null
             );
             interfaceOf.addFunction(functionDefinition);
 
             joiner.add(functionDefinition.getDeclaration());
+
+            dispatcher.popFunction();
         }
 
         dispatcher.data.setCurrentSuperstruct(null);

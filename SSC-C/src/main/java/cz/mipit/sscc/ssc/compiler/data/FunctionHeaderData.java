@@ -15,7 +15,6 @@ public final class FunctionHeaderData {
     private final List<String> cDeclarationSpecifiers;
     private final SSCParser.DeclaratorContext declarator;
     private final String unqualifiedName;
-    private final SuperStruct superStruct;
 
     public FunctionHeaderData(
             VisitorDispatcher dispatcher,
@@ -23,15 +22,13 @@ public final class FunctionHeaderData {
             boolean isPure,
             List<String> cDeclarationSpecifiers,
             SSCParser.DeclaratorContext declarator,
-            String unqualifiedName,
-            SuperStruct superStruct
+            String unqualifiedName
     ) {
         this.isStatic = isStatic;
         this.isPure = isPure;
         this.cDeclarationSpecifiers = Objects.requireNonNull(cDeclarationSpecifiers);
         this.declarator = Objects.requireNonNull(declarator);
         this.unqualifiedName = Objects.requireNonNull(unqualifiedName);
-        this.superStruct = Objects.requireNonNull(superStruct);
 
         if (cDeclarationSpecifiers.isEmpty()) {
             throw dispatcher.getSSCSyntaxException("Function must have a return type", declarator);
@@ -58,12 +55,8 @@ public final class FunctionHeaderData {
         return unqualifiedName;
     }
 
-    public SuperStruct superStruct() {
-        return superStruct;
-    }
 
-
-    public static FunctionHeaderData getFunctionHeaderData(
+    public static FunctionHeaderData parse(
             VisitorDispatcher dispatcher,
             SSCParser.FunctionHeaderContext functionCtx,
             List<SSCParser.DeclarationSpecifierContext> declSpecs
@@ -78,8 +71,8 @@ public final class FunctionHeaderData {
 
         final List<String> withoutCustom = getDeclSpecsWithoutCustom(declSpecs, dispatcher);
 
-        var declarator = functionCtx.declarator();
-        var directDecl = declarator.directDeclarator();
+        final SSCParser.DeclaratorContext declarator = functionCtx.declarator();
+        final SSCParser.DirectDeclaratorContext directDecl = declarator.directDeclarator();
         if (directDecl == null) {
             throw dispatcher.getSSCSyntaxException("Direct declarator is null", functionCtx);
         }
@@ -90,14 +83,16 @@ public final class FunctionHeaderData {
         } else if (directDecl.LeftParen() == null || directDecl.RightParen() == null) {
             Main.logger.printDebug("No declarator parentheses. Trying to parse declarator.");
             unqualifiedName = dispatcher.visitDeclarator(declarator);
+            if (unqualifiedName.chars().anyMatch(c -> !Character.isAlphabetic(c) && c != '_')) {
+                throw dispatcher.getSSCSyntaxException("Invalid identifier", directDecl);
+            }
         } else {
             throw dispatcher.getSSCSyntaxException("Missing declarator identifier in function definition", directDecl);
         }
 
-        final SuperStruct superStruct = dispatcher.data.currentSuperstruct().get();
         return new FunctionHeaderData(
                 dispatcher, isStatic, isPure, withoutCustom,
-                declarator, unqualifiedName, superStruct
+                declarator, unqualifiedName
         );
     }
 

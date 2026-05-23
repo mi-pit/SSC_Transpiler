@@ -180,7 +180,7 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
     public void pushFunction(String name, ParserRuleContext functionCtx) {
         Objects.requireNonNull(name, "Function name cannot be null");
 
-        if (data.functionVariables().put(name, new HashSet<>()) != null) {
+        if (data.functionVariables().containsKey(name)) {
             class StackedException extends SSCTranspilerException {
                 StackedException(SSCTranspilerException exception) {
                     super(
@@ -200,7 +200,7 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
             final SSCSyntaxException exception = getSSCSyntaxException("Duplicate function name: '" + name + "'", functionCtx);
             throw new StackedException(exception);
         }
-
+        data.functionVariables().put(name, new HashSet<>());
         data.functionStack().push(name);
         _functionDefinitions.put(name, functionCtx);
     }
@@ -305,7 +305,7 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
             final Set<SuperstructVariable> variables = fnNameToSSVars.getValue();
 
             if (variables.isEmpty()) {
-                logger.printDebug("\tEmpty scope " + funcDisplayName);
+                // logger.printDebug("\tEmpty scope " + funcDisplayName);
                 continue;
             }
 

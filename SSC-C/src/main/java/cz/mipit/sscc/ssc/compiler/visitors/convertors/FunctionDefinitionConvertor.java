@@ -1,7 +1,6 @@
 package cz.mipit.sscc.ssc.compiler.visitors.convertors;
 
 import antlr.ssc.SSCParser;
-import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 
 public class FunctionDefinitionConvertor extends AbstractConvertor<SSCParser.FunctionDefinitionContext> {
@@ -23,7 +22,7 @@ public class FunctionDefinitionConvertor extends AbstractConvertor<SSCParser.Fun
         );
         final String currentFunctionName = dispatcher.data
                 .currentSuperstruct()
-                .map(SuperStruct::name)
+                .map(s -> s.qualifyName(unqualifiedName))
                 .orElse(unqualifiedName);
 
         dispatcher.pushFunction(currentFunctionName, ctx);

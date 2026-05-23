@@ -171,9 +171,13 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
         }
         final String methodName = ctx.Identifier().getFirst().toString();
 
-        verifyStaticCall(ctx, className, methodName);
+        final SuperStruct superstruct = dispatcher.data.superStructs().get(className);
+        if (superstruct == null)
+            throw dispatcher.getSSCSyntaxException("Could not find superstruct with name `" + className + "`", ctx);
 
-        final String namespacedMethodName = className + "__" + methodName;
+        verifyStaticCall(ctx, superstruct, className, methodName);
+
+        final String namespacedMethodName = superstruct.qualifyName(methodName);
 
         final boolean noCall = ctx.LeftParen().isEmpty();
         if (noCall) {
@@ -193,11 +197,9 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
     }
 
     private void verifyStaticCall(final SSCParser.PostfixExpressionContext ctx,
+                                  final SuperStruct superstruct,
                                   final String className,
                                   final String methodName) {
-        final SuperStruct superstruct = Optional.ofNullable(dispatcher.data.superStructs().get(className))
-                .orElseThrow(() -> dispatcher.getSSCSyntaxException("Could not find superstruct with name `" + className + "`", ctx));
-
         final Optional<SuperstructMethod> maybeMethod = superstruct.findMethod(methodName);
         if (maybeMethod.isEmpty()) {
             throw dispatcher.getSSCSyntaxException("Superstruct '" + className

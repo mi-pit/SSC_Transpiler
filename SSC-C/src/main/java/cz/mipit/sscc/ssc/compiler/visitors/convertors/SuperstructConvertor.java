@@ -56,10 +56,6 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
         return superStruct.emitStructDefinition();
     }
 
-    public static String qualifySuperstructIdentifier(SuperStruct superStruct, String unqualifiedName) {
-        return superStruct.name() + "__" + unqualifiedName;
-    }
-
     private void processMemberCtx(
             final SSCParser.SuperStructMemberContext memberCtx
     ) {
@@ -139,21 +135,22 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
             List<SSCParser.DeclarationSpecifierContext> declSpecs,
             boolean isPrivate
     ) {
-        final FunctionHeaderData fnData = FunctionHeaderData.getFunctionHeaderData(
+        assert dispatcher.data.currentSuperstruct().isPresent();
+
+        final FunctionHeaderData fnData = FunctionHeaderData.parse(
                 dispatcher,
                 functionCtx.functionHeader(),
                 declSpecs
         );
 
-        final String qualified = qualifySuperstructIdentifier(
-                fnData.superStruct(),
-                fnData.unqualifiedName()
-        );
+        final SuperStruct superstruct = dispatcher.data.currentSuperstruct().get();
+        final String qualified = superstruct.qualifyName(fnData.unqualifiedName());
+
         dispatcher.pushFunction(qualified, functionCtx);
 
         if (!fnData.isStatic()) {
             final SuperstructVariable selfReferenceVariable =
-                    new SuperstructVariable(fnData.superStruct().name(), Pointer.oneConst(), "this");
+                    new SuperstructVariable(superstruct.name(), Pointer.oneConst(), "this");
 
             Main.logger.printDebug(() -> "Adding self reference variable '"
                     + selfReferenceVariable
@@ -170,6 +167,7 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
 
         final SuperstructMethod functionDefinition = new SuperstructMethod(
                 dispatcher,
+                superstruct,
                 fnData,
                 isPrivate,
                 parameters,
@@ -178,7 +176,7 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
                         : dispatcher.visitFunctionBody(functionCtx.functionBody())
         );
 
-        fnData.superStruct().addFunction(functionDefinition);
+        superstruct.addFunction(functionDefinition);
 
         dispatcher.popFunction();
     }

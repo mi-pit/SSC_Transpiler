@@ -21,6 +21,12 @@ public class SuperStruct {
         this.methods = new ArrayList<>();
     }
 
+
+    public String qualifyName(String unqualifiedName) {
+        return this.name + "__" + unqualifiedName;
+    }
+
+
     public String emitStructDeclaration() {
         return String.format("struct %s;%n", name);
     }

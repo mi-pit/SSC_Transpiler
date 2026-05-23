@@ -2,9 +2,7 @@ package cz.mipit.sscc.ssc.compiler.data.ss;
 
 import cz.mipit.sscc.ssc.compiler.data.FunctionHeaderData;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
-import cz.mipit.sscc.ssc.compiler.visitors.convertors.SuperstructConvertor;
 import cz.mipit.sscc.util.annotations.Nullable;
-import cz.mipit.sscc.util.collection.builder.ListBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +27,7 @@ public class SuperstructMethod {
 
     public SuperstructMethod(
             final VisitorDispatcher dispatcher,
+            final SuperStruct superstructMemberOf,
             final FunctionHeaderData headerData,
             final boolean isPrivate,
             final List<String> params,
@@ -40,7 +39,7 @@ public class SuperstructMethod {
         this.isPrivate = isPrivate;
         this.params = new ArrayList<>(params);
         this.body = body;
-        this.superstructMemberOf = headerData.superStruct();
+        this.superstructMemberOf = superstructMemberOf;
 
         if (!headerData.isStatic() && params.size() == 1 && params.getFirst().equals("void")) {
             this.params.removeFirst();
@@ -68,9 +67,7 @@ public class SuperstructMethod {
                 .stream()
                 .map(dispatcher::visitPointer)
                 .collect(Collectors.joining(" "));
-        final String qualifiedName = SuperstructConvertor.qualifySuperstructIdentifier(
-                superstructMemberOf, getUnqualifiedName()
-        );
+        final String qualifiedName = superstructMemberOf.qualifyName(getUnqualifiedName());
         final String selfRef = getSelfReferenceVariableDeclaration();
         final String parametersString = "( " + selfRef + String.join(", ", params) + " )";
         final String declarator = pointers + qualifiedName + parametersString;
