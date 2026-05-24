@@ -86,8 +86,9 @@ public class SymbolTable {
         define(createSymbol("__builtin_goacc_parlevel_size",        TypeClassification.TypeSpecifier_));
 
         /* SSC */
-        define(createSymbol("pure",         TypeClassification.FunctionSpecifier_));
-        define(createSymbol("private",      TypeClassification.FunctionSpecifier_));
+        define(createSymbol("pure",     TypeClassification.FunctionSpecifier_));
+        define(createSymbol("private",  TypeClassification.FunctionSpecifier_));
+        define(createSymbol("meta",     TypeClassification.FunctionSpecifier_));
 
         define(createSymbol("inline",       TypeClassification.FunctionSpecifier_));
         define(createSymbol("__inline__",   TypeClassification.FunctionSpecifier_));

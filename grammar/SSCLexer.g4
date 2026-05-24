@@ -244,6 +244,10 @@ Static
     : 'static'
     ;
 
+StaticFunction
+    : 'meta'
+    ;
+
 Static_assert
     : 'static_assert'
     ;

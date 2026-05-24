@@ -553,6 +553,7 @@ functionSpecifier
 		) ')'
     | Pure      // SSC
     | Private   // SSC TODO: move (to storage-class-spec ?)
+    | StaticFunction  // SSC
     ;
 
 // ISO C: alignment-specifier (6.7.6)

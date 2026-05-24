@@ -2,7 +2,6 @@ package cz.mipit.sscc.ssc.compiler.data;
 
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.Main;
-import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 
 import java.util.ArrayList;
@@ -64,10 +63,13 @@ public final class FunctionHeaderData {
         assert functionCtx != null;
         assert dispatcher.data.currentSuperstruct().isPresent() : "Member of no struct";
 
-        final boolean isStatic = declSpecs.stream().anyMatch(ds1 ->
-                ds1.storageClassSpecifier() != null && ds1.storageClassSpecifier().Static() != null);
-        final boolean isPure = declSpecs.stream().anyMatch(ds ->
-                ds.functionSpecifier() != null && ds.functionSpecifier().Pure() != null);
+        final List<SSCParser.FunctionSpecifierContext> fnSpecs = declSpecs
+                .stream()
+                .map(SSCParser.DeclarationSpecifierContext::functionSpecifier)
+                .filter(Objects::nonNull)
+                .toList();
+        final boolean isStatic = fnSpecs.stream().anyMatch(fnSpec -> fnSpec.StaticFunction() != null);
+        final boolean isPure = fnSpecs.stream().anyMatch(fnSpec -> fnSpec.Pure() != null);
 
         final List<String> withoutCustom = getDeclSpecsWithoutCustom(declSpecs, dispatcher);
 
@@ -97,7 +99,7 @@ public final class FunctionHeaderData {
     }
 
     /**
-     * filter out types & {@code pure} and {@code static}
+     * filter out {@code pure}, {@code private} and object-static keywords
      */
     private static List<String> getDeclSpecsWithoutCustom(
             final List<SSCParser.DeclarationSpecifierContext> declSpecs,
@@ -115,20 +117,11 @@ public final class FunctionHeaderData {
     }
 
     private static boolean declSpecIsCustom(SSCParser.DeclarationSpecifierContext declSpec) {
-        if (declSpec.functionSpecifier() != null) {
-            final SSCParser.FunctionSpecifierContext funcSpec = declSpec.functionSpecifier();
-            if (funcSpec.Pure() != null || funcSpec.Private() != null)
-                return true;
+        final SSCParser.FunctionSpecifierContext funcSpec = declSpec.functionSpecifier();
+        if (funcSpec == null) {
+            return false;
         }
 
-        // since we're in a superstruct, `static` has a different meaning from the C keyword => is custom
-        // todo? change the SSC Superstruct method `static` keyword to avoid this confusion
-        //  (possibly to `static_fn`?)
-        if (declSpec.storageClassSpecifier() != null
-                && declSpec.storageClassSpecifier().Static() != null) {
-            return true;
-        }
-
-        return false;
+        return funcSpec.Pure() != null || funcSpec.Private() != null || funcSpec.StaticFunction() != null;
     }
 }
