@@ -7,11 +7,12 @@ import java.util.Stack;
 
 public class SymbolTable {
     private final Stack<Symbol> scopeStack = new Stack<>();
+    private final Symbol GlobalScope;
     private int blockCounter = 0;
 
     public SymbolTable() {
-        Symbol globalScope = createSymbol("global", TypeClassification.Global_);
-        scopeStack.push(globalScope);
+        GlobalScope = createSymbol("global", TypeClassification.Global_);
+        scopeStack.push(GlobalScope);
 
         define(createSymbol("auto",             TypeClassification.StorageClassSpecifier_));
         define(createSymbol("constexpr",        TypeClassification.StorageClassSpecifier_));
@@ -204,6 +205,10 @@ public class SymbolTable {
 
     public void popBlockScope() {
         exitScope();
+    }
+
+    public Symbol getGlobalScope() {
+        return GlobalScope;
     }
 
     @Override

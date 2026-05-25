@@ -2,6 +2,7 @@ package cz.mipit.sscc.ssc.compiler.visitors.convertors;
 
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
+import cz.mipit.sscc.util.SSCCUtil;
 
 public class FunctionDefinitionConvertor extends AbstractConvertor<SSCParser.FunctionDefinitionContext> {
     public FunctionDefinitionConvertor(VisitorDispatcher dispatcher) {
@@ -12,13 +13,13 @@ public class FunctionDefinitionConvertor extends AbstractConvertor<SSCParser.Fun
     public String convert(SSCParser.FunctionDefinitionContext ctx) {
         // Set currentFunctionName
         if (ctx.functionBody() == null) {
-            throw dispatcher.getSSCSyntaxException("Function definition without body", ctx);
+            throw dispatcher.getSSCLanguageException("Function definition without body", ctx);
         }
         assert ctx.functionBody() != null;
         assert ctx.functionBody().compoundStatement() != null;
 
         final String unqualifiedName = dispatcher.visitTerminal(
-                ctx.functionHeader().declarator().directDeclarator().Identifier()
+                SSCCUtil.getIdentifierFromDeclarator(ctx.functionHeader().declarator())
         );
         final String currentFunctionName = dispatcher.data
                 .currentSuperstruct()

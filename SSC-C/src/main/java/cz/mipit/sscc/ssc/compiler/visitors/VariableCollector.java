@@ -90,13 +90,13 @@ public class VariableCollector {
             return;
         }
         if (ssSpecs.size() > 1) {
-            throw dispatcher.getSSCSyntaxException("Multiple superstruct types found in typedef", ctx);
+            throw dispatcher.getSSCLanguageException("Multiple superstruct types found in typedef", ctx);
         }
 
         final String ssName = ssSpecs.getFirst();
         final SuperStruct ss = dispatcher.data.superStructs().get(ssName);
         if (ss == null) {
-            throw dispatcher.getSSCSyntaxException(
+            throw dispatcher.getSSCLanguageException(
                     "Unknown superstruct type 'object " + ssName + "'",
                     declSpecsLs
                             .stream()

@@ -1,8 +1,9 @@
 package cz.mipit.sscc.ssc.compiler.data;
 
 import antlr.ssc.SSCParser;
-import cz.mipit.sscc.Main;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
+import cz.mipit.sscc.util.SSCCUtil;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,7 +31,7 @@ public final class FunctionHeaderData {
         this.unqualifiedName = Objects.requireNonNull(unqualifiedName);
 
         if (cDeclarationSpecifiers.isEmpty()) {
-            throw dispatcher.getSSCSyntaxException("Function must have a return type", declarator);
+            throw dispatcher.getSSCLanguageException("Function must have a return type", declarator);
         }
     }
 
@@ -74,23 +75,14 @@ public final class FunctionHeaderData {
         final List<String> withoutCustom = getDeclSpecsWithoutCustom(declSpecs, dispatcher);
 
         final SSCParser.DeclaratorContext declarator = functionCtx.declarator();
-        final SSCParser.DirectDeclaratorContext directDecl = declarator.directDeclarator();
-        if (directDecl == null) {
-            throw dispatcher.getSSCSyntaxException("Direct declarator is null", functionCtx);
+        final TerminalNode identifier = SSCCUtil.getIdentifierFromDeclarator(declarator);
+        if (identifier == null) {
+            throw dispatcher.getSSCLanguageException(
+                    "Missing declarator identifier in function definition",
+                    declarator
+            );
         }
-
-        final String unqualifiedName;
-        if (directDecl.Identifier() != null) {
-            unqualifiedName = dispatcher.visitTerminal(directDecl.Identifier());
-        } else if (directDecl.LeftParen() == null || directDecl.RightParen() == null) {
-            Main.logger.printDebug("No declarator parentheses. Trying to parse declarator.");
-            unqualifiedName = dispatcher.visitDeclarator(declarator);
-            if (unqualifiedName.chars().anyMatch(c -> !Character.isAlphabetic(c) && c != '_')) {
-                throw dispatcher.getSSCSyntaxException("Invalid identifier", directDecl);
-            }
-        } else {
-            throw dispatcher.getSSCSyntaxException("Missing declarator identifier in function definition", directDecl);
-        }
+        final String unqualifiedName = dispatcher.visitTerminal(identifier);
 
         return new FunctionHeaderData(
                 dispatcher, isStatic, isPure, withoutCustom,

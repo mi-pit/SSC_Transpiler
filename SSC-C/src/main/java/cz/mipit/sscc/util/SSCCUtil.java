@@ -1,9 +1,11 @@
 package cz.mipit.sscc.util;
 
+import antlr.ssc.SSCParser;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.misc.Interval;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,7 +13,13 @@ import java.util.List;
 import static java.lang.System.lineSeparator;
 
 public final class SSCCUtil {
-    private SSCCUtil() {
+    public static TerminalNode getIdentifierFromDeclarator(SSCParser.DeclaratorContext declarator) {
+        // declarator: (pointer declarationSpecifiers?)* directDeclarator
+        while (declarator.directDeclarator().declarator() != null) {
+            declarator = declarator.directDeclarator().declarator();
+        }
+
+        return declarator.directDeclarator().Identifier();
     }
 
     public static class Text {
@@ -32,10 +40,12 @@ public final class SSCCUtil {
          *
          * @return {@link ArrayList} of {@code before + 1 + after}-many {@link EnumeratedLine}s
          */
-        public static List<EnumeratedLine> getLinesAroundToken(final Token token,
-                                                               final CommonTokenStream tokens,
-                                                               final int before,
-                                                               final int after) {
+        public static List<EnumeratedLine> getLinesAroundToken(
+                final Token token,
+                final CommonTokenStream tokens,
+                final int before,
+                final int after
+        ) {
             final String fullText = tokens.getTokenSource().getInputStream().toString();
             final String[] lines = fullText.split(lineSeparator(), -1);
 
@@ -62,5 +72,13 @@ public final class SSCCUtil {
 
             return ndigs;
         }
+
+        public static boolean isPowerOfTwo(long l) {
+            return (l & (l - 1)) == 0;
+        }
+    }
+
+
+    private SSCCUtil() {
     }
 }

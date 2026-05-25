@@ -5,7 +5,7 @@ import antlr.ssc.SSCParserBaseVisitor;
 import cz.mipit.sscc.Main;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
-import cz.mipit.sscc.ssc.exceptions.children.SSCSyntaxException;
+import cz.mipit.sscc.ssc.exceptions.children.SSCLanguageException;
 import cz.mipit.sscc.util.SSCCUtil;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -44,10 +44,6 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
         return !hasErrors;
     }
 
-    public SSCSyntaxException getSSCSyntaxException(String message, ParserRuleContext ctx) {
-        return new SSCSyntaxException(message, ctx, tokens, currentFile);
-    }
-
     @Override
     protected String defaultResult() {
         return "";
@@ -61,7 +57,10 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
         }
 
         return switch (node.getSymbol().getType()) {
-            case Token.EOF -> "";
+            case Token.EOF,
+                 SSCParser.StaticFunction,
+                 SSCParser.Pure,
+                 SSCParser.Private -> "";
 
             case SSCParser.Superstruct -> "struct";
             case SSCParser.FlagsSet -> "enum";
@@ -147,12 +146,22 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
         return ctx instanceof TerminalNode t && t.getSymbol().getType() == val;
     }
 
-    public String getLiteral(final RuleNode node) {
+    /// Returns the literal input, including whitespace and SSC-only keywords. Only meant for debugging/exceptions
+    public String getLiteral(final ParseTree node) {
         if (node instanceof TerminalNode t)
             return t.getText();
         if (node instanceof ParserRuleContext p)
             return SSCCUtil.Text.getLiteral(p, tokens);
 
         return "";
+    }
+
+    public SSCLanguageException getSSCLanguageException(String message, ParseTree ctx) {
+        if (ctx instanceof ParserRuleContext prc) {
+            return new SSCLanguageException(message, prc, tokens, currentFile);
+        } else if (ctx instanceof TerminalNode t) {
+            return new SSCLanguageException(message, t, tokens, currentFile);
+        }
+        throw new IllegalStateException("Invalid parse tree: " + ctx);
     }
 }

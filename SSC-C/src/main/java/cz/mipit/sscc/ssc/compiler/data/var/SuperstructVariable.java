@@ -11,7 +11,7 @@ public class SuperstructVariable extends Variable {
         this.ssName = Objects.requireNonNull(ssName);
     }
 
-    public String ssName() {
+    public String getSuperstructName() {
         return ssName;
     }
 

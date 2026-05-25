@@ -2,11 +2,7 @@ package cz.mipit.sscc.ssc;
 
 import cz.mipit.sscc.ssc.compiler.data.ss.Field;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
-import cz.mipit.sscc.ssc.compiler.data.var.Pointer;
-import cz.mipit.sscc.ssc.compiler.data.var.TypedVariable;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -26,7 +22,8 @@ public class TestSuperStruct {
         struct.addField(
                 new Field(
                         true,
-                        new TypedVariable(List.of("int"), Pointer.none(), "num")
+                        "int num",
+                        "num"
                 )
         );
 

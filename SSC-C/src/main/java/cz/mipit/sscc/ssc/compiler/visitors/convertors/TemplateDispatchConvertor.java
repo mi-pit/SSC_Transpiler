@@ -99,7 +99,7 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
         final Template tmpl = dispatcher.data.templates().get(nameRaw);
         if (tmpl == null) {
             Main.logger.printDebug(() -> "\t\tTemplate '" + nameRaw + "' not found");
-            throw dispatcher.getSSCSyntaxException("Unknown template '" + nameUnqualifiedMangled + "'", ctx);
+            throw dispatcher.getSSCLanguageException("Unknown template '" + nameUnqualifiedMangled + "'", ctx);
         }
         Main.logger.printDebug(() -> "\t\tTemplate found");
 
@@ -113,7 +113,7 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
         for (final SSCParser.TemplateDefinitionContext tmplContext : tmplContexts) {
             final Map<String, String> typeArgMap = new HashMap<>();
             if (tmplContext.templateHeader().templateTypes().Identifier().size() != typeArgs.size()) {
-                throw dispatcher.getSSCSyntaxException("Invalid number of type arguments", ctx);
+                throw dispatcher.getSSCLanguageException("Invalid number of type arguments", ctx);
             }
 
             for (int i = 0; i < typeArgs.size(); i++) {
@@ -122,7 +122,7 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
                 final String typeAlias = dispatcher.visitTerminal(typeAliasIdent);
 
                 if (typeArgMap.put(typeAlias, actualType) != null) {
-                    throw dispatcher.getSSCSyntaxException("Duplicate type alias", ctx);
+                    throw dispatcher.getSSCLanguageException("Duplicate type alias", ctx);
                 }
             }
 

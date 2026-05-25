@@ -11,6 +11,7 @@ import cz.mipit.sscc.util.color.UnixTerminalColor;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.List;
 
@@ -67,13 +68,31 @@ public class SSCTranspilerException extends RuntimeException {
         this(type, message, formatLines(lines), locator, currentFile);
     }
 
-    protected SSCTranspilerException(Type type, String message,
-                                     ParserRuleContext offendingCtx, CommonTokenStream tokens,
-                                     InputFile currentFile) {
+    protected SSCTranspilerException(
+            Type type,
+            String message,
+            ParserRuleContext offendingCtx,
+            CommonTokenStream tokens,
+            InputFile currentFile
+    ) {
         this(type, message, getLinesFromCtx(
                         requireNonNull(offendingCtx, "Context"),
                         requireNonNull(tokens, "Token stream")),
                 getLocator(offendingCtx),
+                currentFile);
+    }
+
+    protected SSCTranspilerException(
+            Type type,
+            String message,
+            TerminalNode offendingNode,
+            CommonTokenStream tokens,
+            InputFile currentFile
+    ) {
+        this(type, message, getLinesFromTerminal(
+                        requireNonNull(offendingNode, "Context"),
+                        requireNonNull(tokens, "Token stream")),
+                getLocator(offendingNode),
                 currentFile);
     }
 
@@ -118,13 +137,22 @@ public class SSCTranspilerException extends RuntimeException {
         return getLinesFromToken(ctx.getStart(), tokens);
     }
 
+    protected static List<EnumeratedLine> getLinesFromTerminal(TerminalNode node, CommonTokenStream tokens) {
+        return getLinesFromToken(node.getSymbol(), tokens);
+    }
+
     /// Creates a locator highlighting a single token
     protected static String getLocator(Token token) {
         final int offset = getLineNumberOffset(token.getLine());
         final int posInLine = token.getCharPositionInLine();
         final int len = token.getStopIndex() - token.getStartIndex() + 1;
 
-        return " ".repeat(offset + posInLine) + "^".repeat(len) + " here";
+        final int nSpaces = offset + posInLine;
+        return getLocator(nSpaces, len);
+    }
+
+    protected static String getLocator(TerminalNode node) {
+        return getLocator(node.getSymbol());
     }
 
     /// Creates a locator highlighting a context
@@ -145,6 +173,10 @@ public class SSCTranspilerException extends RuntimeException {
                         : 1
         );
 
+        return getLocator(nSpaces, nCarets);
+    }
+
+    private static String getLocator(int nSpaces, int nCarets) {
         final String spaces = " ".repeat(nSpaces);
         final String carets = "^".repeat(nCarets);
 
@@ -199,13 +231,13 @@ public class SSCTranspilerException extends RuntimeException {
 
 
     protected enum Type {
-        Syntax,
+        Language,
         Antlr_parser,
         ;
 
         public final ConsoleColor toColor() {
             return switch (this) {
-                case Syntax -> COLOR_FATAL;
+                case Language -> COLOR_FATAL;
                 case Antlr_parser -> COLOR_ANTLR;
             };
         }

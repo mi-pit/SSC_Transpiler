@@ -12,16 +12,18 @@ import cz.mipit.sscc.ssc.compiler.visitors.convertors.FunctionDefinitionConverto
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.LambdaConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.PostfixExpressionConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.SuperstructConvertor;
+import cz.mipit.sscc.ssc.compiler.visitors.convertors.PrimaryExpressionConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.SuperstructInterfaceConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateDefinitionConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateDispatchConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TernaryOperatorConvertor;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
-import cz.mipit.sscc.ssc.exceptions.children.SSCSyntaxException;
+import cz.mipit.sscc.ssc.exceptions.children.SSCLanguageException;
 import cz.mipit.sscc.util.SSCCUtil;
 import cz.mipit.sscc.util.VisitorInput;
 import cz.mipit.sscc.util.annotations.Nullable;
 import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.tree.RuleNode;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -42,6 +44,7 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
     private final List<String> externalDeclarationsToEmitAfter;
 
     private final Convertor<SSCParser.PostfixExpressionContext> postfixExpressionConvertor;
+    private final Convertor<SSCParser.PrimaryExpressionContext> primaryExpressionConvertor;
     private final Convertor<SSCParser.FunctionDefinitionContext> functionConvertor;
     private final Convertor<SSCParser.ConditionalExpressionContext> ternaryOperatorConvertor;
     private final Convertor<SSCParser.FlagsSpecifierContext> flagsConvertor;
@@ -66,10 +69,11 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
 
         collector = new VariableCollector(this);
 
-        flagsConvertor = new FlagsConvertor(this);
-        ternaryOperatorConvertor = new TernaryOperatorConvertor(this);
-        functionConvertor = new FunctionDefinitionConvertor(this);
         postfixExpressionConvertor = new PostfixExpressionConvertor(this);
+        primaryExpressionConvertor = new PrimaryExpressionConvertor(this);
+        functionConvertor = new FunctionDefinitionConvertor(this);
+        ternaryOperatorConvertor = new TernaryOperatorConvertor(this);
+        flagsConvertor = new FlagsConvertor(this);
 
         superstructInterfaceConvertor = new SuperstructInterfaceConvertor(this);
 
@@ -84,7 +88,7 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
     }
 
 
-    public String visitSuper(final ParserRuleContext ctx) {
+    public String visitSuper(final RuleNode ctx) {
         return super.visitChildren(ctx);
     }
 
@@ -97,6 +101,11 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
     @Override
     public String visitSuperStructInterface(SSCParser.SuperStructInterfaceContext ctx) {
         return superstructInterfaceConvertor.convert(ctx);
+    }
+
+    @Override
+    public String visitPrimaryExpression(SSCParser.PrimaryExpressionContext ctx) {
+        return primaryExpressionConvertor.convert(ctx);
     }
 
     @Override
@@ -184,7 +193,7 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
             class StackedException extends SSCTranspilerException {
                 StackedException(SSCTranspilerException exception) {
                     super(
-                            Type.Syntax,
+                            Type.Language,
                             exception.getMessage()
                                     + System.lineSeparator()
                                     + COLOR_LOCATOR
@@ -197,7 +206,7 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
                 }
             }
 
-            final SSCSyntaxException exception = getSSCSyntaxException("Duplicate function name: '" + name + "'", functionCtx);
+            final SSCLanguageException exception = getSSCLanguageException("Duplicate function name: '" + name + "'", functionCtx);
             throw new StackedException(exception);
         }
         data.functionVariables().put(name, new HashSet<>());
@@ -298,8 +307,23 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
     public void debugPrintDump() {
         logger.printDebug("");
         logger.printDebug("Dumping debug info...");
-        logger.printDebug("Function variables:");
 
+        logger.printDebug("Superstructs:");
+        for (final SuperStruct ss : data.superStructs().values()) {
+            logger.printDebug(() -> "\t" + ss);
+        }
+
+        logger.printDebug("Templates:");
+        for (final Map.Entry<String, Template> entry : data.templates().entrySet()) {
+            logger.printDebug(() -> "\t" + entry.getValue());
+        }
+
+        logger.printDebug("Typedefs:");
+        for (final Map.Entry<String, Typedef<SuperStruct>> entry : data.superstructTypedefs().entrySet()) {
+            logger.printDebug(() -> "\t" + entry.getKey() + " -> " + entry.getValue());
+        }
+
+        logger.printDebug("Function superstruct variables:");
         for (final Map.Entry<@Nullable String, Set<SuperstructVariable>> fnNameToSSVars : data.functionVariables().entrySet()) {
             final String funcDisplayName = fnNameToSSVars.getKey() == null ? "<global>" : "'" + fnNameToSSVars.getKey() + "'";
             final Set<SuperstructVariable> variables = fnNameToSSVars.getValue();
@@ -313,16 +337,6 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
             for (final SuperstructVariable variable : variables) {
                 logger.printDebug(() -> "        " + variable);
             }
-        }
-
-        logger.printDebug("Templates:");
-        for (final Map.Entry<String, Template> entry : data.templates().entrySet()) {
-            logger.printDebug(() -> "\t" + entry.getValue());
-        }
-
-        logger.printDebug("Typedefs:");
-        for (final Map.Entry<String, Typedef<SuperStruct>> entry : data.superstructTypedefs().entrySet()) {
-            logger.printDebug(() -> "\t" + entry.getKey() + " -> " + entry.getValue());
         }
 
         logger.printDebug("Debug dump complete");

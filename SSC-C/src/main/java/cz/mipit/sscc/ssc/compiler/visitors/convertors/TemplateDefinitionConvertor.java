@@ -56,7 +56,7 @@ public class TemplateDefinitionConvertor extends AbstractConvertor<SSCParser.Tem
         }
 
         if (!justFinishingSSDefinition) {
-            throw dispatcher.getSSCSyntaxException(
+            throw dispatcher.getSSCLanguageException(
                     "Template '" + name + "' already exists", ctx
             );
         }

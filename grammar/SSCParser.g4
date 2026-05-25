@@ -127,13 +127,14 @@ predefinedConstant
 
 // ISO C: primary-expression (6.5.2)
 primaryExpression
-    : templateDispatch  // SSC: template dispatch as primary expression
+    : templateDispatch // SSC: template dispatch as primary expression
+    | (Identifier | templateDispatch) '::' Identifier // SSC primary expression: superstruct static function reference
     | Identifier {this.LookupSymbol();}
     | constant
     | StringLiteral+
     | '(' expression ')'
     | genericSelection
-    | lambdaFunction    // SSC: lambda definition as primary expression
+    | lambdaFunction // SSC: lambda definition as primary expression
     // GNU
     // https://github.com/gcc-mirror/gcc/blob/5d69161a7c36a2da8565967eb0cc2df1322a05a3/gcc/c/c-parser.cc#L11715-L11734
     | '__func__' //GNU
@@ -189,8 +190,6 @@ postfixExpression
     ) (
         '[' expression ']'
          | '(' argumentExpressionList? ')'                           /* function call / macro invocation */
-         | '::'          Identifier '(' argumentExpressionList? ')'  // SSC: Static superstruct function call
-         | '::'          Identifier                                  // SSC: Superstruct function reference
          | ('.' | '->')  Identifier '(' argumentExpressionList? ')'  // SSC: Object method call
          | ('.' | '->')  Identifier                                  /* Attribute access (plain C) */
          | '++'

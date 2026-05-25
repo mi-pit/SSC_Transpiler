@@ -8,8 +8,9 @@ import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperstructMethod;
 import cz.mipit.sscc.ssc.compiler.data.var.Pointer;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
-import cz.mipit.sscc.ssc.compiler.data.var.TypedVariable;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
+import cz.mipit.sscc.util.SSCCUtil;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,7 +32,7 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
         final SuperStruct got = dispatcher.data.superStructs().get(thisSSName);
         // superstructs only have fields if they are defined
         if (got != null && !got.fields().isEmpty()) {
-            throw dispatcher.getSSCSyntaxException("Superstruct with name '" + thisSSName + "' already exists", ctx);
+            throw dispatcher.getSSCLanguageException("Superstruct with name '" + thisSSName + "' already exists", ctx);
         }
 
         final SuperStruct superStruct = got != null ? got : new SuperStruct(thisSSName);
@@ -45,15 +46,16 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
         dispatcher.data.setCurrentSuperstruct(null);
 
         final String structDeclaration = superStruct.emitStructDeclaration();
+        final String structDefinition = superStruct.emitStructDefinition();
         final String methodDeclarations = superStruct.emitMethodDeclarations();
         final String methodDefinitions = superStruct.emitMethodDefinitions();
 
-        dispatcher.addExternalDeclarationToEmitBefore(structDeclaration);
+        dispatcher.addExternalDeclarationToEmitBefore(structDefinition);
         dispatcher.addExternalDeclarationToEmitBefore(methodDeclarations);
 
         dispatcher.addExternalDeclarationToEmitAfter(methodDefinitions);
 
-        return superStruct.emitStructDefinition();
+        return structDeclaration;
     }
 
     private void processMemberCtx(
@@ -91,41 +93,38 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
                         || declSpec.functionSpecifier().Private() == null)
                 .toList();
         if (noPrivateSpecs.isEmpty()) {
-            throw dispatcher.getSSCSyntaxException("No type specifier for superstruct member", memberCtx);
+            throw dispatcher.getSSCLanguageException("No type specifier for superstruct member", memberCtx);
         }
-
-        final List<String> type = noPrivateSpecs
-                .stream()
-                .map(dispatcher::visitDeclarationSpecifier)
-                .toList();
 
         if (initDeclaratorList.initDeclarator().isEmpty()) {
-            throw dispatcher.getSSCSyntaxException(
-                    "Init declarator empty `" + dispatcher.getLiteral(memberCtx) + "`",
-                    initDeclaratorList
-            );
+            throw dispatcher.getSSCLanguageException("Init declarator list is empty", memberCtx);
         }
 
+        // declarator ('=' initializer)?
         for (SSCParser.InitDeclaratorContext initDecl : initDeclaratorList.initDeclarator()) {
             if (initDecl.initializer() != null) {
-                throw dispatcher.getSSCSyntaxException(
+                throw dispatcher.getSSCLanguageException(
                         "Cannot initialize superstruct field (must use a constructor)",
                         initDecl.initializer()
                 );
             }
+            // (pointer declarationSpecifiers?)* directDeclarator
             final SSCParser.DeclaratorContext declarator = initDecl.declarator();
-            if (declarator.directDeclarator().Identifier() == null) {
-                throw dispatcher.getSSCSyntaxException(
+            final TerminalNode identifier = SSCCUtil.getIdentifierFromDeclarator(declarator);
+            if (identifier == null) {
+                throw dispatcher.getSSCLanguageException(
                         "Field has no identifier",
                         declarator.directDeclarator()
                 );
             }
 
-            final List<Pointer> ptrs = dispatcher.getPointersFromDeclarator(declarator);
+            final String name = dispatcher.visitTerminal(identifier);
 
-            final String name = dispatcher.visitTerminal(declarator.directDeclarator().Identifier());
+            final String declarationSpecifiersString = dispatcher.visitDeclarationSpecifiers(memberCtx.declarationSpecifiers());
+            final String declaratorString = dispatcher.visitDeclarator(declarator);
+            final String declaration = declarationSpecifiersString + " " + declaratorString;
 
-            final Field field = new Field(isPrivate, new TypedVariable(type, ptrs, name));
+            final Field field = new Field(isPrivate, declaration, name);
             dispatcher.data.currentSuperstruct().ifPresent(ss -> ss.addField(field));
         }
     }
