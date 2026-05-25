@@ -6,12 +6,15 @@ import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.compiler.SSCCompiler;
 import cz.mipit.sscc.util.ExitValue;
 import cz.mipit.sscc.util.collection.Box;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.Set;
 
 public class TestStubs {
@@ -22,6 +25,19 @@ public class TestStubs {
     @BeforeAll
     static void ensureSSCLib() {
         Assertions.assertNotNull(SSCCompiler.SSCLIB_HOME);
+    }
+
+    @AfterAll
+    static void deleteJunkFiles() {
+        final Set<InputFile> files = new HashSet<>();
+        files.addAll(getInputFiles(VALID));
+        files.addAll(getInputFiles(INVALID));
+
+        for (InputFile file : files) {
+            Assertions.assertEquals("ssc", file.suffix());
+            final InputFile correspondingCFile = file.getChangedSuffix("c");
+            Assertions.assertDoesNotThrow(() -> Files.deleteIfExists(correspondingCFile.toPath()));
+        }
     }
 
     @Test

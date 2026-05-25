@@ -166,14 +166,11 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
         }
         expressionBuilder.append(objectName);
 
-        if (!ctx.argumentExpressionList().isEmpty()) {
-            expressionBuilder.append(", ");
-        }
-
         int currentChildIndex = 4;
         {
             final ParseTree fifthChild = ctx.children.get(currentChildIndex++);
             if (fifthChild instanceof SSCParser.ArgumentExpressionListContext argumentExprLs) {
+                expressionBuilder.append(", ");
                 expressionBuilder.append(
                         dispatcher.visitArgumentExpressionList(argumentExprLs)
                 );

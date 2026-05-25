@@ -39,10 +39,9 @@ public class VariableCollector {
 
         final boolean isTypedef = declSpecsLs
                 .stream()
-                .map(SSCParser.DeclarationSpecifierContext::storageClassSpecifier)
-                .filter(Objects::nonNull)
-                .map(SSCParser.StorageClassSpecifierContext::Typedef)
-                .anyMatch(Objects::nonNull);
+                .anyMatch(declSpec ->
+                        declSpec.storageClassSpecifier() != null && declSpec.storageClassSpecifier().Typedef() != null
+                );
 
         if (isTypedef) {
             collectSuperstructTypedefs(ctx, declSpecsLs);
