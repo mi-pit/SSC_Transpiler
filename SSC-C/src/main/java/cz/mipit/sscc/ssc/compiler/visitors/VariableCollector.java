@@ -155,6 +155,10 @@ public class VariableCollector {
         final Either<String, Typedef<SuperStruct>> ssNameOrTypedef = maybeEither.get();
 
         for (final SSCParser.DeclaratorContext declarator : declarators) {
+            if (!declarator.directDeclarator().parameterTypeList().isEmpty()) {
+                continue;
+            }
+
             final Optional<SuperstructVariable> mapped = ssNameOrTypedef.map(
                     str -> dispatcher.tryCreateSuperstructVariableFromDeclarator(str, declarator),
                     typedef -> dispatcher.tryCreateSuperstructVariableFromDeclarator(typedef, declarator)
