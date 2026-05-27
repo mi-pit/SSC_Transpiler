@@ -65,7 +65,7 @@ public class SuperstructMethod {
         final String pointers = functionHeaderData.declarator()
                 .pointer()
                 .stream()
-                .map(dispatcher::visitPointer)
+                .map(dispatcher::visit)
                 .collect(Collectors.joining(" "));
         final String qualifiedName = superstructMemberOf.qualifyName(getUnqualifiedName());
         final String selfRef = getSelfReferenceVariableDeclaration();

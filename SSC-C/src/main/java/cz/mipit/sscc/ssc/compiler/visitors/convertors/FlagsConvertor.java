@@ -39,16 +39,16 @@ public class FlagsConvertor extends AbstractConvertor<SSCParser.FlagsSpecifierCo
     );
 
     public FlagsConvertor(VisitorDispatcher dispatcher) {
-        super(dispatcher);
+        super(dispatcher, SSCParser.FlagsSpecifierContext.class);
     }
 
     @Override
     public String convert(SSCParser.FlagsSpecifierContext ctx) {
         if (ctx.flagsInitializerList() == null) {
-            return dispatcher.visitChildren(ctx);
+            return dispatcher.visitSuper(ctx);
         }
 
-        final String identifier = ctx.Identifier() == null ? "" : dispatcher.visitTerminal(ctx.Identifier());
+        final String identifier = ctx.Identifier() == null ? "" : dispatcher.visit(ctx.Identifier());
         final var valuesListCtx = ctx.flagsInitializerList();
 
         final Map<String, Long> valuesMap = new TreeMap<>();
@@ -123,12 +123,12 @@ public class FlagsConvertor extends AbstractConvertor<SSCParser.FlagsSpecifierCo
         byte distinctCount = 0;
         long nextValue = 1;
         for (final SSCParser.FlagsInitializerContext initializer : valuesListCtx.flagsInitializer()) {
-            final String currentFlagIdentifier = dispatcher.visitTerminal(initializer.Identifier(0));
+            final String currentFlagIdentifier = dispatcher.visit(initializer.Identifier(0));
             final List<String> assignedIdentifiers = initializer
                     .Identifier()
                     .stream()
                     .skip(1)
-                    .map(dispatcher::visitTerminal)
+                    .map(dispatcher::visit)
                     .toList();
 
             final long currValue;

@@ -16,7 +16,7 @@ final class Option<T> {
     private final T defaultValue;
     private T value;
 
-    final NextOperation nextOperation;
+    private final NextOperation nextOperation;
 
     public Option(
             final OptionString optstr,
@@ -92,5 +92,9 @@ final class Option<T> {
 
     public boolean matches(String value) {
         return strings.matches(value);
+    }
+
+    public NextOperation nextOperation() {
+        return nextOperation;
     }
 }

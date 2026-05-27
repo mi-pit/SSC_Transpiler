@@ -59,7 +59,7 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
     private final Set<String> alreadyEmitted;
 
     public TemplateDispatchConvertor(VisitorDispatcher dispatcher) {
-        super(dispatcher);
+        super(dispatcher, SSCParser.TemplateDispatchContext.class);
 
         alreadyEmitted = new HashSet<>();
     }
@@ -84,7 +84,7 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
         Main.logger.printDebug(() -> "Converting template dispatch: " + dispatcher.getLiteral(ctx));
         final List<SSCParser.TypeArgumentContext> typeArgs = ctx.templateDispatchTypeArguments().typeArgument();
 
-        final String nameRaw = dispatcher.visitTerminal(ctx.Identifier());
+        final String nameRaw = dispatcher.visit(ctx.Identifier());
         Main.logger.printDebug(() -> "\tRaw name: " + nameRaw);
         final String nameUnqualifiedMangled = mangleFunctionName(nameRaw);
         Main.logger.printDebug(() -> "\tUnqualified but mangled name: " + nameUnqualifiedMangled);
@@ -117,9 +117,9 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
             }
 
             for (int i = 0; i < typeArgs.size(); i++) {
-                final String actualType = dispatcher.visitTypeArgument(typeArgs.get(i));
+                final String actualType = dispatcher.visit(typeArgs.get(i));
                 final TerminalNode typeAliasIdent = tmplContext.templateHeader().templateTypes().Identifier().get(i);
-                final String typeAlias = dispatcher.visitTerminal(typeAliasIdent);
+                final String typeAlias = dispatcher.visit(typeAliasIdent);
 
                 if (typeArgMap.put(typeAlias, actualType) != null) {
                     throw dispatcher.getSSCLanguageException("Duplicate type alias", ctx);
@@ -130,24 +130,24 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
             Main.logger.printDebug(() -> "\tType replacements: '" + typeArgMap + "'");
             Main.logger.printDebug(() ->
                     "\tCalled Type Arguments (literal): "
-                            + typeArgs
+                    + typeArgs
                             .stream()
                             .map(dispatcher::getLiteral)
                             .toList()
             );
 
-            final String toReplace = dispatcher.visitTerminal(ctx.Identifier());
+            final String toReplace = dispatcher.visit(ctx.Identifier());
             dispatcher.addReplacement(toReplace, nameTypeResolved);
             Main.logger.printDebug(() -> "\tAdded identifier replacement: `" + toReplace
-                    + "` -> `" + nameTypeResolved + "`");
+                                         + "` -> `" + nameTypeResolved + "`");
 
             final String tmplConverted;
             if (tmplContext.functionDefinition() != null) {
-                tmplConverted = (dispatcher.visitFunctionDefinition(tmplContext.functionDefinition()));
+                tmplConverted = dispatcher.visit(tmplContext.functionDefinition());
             } else if (tmplContext.superStructInterface() != null) {
-                tmplConverted = dispatcher.visitSuperStructInterface(tmplContext.superStructInterface());
+                tmplConverted = dispatcher.visit(tmplContext.superStructInterface());
             } else {
-                tmplConverted = dispatcher.visitSuperStructSpecifier(tmplContext.superStructSpecifier());
+                tmplConverted = dispatcher.visit(tmplContext.superStructSpecifier());
             }
 
             dispatcher.addExternalDeclarationToEmitBefore(tmplConverted);
@@ -235,7 +235,7 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
 
             throw new IllegalStateException(
                     "Something went wrong while converting template type: \"" + type + "\". " +
-                            "Convertor emitted an invalid c-identifier character '" + c + "'"
+                    "Convertor emitted an invalid c-identifier character '" + c + "'"
             );
         }
 

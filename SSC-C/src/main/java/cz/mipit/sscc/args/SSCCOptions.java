@@ -11,6 +11,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
+//TODO
 public final class SSCCOptions implements Iterable<Option<?>> {
     public static final String OPTSTR_HELP_SHORT = "-h";
     public static final String OPTSTR_HELP_LONG = "--help";

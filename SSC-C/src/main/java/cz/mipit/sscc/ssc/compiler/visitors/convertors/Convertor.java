@@ -10,4 +10,6 @@ public interface Convertor<T extends ParserRuleContext> {
      * </p>
      */
     String convert(T ctx);
+
+    Class<T> getContextClass();
 }

@@ -46,6 +46,12 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
 
     abstract public void debugPrintDump();
 
+    abstract public String visit(ParseTree node);
+
+    protected String visitDefault(ParseTree node) {
+        return super.visit(node);
+    }
+
     @Override
     protected String defaultResult() {
         return "";

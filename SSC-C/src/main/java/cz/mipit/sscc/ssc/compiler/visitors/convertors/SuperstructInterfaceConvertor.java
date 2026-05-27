@@ -14,7 +14,7 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
     private static int COUNTER = 0;
 
     public SuperstructInterfaceConvertor(VisitorDispatcher dispatcher) {
-        super(dispatcher);
+        super(dispatcher, SSCParser.SuperStructInterfaceContext.class);
     }
 
     /**
@@ -36,7 +36,7 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
 
         final StringJoiner joiner = new StringJoiner(System.lineSeparator());
 
-        final String ssName = dispatcher.visitTerminal(ctx.Identifier());
+        final String ssName = dispatcher.visit(ctx.Identifier());
         joiner.add("/* Superstruct Interface `" + ssName + "`; START */");
 
         final SuperStruct interfaceOf = dispatcher.data.superStructs()

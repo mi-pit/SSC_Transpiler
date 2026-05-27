@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 
 public class TemplateDefinitionConvertor extends AbstractConvertor<SSCParser.TemplateDefinitionContext> {
     public TemplateDefinitionConvertor(VisitorDispatcher dispatcher) {
-        super(dispatcher);
+        super(dispatcher, SSCParser.TemplateDefinitionContext.class);
     }
 
     @Override
@@ -66,7 +66,7 @@ public class TemplateDefinitionConvertor extends AbstractConvertor<SSCParser.Tem
 
     private String parseRawName(SSCParser.TemplateDefinitionContext templateDefinitionContext) {
         if (templateDefinitionContext.functionDefinition() != null) {
-            return dispatcher.visitTerminal(
+            return dispatcher.visit(
                     templateDefinitionContext
                             .functionDefinition()
                             .functionHeader()
@@ -76,7 +76,7 @@ public class TemplateDefinitionConvertor extends AbstractConvertor<SSCParser.Tem
             );
         } else if (templateDefinitionContext.superStructInterface() != null) {
             // superStructInterface : Superstruct Identifier Interface '{' (functionHeader ';')+ '}'
-            return dispatcher.visitTerminal(
+            return dispatcher.visit(
                     templateDefinitionContext
                             .superStructInterface()
                             .Identifier()
@@ -85,7 +85,7 @@ public class TemplateDefinitionConvertor extends AbstractConvertor<SSCParser.Tem
             // TODO: parse directDeclarator: (declarator)
             //  (not just here)
 
-            return dispatcher.visitTerminal(
+            return dispatcher.visit(
                     templateDefinitionContext
                             .superStructSpecifier()
                             .Identifier()

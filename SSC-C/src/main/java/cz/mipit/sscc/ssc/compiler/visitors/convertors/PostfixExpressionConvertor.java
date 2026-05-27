@@ -13,9 +13,10 @@ import java.util.Optional;
 
 import static java.lang.System.lineSeparator;
 
-public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.PostfixExpressionContext> {
+public class PostfixExpressionConvertor
+        extends AbstractConvertor<SSCParser.PostfixExpressionContext> {
     public PostfixExpressionConvertor(VisitorDispatcher dispatcher) {
-        super(dispatcher);
+        super(dispatcher, SSCParser.PostfixExpressionContext.class);
     }
 
     @Override
@@ -30,13 +31,13 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
 
         if (
                 ctx.children.size() >= 3
-                        // must be first child
-                        && ctx.children.get(1) instanceof TerminalNode t
-                        && (t.getSymbol().getType() == SSCParser.Arrow || t.getSymbol().getType() == SSCParser.Dot)
+                // must be first child
+                && ctx.children.get(1) instanceof TerminalNode t
+                && (t.getSymbol().getType() == SSCParser.Arrow || t.getSymbol().getType() == SSCParser.Dot)
         ) {
             return convertMethodCall(ctx);
         }
-        return dispatcher.super_visitPostfixExpression(ctx);
+        return dispatcher.visitSuper(ctx);
     }
 
     private Optional<String> getCompoundLiteralReplaced(SSCParser.PostfixExpressionContext ctx) {
@@ -47,11 +48,11 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
             return Optional.empty();
         }
 
-        final String res = dispatcher.super_visitPostfixExpression(ctx);
+        final String res = dispatcher.visitSuper(ctx);
 
         Main.logger.printDebug(() -> "superStructSpecifier in: "
-                + dispatcher.getLiteral(ctx).replace(lineSeparator(), " ")
-                + lineSeparator() + "\t\tReturning: " + res.replace(lineSeparator(), " "));
+                                     + dispatcher.getLiteral(ctx).replace(lineSeparator(), " ")
+                                     + lineSeparator() + "\t\tReturning: " + res.replace(lineSeparator(), " "));
 
         return Optional.of(res);
     }
@@ -65,7 +66,7 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
         assert !ctx.children.isEmpty();
         assert ctx.children.getFirst() instanceof SSCParser.PrimaryExpressionContext;
         assert ctx.children.get(1) instanceof TerminalNode t
-                && (t.getSymbol().getType() == SSCParser.Arrow || t.getSymbol().getType() == SSCParser.Dot);
+               && (t.getSymbol().getType() == SSCParser.Arrow || t.getSymbol().getType() == SSCParser.Dot);
 
         final ArrowOrDot arrowOrDot = !ctx.Arrow().isEmpty()
                 ? ArrowOrDot.Arrow
@@ -75,20 +76,20 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
 
         final SSCParser.PrimaryExpressionContext primaryExprCtx = ctx.primaryExpression();
         if (primaryExprCtx.Identifier() == null
-                && primaryExprCtx.templateDispatch() == null) {
+            && primaryExprCtx.templateDispatch() == null) {
             throw dispatcher.getSSCLanguageException(
                     "Invalid left-side operand of a " + arrowOrDot + " expression",
                     primaryExprCtx
             );
         }
-        final String objectName = dispatcher.visitPrimaryExpression(primaryExprCtx);
+        final String objectName = dispatcher.visit(primaryExprCtx);
         final String currentFn = dispatcher.getCurrentFunctionName();
 
         final Optional<SuperstructVariable> maybeSSVar = dispatcher.findSuperstructVariable(currentFn, objectName);
         if (maybeSSVar.isEmpty()) {
             Main.logger.printDebug(() -> "\tVariable is not superstruct\tlocal vars (" + currentFn + "): "
-                    + dispatcher.data.functionVariables().get(currentFn));
-            return dispatcher.super_visitPostfixExpression(ctx);
+                                         + dispatcher.data.functionVariables().get(currentFn));
+            return dispatcher.visitSuper(ctx);
         }
         final SuperstructVariable ssVar = maybeSSVar.get();
 
@@ -110,7 +111,7 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
                         ctx
                 );
             }
-            methodName = dispatcher.visitTerminal(t);
+            methodName = dispatcher.visit(t);
         }
 
         final Optional<SuperstructMethod> maybeMethod = superStruct.findMethod(methodName);
@@ -123,11 +124,11 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
                     .anyMatch(decl -> decl.getName().equals(methodName));
             if (isAField) {
                 Main.logger.printDebug(() -> "\t\tSeems to be a field. No conversion");
-                return dispatcher.super_visitPostfixExpression(ctx);
+                return dispatcher.visitSuper(ctx);
             }
 
             if (dispatcher.data.currentSuperstruct().isEmpty() ||
-                    !dispatcher.data.currentSuperstruct().get().equals(superStruct)) {
+                !dispatcher.data.currentSuperstruct().get().equals(superStruct)) {
                 throw dispatcher.getSSCLanguageException(
                         "Superstruct '" + superStruct.name() + "' has no method called '" + methodName + "'",
                         ctx
@@ -137,12 +138,12 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
             // TODO: save and check all the end of superstruct definition
             Main.logger.printDebug(() ->
                     "Did not find method `" + methodName + "`. " +
-                            "Converting anyway and hoping it gets defined later"
+                    "Converting anyway and hoping it gets defined later"
             );
         } else if (maybeMethod.get().isPrivate()) {
             Main.logger.printDebug(() -> "Method '" + methodName + "' is private. Going to check if it may be used here...");
             if (dispatcher.data.currentSuperstruct().isEmpty()
-                    || !dispatcher.data.currentSuperstruct().get().name().equals(superStruct.name())) {
+                || !dispatcher.data.currentSuperstruct().get().name().equals(superStruct.name())) {
                 throw dispatcher.getSSCLanguageException(
                         "Cannot access private method `" + methodName + "` from outside the superstruct", ctx);
             }
@@ -152,10 +153,10 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
 
         {
             if (ctx.children.size() <= 3
-                    || !(ctx.children.get(3) instanceof TerminalNode t)
-                    || t.getSymbol().getType() != SSCParser.LeftParen) {
+                || !(ctx.children.get(3) instanceof TerminalNode t)
+                || t.getSymbol().getType() != SSCParser.LeftParen) {
                 Main.logger.printDebug(() -> "\tNo parentheses");
-                return dispatcher.super_visitPostfixExpression(ctx);
+                return dispatcher.visitSuper(ctx);
             }
         }
         expressionBuilder.append("( ");
@@ -178,11 +179,11 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
             if (fifthChild instanceof SSCParser.ArgumentExpressionListContext argumentExprLs) {
                 expressionBuilder.append(", ");
                 expressionBuilder.append(
-                        dispatcher.visitArgumentExpressionList(argumentExprLs)
+                        dispatcher.visit(argumentExprLs)
                 );
             } else if (fifthChild instanceof TerminalNode t && t.getSymbol().getType() == SSCParser.RightParen) {
                 expressionBuilder.append(" ");
-                expressionBuilder.append(dispatcher.visitTerminal(t));
+                expressionBuilder.append(dispatcher.visit(t));
             } else {
                 throw new AssertionError("Left-paren not followed by either arguments list or right-paren");
             }
@@ -195,9 +196,9 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
             assert !(child instanceof SSCParser.PrimaryExpressionContext);
 
             if (child instanceof TerminalNode t &&
-                    (t.getSymbol().getType() == SSCParser.RightParen ||
-                            t.getSymbol().getType() == SSCParser.RightBracket ||
-                            t.getSymbol().getType() == SSCParser.RightBrace)
+                (t.getSymbol().getType() == SSCParser.RightParen ||
+                 t.getSymbol().getType() == SSCParser.RightBracket ||
+                 t.getSymbol().getType() == SSCParser.RightBrace)
             ) {
                 expressionBuilder.append(' ');
             }
@@ -205,9 +206,9 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
             expressionBuilder.append(dispatcher.visit(child));
 
             if (child instanceof TerminalNode t &&
-                    (t.getSymbol().getType() == SSCParser.LeftParen ||
-                            t.getSymbol().getType() == SSCParser.LeftBracket ||
-                            t.getSymbol().getType() == SSCParser.LeftBrace)
+                (t.getSymbol().getType() == SSCParser.LeftParen ||
+                 t.getSymbol().getType() == SSCParser.LeftBracket ||
+                 t.getSymbol().getType() == SSCParser.LeftBrace)
             ) {
                 expressionBuilder.append(' ');
             }

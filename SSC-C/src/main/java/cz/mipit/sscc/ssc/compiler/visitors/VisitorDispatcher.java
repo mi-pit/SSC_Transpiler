@@ -17,12 +17,12 @@ import cz.mipit.sscc.ssc.compiler.visitors.convertors.SuperstructInterfaceConver
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateDefinitionConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateDispatchConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TernaryOperatorConvertor;
-import cz.mipit.sscc.ssc.compiler.visitors.fmt.FormattingConvertor;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.ssc.exceptions.children.SSCLanguageException;
 import cz.mipit.sscc.util.VisitorInput;
 import cz.mipit.sscc.util.annotations.Nullable;
 import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -37,121 +37,80 @@ import java.util.StringJoiner;
 import static cz.mipit.sscc.Main.logger;
 
 
-public class VisitorDispatcher extends FormattingConvertor {
+public class VisitorDispatcher extends BaseConvertorVisitor {
     public final CompilerData data;
 
     private final List<String> externalDeclarationsToEmitBefore;
     private final List<String> externalDeclarationsToEmitAfter;
 
-    private final Convertor<SSCParser.ConditionalExpressionContext> ternaryOperatorConvertor;
-    private final Convertor<SSCParser.PostfixExpressionContext> postfixExpressionConvertor;
-    private final Convertor<SSCParser.PrimaryExpressionContext> primaryExpressionConvertor;
-    private final Convertor<SSCParser.FunctionDefinitionContext> functionConvertor;
-
-    private final Convertor<SSCParser.FlagsSpecifierContext> flagsConvertor;
-    private final Convertor<SSCParser.LambdaFunctionContext> lambdaConvertor;
-
-    private final Convertor<SSCParser.TemplateDispatchContext> templateDispatchConvertor;
-    private final Convertor<SSCParser.TemplateDefinitionContext> templateDefinitionConvertor;
-
-
-    private final Convertor<SSCParser.SuperStructInterfaceContext> superstructInterfaceConvertor;
-    private final Convertor<SSCParser.SuperStructSpecifierContext> superstructConvertor;
-
 
     private final VariableCollector collector;
+
+    public final Map<Class<? extends ParserRuleContext>, Convertor<? extends ParserRuleContext>> convertors;
 
 
     public VisitorDispatcher(VisitorInput input) {
         super(input.tokens(), input.inputFile());
 
         data = new CompilerData(input.symbolTable());
+        externalDeclarationsToEmitBefore = new ArrayList<>();
+        externalDeclarationsToEmitAfter = new ArrayList<>();
 
         collector = new VariableCollector(this);
 
-        postfixExpressionConvertor = new PostfixExpressionConvertor(this);
-        primaryExpressionConvertor = new PrimaryExpressionConvertor(this);
-        functionConvertor = new FunctionDefinitionConvertor(this);
-        ternaryOperatorConvertor = new TernaryOperatorConvertor(this);
-        flagsConvertor = new FlagsConvertor(this);
+        final List<Convertor<? extends ParserRuleContext>> convertorsList = List.of(
+                new PostfixExpressionConvertor(this),
+                new PrimaryExpressionConvertor(this),
+                new FunctionDefinitionConvertor(this),
+                new TernaryOperatorConvertor(this),
 
-        superstructInterfaceConvertor = new SuperstructInterfaceConvertor(this);
+                new FlagsConvertor(this),
+                new LambdaConvertor(this),
 
-        superstructConvertor = new SuperstructConvertor(this);
-        lambdaConvertor = new LambdaConvertor(this);
+                new SuperstructInterfaceConvertor(this),
+                new SuperstructConvertor(this),
 
-        templateDispatchConvertor = new TemplateDispatchConvertor(this);
-        templateDefinitionConvertor = new TemplateDefinitionConvertor(this);
+                new TemplateDispatchConvertor(this),
+                new TemplateDefinitionConvertor(this)
+        );
 
-        externalDeclarationsToEmitBefore = new ArrayList<>();
-        externalDeclarationsToEmitAfter = new ArrayList<>();
+        convertors = new HashMap<>();
+
+        for (final Convertor<? extends ParserRuleContext> convertor : convertorsList) {
+            convertors.put(convertor.getContextClass(), convertor);
+        }
     }
 
 
     @Override
-    public String visitSuperStructSpecifier(final SSCParser.SuperStructSpecifierContext ctx) {
-        return superstructConvertor.convert(ctx);
+    public String visit(ParseTree tree) {
+        if (!(tree instanceof ParserRuleContext prc)) {
+            return visitSuper(tree);
+        }
+
+        final Class<? extends ParserRuleContext> treeClass = prc.getClass();
+        if (!convertors.containsKey(treeClass)) {
+            return visitSuper(tree);
+        }
+
+        return applyConvertor(convertors.get(treeClass), prc);
     }
 
-    public String super_visitSuperStructSpecifier(final SSCParser.SuperStructSpecifierContext ctx) {
-        return super.visitSuperStructSpecifier(ctx);
+    public String visitSuper(ParseTree tree) {
+        return super.visitDefault(tree);
     }
 
-    @Override
-    public String visitSuperStructInterface(SSCParser.SuperStructInterfaceContext ctx) {
-        return superstructInterfaceConvertor.convert(ctx);
-    }
+    private <T extends ParserRuleContext> String applyConvertor(
+            final Convertor<T> convertor,
+            final ParserRuleContext ctx
+    ) {
+        final Class<T> cnvClass = convertor.getContextClass();
 
-    @Override
-    public String visitPrimaryExpression(SSCParser.PrimaryExpressionContext ctx) {
-        return primaryExpressionConvertor.convert(ctx);
-    }
+        if (!ctx.getClass().equals(cnvClass))
+            throw new AssertionError("Trying to convert '"
+                                     + ctx.getClass() + "' using convertor of class '" + cnvClass + "'");
 
-    public String super_visitPrimaryExpression(SSCParser.PrimaryExpressionContext ctx) {
-        return super.visitPrimaryExpression(ctx);
-    }
-
-    @Override
-    public String visitFunctionDefinition(final SSCParser.FunctionDefinitionContext ctx) {
-        return functionConvertor.convert(ctx);
-    }
-
-    public String super_visitFunctionDefinition(final SSCParser.FunctionDefinitionContext ctx) {
-        return super.visitFunctionDefinition(ctx);
-    }
-
-    @Override
-    public String visitPostfixExpression(SSCParser.PostfixExpressionContext ctx) {
-        return postfixExpressionConvertor.convert(ctx);
-    }
-
-    public String super_visitPostfixExpression(SSCParser.PostfixExpressionContext ctx) {
-        return super.visitPostfixExpression(ctx);
-    }
-
-    @Override
-    public String visitConditionalExpression(SSCParser.ConditionalExpressionContext ctx) {
-        return ternaryOperatorConvertor.convert(ctx);
-    }
-
-    @Override
-    public String visitFlagsSpecifier(SSCParser.FlagsSpecifierContext ctx) {
-        return flagsConvertor.convert(ctx);
-    }
-
-    @Override
-    public String visitTemplateDispatch(SSCParser.TemplateDispatchContext ctx) {
-        return templateDispatchConvertor.convert(ctx);
-    }
-
-    @Override
-    public String visitTemplateDefinition(SSCParser.TemplateDefinitionContext ctx) {
-        return templateDefinitionConvertor.convert(ctx);
-    }
-
-    @Override
-    public String visitLambdaFunction(SSCParser.LambdaFunctionContext ctx) {
-        return lambdaConvertor.convert(ctx);
+        return convertor.convert(cnvClass.cast(ctx));
     }
 
     @Override

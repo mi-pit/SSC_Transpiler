@@ -114,7 +114,7 @@ public final class ArgumentParser {
                                 opt.setValue(!def);
                             }
 
-                            yield opt.nextOperation;
+                            yield opt.nextOperation();
                         }
                     }
                     Logger.errExit(ExitValue.INVALID_ARGUMENTS, "Unknown option: " + arg);

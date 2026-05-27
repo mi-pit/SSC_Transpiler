@@ -76,10 +76,10 @@ public class VariableCollector {
                 .filter(Objects::nonNull)
                 .map(type -> {
                     if (type.Superstruct() != null) {
-                        return dispatcher.visitTemplateDispatch(type.templateDispatch());
+                        return dispatcher.visit(type.templateDispatch());
                     }
                     if (type.superStructSpecifier() != null) {
-                        return dispatcher.visitTerminal(type.superStructSpecifier().Identifier());
+                        return dispatcher.visit(type.superStructSpecifier().Identifier());
                     }
                     return null;
                 })
@@ -107,7 +107,7 @@ public class VariableCollector {
         }
 
         for (final SSCParser.DeclaratorContext typedefDeclarator : declaratorsList) {
-            final String typedeffedName = dispatcher.visitTerminal(typedefDeclarator.directDeclarator().Identifier());
+            final String typedeffedName = dispatcher.visit(typedefDeclarator.directDeclarator().Identifier());
 
             final Typedef<SuperStruct> typedef = new Typedef<>(
                     typedeffedName,
@@ -177,16 +177,18 @@ public class VariableCollector {
 
             final SSCParser.TypeSpecifierContext typeSpec = declSpec.typeSpecifier();
             if (typeSpec.superStructSpecifier() != null) {
-                final String ssName = dispatcher.visitTerminal(typeSpec.superStructSpecifier().Identifier());
+                final String ssName = dispatcher.visit(typeSpec.superStructSpecifier().Identifier());
                 return Optional.of(Either.left(ssName));
             }
 
             if (typeSpec.Superstruct() != null && typeSpec.templateDispatch() != null) {
-                final String ssName = dispatcher.visitTemplateDispatch(typeSpec.templateDispatch());
+                final String ssName = dispatcher.visit(typeSpec.templateDispatch());
                 return Optional.of(Either.left(ssName));
             }
 
-            final Typedef<SuperStruct> typedef = dispatcher.data.superstructTypedefs().get(dispatcher.visitTypeSpecifier(typeSpec));
+            final Typedef<SuperStruct> typedef = dispatcher.data.superstructTypedefs().get(
+                    dispatcher.visit(typeSpec)
+            );
             if (typedef != null) {
                 return Optional.of(Either.right(typedef));
             }

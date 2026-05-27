@@ -17,15 +17,15 @@ import java.util.List;
 
 public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStructSpecifierContext> {
     public SuperstructConvertor(VisitorDispatcher dispatcher) {
-        super(dispatcher);
+        super(dispatcher, SSCParser.SuperStructSpecifierContext.class);
     }
 
     @Override
     public String convert(SSCParser.SuperStructSpecifierContext ctx) {
-        final String thisSSName = dispatcher.visitTerminal(ctx.Identifier());
+        final String thisSSName = dispatcher.visit(ctx.Identifier());
 
         if (ctx.superStructBody() == null) {
-            return dispatcher.super_visitSuperStructSpecifier(ctx);
+            return dispatcher.visitSuper(ctx);
         }
         Main.logger.printDebug("Entering Superstruct Body");
 
@@ -69,7 +69,7 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
         final boolean isPrivate = declSpecs
                 .stream()
                 .anyMatch(ds -> ds.functionSpecifier() != null
-                        && ds.functionSpecifier().Private() != null);
+                                && ds.functionSpecifier().Private() != null);
 
         if (memberCtx.functionDefinition() != null) {
             processMemberFunction(memberCtx.functionDefinition(), declSpecs, isPrivate);
@@ -90,7 +90,7 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
         final List<SSCParser.DeclarationSpecifierContext> noPrivateSpecs = declSpecs
                 .stream()
                 .filter(declSpec -> declSpec.functionSpecifier() == null
-                        || declSpec.functionSpecifier().Private() == null)
+                                    || declSpec.functionSpecifier().Private() == null)
                 .toList();
         if (noPrivateSpecs.isEmpty()) {
             throw dispatcher.getSSCLanguageException("No type specifier for superstruct member", memberCtx);
@@ -118,10 +118,10 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
                 );
             }
 
-            final String name = dispatcher.visitTerminal(identifier);
+            final String name = dispatcher.visit(identifier);
 
-            final String declarationSpecifiersString = dispatcher.visitDeclarationSpecifiers(memberCtx.declarationSpecifiers());
-            final String declaratorString = dispatcher.visitDeclarator(declarator);
+            final String declarationSpecifiersString = dispatcher.visit(memberCtx.declarationSpecifiers());
+            final String declaratorString = dispatcher.visit(declarator);
             final String declaration = declarationSpecifiersString + " " + declaratorString;
 
             final Field field = new Field(isPrivate, declaration, name);
@@ -152,10 +152,10 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
                     new SuperstructVariable(superstruct.name(), Pointer.oneConst(), "this");
 
             Main.logger.printDebug(() -> "Adding self reference variable '"
-                    + selfReferenceVariable
-                    + "' to function '"
-                    + dispatcher.getCurrentFunctionName()
-                    + "'");
+                                         + selfReferenceVariable
+                                         + "' to function '"
+                                         + dispatcher.getCurrentFunctionName()
+                                         + "'");
             dispatcher.data
                     .functionVariables()
                     .get(dispatcher.getCurrentFunctionName())
@@ -172,7 +172,7 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
                 parameters,
                 functionCtx.functionBody() == null
                         ? null
-                        : dispatcher.visitFunctionBody(functionCtx.functionBody())
+                        : dispatcher.visit(functionCtx.functionBody())
         );
 
         superstruct.addFunction(functionDefinition);
@@ -190,7 +190,7 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
                 .parameterTypeList()
                 .stream()
                 .map(paramTypeLsCtx -> paramTypeLsCtx.parameterList().parameterDeclaration())
-                .flatMap(paramsCtxLs -> paramsCtxLs.stream().map(dispatcher::visitParameterDeclaration))
+                .flatMap(paramsCtxLs -> paramsCtxLs.stream().map(dispatcher::visit))
                 .filter(str -> !str.isBlank())
                 .toList()
         );

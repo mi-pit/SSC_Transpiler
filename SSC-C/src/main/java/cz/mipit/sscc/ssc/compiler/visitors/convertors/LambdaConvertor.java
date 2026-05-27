@@ -8,7 +8,7 @@ public class LambdaConvertor
         extends AbstractConvertor<SSCParser.LambdaFunctionContext> {
 
     public LambdaConvertor(VisitorDispatcher dispatcher) {
-        super(dispatcher);
+        super(dispatcher, SSCParser.LambdaFunctionContext.class);
     }
 
     @Override
@@ -18,11 +18,11 @@ public class LambdaConvertor
 
         dispatcher.pushFunction(lambdaName);
 
-        final String returnType = dispatcher.visitTypeName(ctx.typeName());
-        final String parameters = dispatcher.visitParameterTypeList(ctx.parameterTypeList());
-        final String body = dispatcher.visitFunctionBody(ctx.functionBody());
+        final String returnType = dispatcher.visit(ctx.typeName());
+        final String parameters = dispatcher.visit(ctx.parameterTypeList());
+        final String body = dispatcher.visit(ctx.functionBody());
         final String lambdaAttributes = ctx.lambdaAttributes() != null
-                ? dispatcher.visitLambdaAttributes(ctx.lambdaAttributes())
+                ? dispatcher.visit(ctx.lambdaAttributes())
                 : "";
 
         final LambdaFunction lambda = new LambdaFunction(

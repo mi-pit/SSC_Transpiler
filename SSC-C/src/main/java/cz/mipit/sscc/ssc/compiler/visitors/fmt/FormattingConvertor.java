@@ -22,6 +22,11 @@ public class FormattingConvertor extends BaseConvertorVisitor {
         Main.logger.printDebug("Formatting. Nothing to dump.");
     }
 
+    @Override
+    public String visit(ParseTree node) {
+        return visitDefault(node);
+    }
+
     /*
      * declarator
      * parameterTypeList
@@ -105,13 +110,13 @@ public class FormattingConvertor extends BaseConvertorVisitor {
     @Override
     public String visitDeclaration(SSCParser.DeclarationContext ctx) {
         if (ctx.staticAssertDeclaration() != null) {
-            return visitStaticAssertDeclaration(ctx.staticAssertDeclaration());
+            return visit(ctx.staticAssertDeclaration());
         }
         if (ctx.attributeDeclaration() != null) {
-            return visitAttributeDeclaration(ctx.attributeDeclaration());
+            return visit(ctx.attributeDeclaration());
         }
 
-        final String declSpecs = visitDeclarationSpecifiers(ctx.declarationSpecifiers());
+        final String declSpecs = visit(ctx.declarationSpecifiers());
         if (ctx.initDeclaratorList() == null) {
             return getIndent() + declSpecs + ";\n";
         }
@@ -119,7 +124,7 @@ public class FormattingConvertor extends BaseConvertorVisitor {
         final StringJoiner initDeclJoiner = new StringJoiner(", ", " ", "");
         for (final SSCParser.InitDeclaratorContext initDecl : ctx.initDeclaratorList().initDeclarator()) {
             initDeclJoiner.add(
-                    visitInitDeclarator(initDecl)
+                    visit(initDecl)
             );
         }
 
@@ -129,10 +134,10 @@ public class FormattingConvertor extends BaseConvertorVisitor {
     // '|' '[' parameterTypeList ']' '|' '->' typeName lambdaAttributes? functionBody
     @Override
     public String visitLambdaFunction(SSCParser.LambdaFunctionContext ctx) {
-        final String paramTypeLs = visitParameterTypeList(ctx.parameterTypeList());
-        final String typeName = visitTypeName(ctx.typeName());
-        final String attrs = ctx.lambdaAttributes() != null ? " " + visitLambdaAttributes(ctx.lambdaAttributes()) : "";
-        return String.format("|[ %s ]| -> %s%s%s", paramTypeLs, typeName, attrs, visitFunctionBody(ctx.functionBody()));
+        final String paramTypeLs = visit(ctx.parameterTypeList());
+        final String typeName = visit(ctx.typeName());
+        final String attrs = ctx.lambdaAttributes() != null ? " " + visit(ctx.lambdaAttributes()) : "";
+        return String.format("|[ %s ]| -> %s%s%s", paramTypeLs, typeName, attrs, visit(ctx.functionBody()));
     }
 
     // (Identifier | templateDispatch) '::' Identifier
@@ -145,7 +150,7 @@ public class FormattingConvertor extends BaseConvertorVisitor {
         final String fstPart = visit(ctx.children.getFirst());
         final String lstPart = visit(ctx.children.getLast());
 
-        return fstPart + "::" + lstPart;
+        return fstPart + visit(ctx.DoubleColon()) + lstPart;
     }
 
     @Override
@@ -154,7 +159,7 @@ public class FormattingConvertor extends BaseConvertorVisitor {
             return super.visitPostfixExpression(ctx);
         }
 
-        final String primary = visitPrimaryExpression(ctx.primaryExpression());
+        final String primary = visit(ctx.primaryExpression());
 
         final StringBuilder res = new StringBuilder();
         boolean first = true;
@@ -203,7 +208,7 @@ public class FormattingConvertor extends BaseConvertorVisitor {
         // '<' typeArgument (',' typeArgument)* '>'
         final StringJoiner joiner = new StringJoiner(", ", "<", ">");
         for (final SSCParser.TypeArgumentContext tc : ctx.typeArgument()) {
-            final String converted = visitTypeArgument(tc);
+            final String converted = visit(tc);
             joiner.add(converted);
         }
         return joiner.toString();
@@ -211,13 +216,13 @@ public class FormattingConvertor extends BaseConvertorVisitor {
 
     @Override
     public String visitTemplateDispatch(SSCParser.TemplateDispatchContext ctx) {
-        return visitTerminal(ctx.Identifier()) + visitTemplateDispatchTypeArguments(ctx.templateDispatchTypeArguments());
+        return visit(ctx.Identifier()) + visit(ctx.templateDispatchTypeArguments());
     }
 
     // Template '<' templateTypes '>'
     @Override
     public String visitTemplateHeader(SSCParser.TemplateHeaderContext ctx) {
-        return "tmpl<" + visitTemplateTypes(ctx.templateTypes()) + ">\n";
+        return "tmpl<" + visit(ctx.templateTypes()) + ">\n";
     }
 
     // Identifier (',' Identifier)*
@@ -225,7 +230,7 @@ public class FormattingConvertor extends BaseConvertorVisitor {
     public String visitTemplateTypes(SSCParser.TemplateTypesContext ctx) {
         return ctx.Identifier()
                 .stream()
-                .map(this::visitTerminal)
+                .map(this::visit)
                 .collect(Collectors.joining(", "));
     }
 
@@ -235,15 +240,15 @@ public class FormattingConvertor extends BaseConvertorVisitor {
             return super.visitTemplateDefinition(ctx);
         }
 
-        return visitTemplateHeader(ctx.templateHeader()) + visitSuperStructSpecifier(ctx.superStructSpecifier()) + ";\n";
+        return visit(ctx.templateHeader()) + visit(ctx.superStructSpecifier()) + ";\n";
     }
 
     // Superstruct Identifier Interface '{' (functionHeader ';')+ '}'
     @Override
     public String visitSuperStructInterface(SSCParser.SuperStructInterfaceContext ctx) {
-        final String ssTerminal = visitTerminal(ctx.Superstruct());
-        final String ident = visitTerminal(ctx.Identifier());
-        final String intfcTerminal = visitTerminal(ctx.Interface());
+        final String ssTerminal = visit(ctx.Superstruct());
+        final String ident = visit(ctx.Identifier());
+        final String intfcTerminal = visit(ctx.Interface());
         return """
                 %s %s %s
                 %s
@@ -254,7 +259,7 @@ public class FormattingConvertor extends BaseConvertorVisitor {
                         intfcTerminal,
                         getNamespaceBlock(() -> ctx
                                 .functionHeader()
-                                .stream().map(fnHeader -> getIndent() + visitFunctionHeader(fnHeader) + ";\n")
+                                .stream().map(fnHeader -> getIndent() + visit(fnHeader) + ";\n")
                                 .toList()
                         )
                 );
@@ -263,12 +268,12 @@ public class FormattingConvertor extends BaseConvertorVisitor {
     // Superstruct Identifier '{' superStructBody '}'
     @Override
     public String visitSuperStructSpecifier(SSCParser.SuperStructSpecifierContext ctx) {
-        final String ssTerminal = visitTerminal(ctx.Superstruct());
-        final String spec = ssTerminal + " " + visitTerminal(ctx.Identifier());
+        final String ssTerminal = visit(ctx.Superstruct());
+        final String spec = ssTerminal + " " + visit(ctx.Identifier());
         if (ctx.superStructBody() == null) {
             return spec;
         }
-        return spec + "\n" + visitSuperStructBody(ctx.superStructBody());
+        return spec + "\n" + visit(ctx.superStructBody());
     }
 
     // superStructMember+
@@ -276,7 +281,7 @@ public class FormattingConvertor extends BaseConvertorVisitor {
     public String visitSuperStructBody(SSCParser.SuperStructBodyContext ctx) {
         return getNamespaceBlock(() -> ctx.superStructMember()
                 .stream()
-                .map(this::visitSuperStructMember)
+                .map(this::visit)
                 .toList()
         );
     }
@@ -284,7 +289,7 @@ public class FormattingConvertor extends BaseConvertorVisitor {
     @Override
     public String visitSuperStructMember(SSCParser.SuperStructMemberContext ctx) {
         if (ctx.functionDefinition() != null) {
-            return "\n" + getIndent() + visitFunctionDefinition(ctx.functionDefinition()) + "\n";
+            return "\n" + getIndent() + visit(ctx.functionDefinition()) + "\n";
         }
         return getIndent() + super.visitSuperStructMember(ctx);
     }
@@ -296,10 +301,10 @@ public class FormattingConvertor extends BaseConvertorVisitor {
             return super.visitFlagsSpecifier(ctx);
         }
 
-        final String key = visitTerminal(ctx.FlagsSet());
+        final String key = visit(ctx.FlagsSet());
 
         return key + " " + (ctx.Identifier() == null ? "" : visit(ctx.Identifier()) + " ")
-               + getIndentedBlock(() -> visitFlagsInitializerList(ctx.flagsInitializerList()));
+               + getIndentedBlock(() -> visit(ctx.flagsInitializerList()));
     }
 
     // 'enum' attributeSpecifierSequence? gnuAttributes? Identifier? (':' typeName)?
@@ -314,23 +319,23 @@ public class FormattingConvertor extends BaseConvertorVisitor {
 
         sBuilder.add("enum");
         if (ctx.attributeSpecifierSequence() != null) {
-            sBuilder.add(visitAttributeSpecifierSequence(ctx.attributeSpecifierSequence()));
+            sBuilder.add(visit(ctx.attributeSpecifierSequence()));
         }
         if (ctx.gnuAttributes() != null) {
-            sBuilder.add(visitGnuAttributes(ctx.gnuAttributes()));
+            sBuilder.add(visit(ctx.gnuAttributes()));
         }
         if (ctx.Identifier() != null) {
-            sBuilder.add(visitTerminal(ctx.Identifier()));
+            sBuilder.add(visit(ctx.Identifier()));
         }
         if (ctx.Colon() != null) {
             assert ctx.typeName() != null;
-            sBuilder.add(visitTerminal(ctx.Colon()));
-            sBuilder.add(visitTypeName(ctx.typeName()));
+            sBuilder.add(visit(ctx.Colon()));
+            sBuilder.add(visit(ctx.typeName()));
         }
         if (ctx.enumTypeSpecifier() != null) {
-            sBuilder.add(visitEnumTypeSpecifier(ctx.enumTypeSpecifier()));
+            sBuilder.add(visit(ctx.enumTypeSpecifier()));
         }
-        final String block = getIndentedBlock(() -> visitEnumeratorList(ctx.enumeratorList()));
+        final String block = getIndentedBlock(() -> visit(ctx.enumeratorList()));
 
         return sBuilder + block;
     }
@@ -341,7 +346,7 @@ public class FormattingConvertor extends BaseConvertorVisitor {
         final StringBuilder sBuilder = new StringBuilder();
         for (final SSCParser.EnumeratorContext c : ctx.enumerator()) {
             sBuilder.append(getIndent())
-                    .append(visitEnumerator(c))
+                    .append(visit(c))
                     .append(",\n");
         }
         return sBuilder.toString();
@@ -352,7 +357,7 @@ public class FormattingConvertor extends BaseConvertorVisitor {
     public String visitFlagsInitializerList(SSCParser.FlagsInitializerListContext ctx) {
         final StringBuilder builder = new StringBuilder();
         for (final SSCParser.FlagsInitializerContext fic : ctx.flagsInitializer()) {
-            final String c = visitFlagsInitializer(fic);
+            final String c = visit(fic);
 
             builder
                     .append(getIndent())
@@ -415,22 +420,22 @@ public class FormattingConvertor extends BaseConvertorVisitor {
         final String fst;
         final int lastChild;
         if (ctx.Identifier() != null) {
-            final String ident = visitTerminal(ctx.Identifier());
+            final String ident = visit(ctx.Identifier());
 
             if (ctx.Colon() != null) {
                 // Identifier ':' DigitSequence
-                fst = ident + " : " + visitTerminal(ctx.DigitSequence());
+                fst = ident + " : " + visit(ctx.DigitSequence());
                 lastChild = 3;
             } else if (ctx.vcSpecificModifer() != null) {
                 // vcSpecificModifer Identifier
-                fst = visitVcSpecificModifer(ctx.vcSpecificModifer()) + " " + ident;
+                fst = visit(ctx.vcSpecificModifer()) + " " + ident;
                 lastChild = 2;
             } else {
                 // Identifier attributeSpecifierSequence?
                 final String att;
                 if (ctx.children.size() > 1 && ctx.children.get(1) instanceof SSCParser.AttributeSpecifierSequenceContext ass) {
                     lastChild = 2;
-                    att = visitAttributeSpecifierSequence(ass);
+                    att = visit(ass);
                 } else {
                     lastChild = 1;
                     att = "";
@@ -441,18 +446,18 @@ public class FormattingConvertor extends BaseConvertorVisitor {
             final String sub;
             if (ctx.vcSpecificModifer() != null) {
                 // '(' vcSpecificModifer declarator ')'
-                sub = visitVcSpecificModifer(ctx.vcSpecificModifer()) + visitDeclarator(ctx.declarator());
+                sub = visit(ctx.vcSpecificModifer()) + visit(ctx.declarator());
                 lastChild = 4;
             } else {
                 // '(' declarator ')'
-                sub = visitDeclarator(ctx.declarator());
+                sub = visit(ctx.declarator());
                 lastChild = 3;
             }
             fst = "( " + sub + " )";
         } else {
             // gnuAttribute
             assert ctx.gnuAttribute() != null;
-            fst = visitGnuAttribute(ctx.gnuAttribute());
+            fst = visit(ctx.gnuAttribute());
             lastChild = 1;
         }
         final StringBuilder builder = new StringBuilder();
@@ -531,7 +536,7 @@ public class FormattingConvertor extends BaseConvertorVisitor {
         }
 
         return getIndentedBlock(() ->
-                visitInitializerList(ctx.initializerList()) + (ctx.Comma() != null ? "," : "") + "\n"
+                visit(ctx.initializerList()) + (ctx.Comma() != null ? "," : "") + "\n"
         );
     }
 
@@ -545,11 +550,11 @@ public class FormattingConvertor extends BaseConvertorVisitor {
 
             if (child instanceof SSCParser.DesignationContext designation) {
                 builder
-                        .append(visitDesignation(designation))
+                        .append(visit(designation))
                         .append(" ");
             } else if (child instanceof SSCParser.InitializerContext initializer) {
                 builder.append(
-                        visitInitializer(initializer)
+                        visit(initializer)
                 );
             } else if (child instanceof TerminalNode terminal) {
                 assert terminal.getSymbol().getType() == SSCParser.Comma;
@@ -568,14 +573,14 @@ public class FormattingConvertor extends BaseConvertorVisitor {
             return super.visitDesignator(ctx);
         }
 
-        return "." + visitTerminal(ctx.Identifier());
+        return "." + visit(ctx.Identifier());
     }
 
     // '_Static_assert' '(' constantExpression (',' StringLiteral)? ')' ';'
     @Override
     public String visitStaticAssertDeclaration(SSCParser.StaticAssertDeclarationContext ctx) {
-        final String constantExpression = visitConstantExpression(ctx.constantExpression());
-        final String strLiteral = ctx.StringLiteral() == null ? ", " + visitTerminal(ctx.StringLiteral()) : "";
+        final String constantExpression = visit(ctx.constantExpression());
+        final String strLiteral = ctx.StringLiteral() == null ? ", " + visit(ctx.StringLiteral()) : "";
         return "_Static_assert( " + constantExpression + strLiteral + " );\n";
     }
 
@@ -603,7 +608,7 @@ public class FormattingConvertor extends BaseConvertorVisitor {
             return super.visitCompoundStatement(ctx);
         }
 
-        return getIndentedBlock(() -> visitBlockItemList(ctx.blockItemList()));
+        return getIndentedBlock(() -> visit(ctx.blockItemList()));
     }
 
     // blockItem+
@@ -622,7 +627,7 @@ public class FormattingConvertor extends BaseConvertorVisitor {
                 //builder.append("\n");
             }
 
-            final String blockItemString = visitBlockItem(blockItemContext);
+            final String blockItemString = visit(blockItemContext);
             builder.append(blockItemString);
 
             final long nLines = blockItemString.lines().count();
@@ -640,18 +645,18 @@ public class FormattingConvertor extends BaseConvertorVisitor {
             return super.visitStructOrUnionSpecifier(ctx);
         }
 
-        final String structOrUnion = visitStructOrUnion(ctx.structOrUnion());
+        final String structOrUnion = visit(ctx.structOrUnion());
         final String attributes = ctx.attributeSpecifierSequence() != null
-                ? " " + visitAttributeSpecifierSequence(ctx.attributeSpecifierSequence())
+                ? " " + visit(ctx.attributeSpecifierSequence())
                 : "";
         final String gnuAttributes = ctx.gnuAttributes() != null
-                ? " " + visitGnuAttributes(ctx.gnuAttributes())
+                ? " " + visit(ctx.gnuAttributes())
                 : "";
         final String identifier = ctx.Identifier() != null
-                ? " " + visitTerminal(ctx.Identifier())
+                ? " " + visit(ctx.Identifier())
                 : "";
 
-        final String block = getIndentedBlock(() -> visitMemberDeclarationList(ctx.memberDeclarationList()));
+        final String block = getIndentedBlock(() -> visit(ctx.memberDeclarationList()));
 
         return structOrUnion + attributes + gnuAttributes + identifier + block;
     }
@@ -659,19 +664,19 @@ public class FormattingConvertor extends BaseConvertorVisitor {
     @Override
     public String visitMemberDeclaration(SSCParser.MemberDeclarationContext ctx) {
         if (ctx.staticAssertDeclaration() != null) {
-            return visitStaticAssertDeclaration(ctx.staticAssertDeclaration());
+            return visit(ctx.staticAssertDeclaration());
         }
 
         if (ctx.memberDeclaration() != null) {
-            return visitTerminal(ctx.KW__extension__()) + " " + visitMemberDeclaration(ctx.memberDeclaration());
+            return visit(ctx.KW__extension__()) + " " + visit(ctx.memberDeclaration());
         }
 
         final String attributes = ctx.attributeSpecifierSequence() != null
-                ? visitAttributeSpecifierSequence(ctx.attributeSpecifierSequence()) + " "
+                ? visit(ctx.attributeSpecifierSequence()) + " "
                 : "";
-        final String specifierQualifierList = visitSpecifierQualifierList(ctx.specifierQualifierList());
+        final String specifierQualifierList = visit(ctx.specifierQualifierList());
         final String memberDeclList = ctx.memberDeclaratorList() != null
-                ? " " + visitMemberDeclaratorList(ctx.memberDeclaratorList())
+                ? " " + visit(ctx.memberDeclaratorList())
                 : "";
 
         return getIndent() + attributes + specifierQualifierList + memberDeclList + ";\n";
@@ -686,7 +691,7 @@ public class FormattingConvertor extends BaseConvertorVisitor {
         }
 
         final StringJoiner joiner = new StringJoiner(", ");
-        final String paramList = visitParameterList(ctx.parameterList());
+        final String paramList = visit(ctx.parameterList());
         joiner.add(paramList);
 
         if (ctx.Ellipsis() != null) {
@@ -701,7 +706,7 @@ public class FormattingConvertor extends BaseConvertorVisitor {
     public String visitParameterList(SSCParser.ParameterListContext ctx) {
         final StringJoiner joiner = new StringJoiner(", ");
         for (final SSCParser.ParameterDeclarationContext p : ctx.parameterDeclaration()) {
-            joiner.add(visitParameterDeclaration(p));
+            joiner.add(visit(p));
         }
 
         return joiner.toString();
@@ -715,8 +720,8 @@ public class FormattingConvertor extends BaseConvertorVisitor {
     // Attribute '(' '(' gnuAttributeList ')' ')'
     @Override
     public String visitGnuAttribute(SSCParser.GnuAttributeContext ctx) {
-        final String attr = visitTerminal(ctx.Attribute());
-        final String list = visitGnuAttributeList(ctx.gnuAttributeList());
+        final String attr = visit(ctx.Attribute());
+        final String list = visit(ctx.gnuAttributeList());
 
         return attr + "(( " + list + " ))";
     }
@@ -746,10 +751,10 @@ public class FormattingConvertor extends BaseConvertorVisitor {
             throw new AssertionError();
         }
 
-        final String selectionKeyword = visitTerminal(t);
-        final String expression = visitExpression(ctx.expression());
+        final String selectionKeyword = visit(t);
+        final String expression = visit(ctx.expression());
         level++;
-        final String statement = visitStatement(ctx.statement().getFirst());
+        final String statement = visit(ctx.statement().getFirst());
         level--;
 
         if (ctx.Else() == null) {
@@ -764,7 +769,7 @@ public class FormattingConvertor extends BaseConvertorVisitor {
 
         assert ctx.statement().size() == 2;
 
-        final String elseKeyword = visitTerminal(ctx.Else());
+        final String elseKeyword = visit(ctx.Else());
 
         final SSCParser.StatementContext elseStatementCtx = ctx.statement().getLast();
         final boolean elif = elseStatementCtx.selectionStatement() != null && elseStatementCtx.selectionStatement().If() != null;
@@ -774,7 +779,7 @@ public class FormattingConvertor extends BaseConvertorVisitor {
             level++;
         final String linebreak = !indent ? "" : "\n";
 
-        String elseStatement = visitStatement(elseStatementCtx);
+        String elseStatement = visit(elseStatementCtx);
         if (elif) {
             elseStatement = " " + elseStatement.strip();
         }
@@ -810,12 +815,12 @@ public class FormattingConvertor extends BaseConvertorVisitor {
     public String visitLabeledStatement(SSCParser.LabeledStatementContext ctx) {
         if (ctx.Colon() == null) {
             // Label Identifier ';'
-            return visitTerminal(ctx.Label()) + " " + visitTerminal(ctx.Identifier()) + ";";
+            return visit(ctx.Label()) + " " + visit(ctx.Identifier()) + ";";
         }
         if (ctx.Identifier() != null) {
             // Identifier ':' statement?
-            final String identifier = visitTerminal(ctx.Identifier());
-            final String statement = ctx.statement() != null ? " " + visitStatement(ctx.statement()) : "";
+            final String identifier = visit(ctx.Identifier());
+            final String statement = ctx.statement() != null ? " " + visit(ctx.statement()) : "";
             return identifier + ":" + statement;
         }
 

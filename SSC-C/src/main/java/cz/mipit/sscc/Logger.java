@@ -109,7 +109,7 @@ public final class Logger {
         printVerbose("%s: '" + COLOR_DEFAULT + "%s" + VERBOSE_COLOR + "'", message, fileName);
     }
 
-    private void printException(final boolean isUnexpected, Throwable e) {
+    synchronized private void printException(final boolean isUnexpected, Throwable e) {
         System.out.flush();
 
         if (isUnexpected) {

@@ -182,9 +182,9 @@ public final class SSCCompiler implements Compiler {
             return Optional.empty();
         }
 
-        logger.printVerbose("Converting SSC to C code...");
+        logger.printVerbose("Processing parsed SSC code...");
         if (!processSSCCode(data, workingFileAbsolutePath)) {
-            logger.printVerbose("Failed to convert SSC code.");
+            logger.printVerbose("Failed to process SSC code.");
             return Optional.empty();
         }
 

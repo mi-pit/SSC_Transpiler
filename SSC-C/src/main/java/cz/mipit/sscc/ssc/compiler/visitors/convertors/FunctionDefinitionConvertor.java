@@ -6,7 +6,7 @@ import cz.mipit.sscc.util.SSCCUtil;
 
 public class FunctionDefinitionConvertor extends AbstractConvertor<SSCParser.FunctionDefinitionContext> {
     public FunctionDefinitionConvertor(VisitorDispatcher dispatcher) {
-        super(dispatcher);
+        super(dispatcher, SSCParser.FunctionDefinitionContext.class);
     }
 
     @Override
@@ -18,7 +18,7 @@ public class FunctionDefinitionConvertor extends AbstractConvertor<SSCParser.Fun
         assert ctx.functionBody() != null;
         assert ctx.functionBody().compoundStatement() != null;
 
-        final String unqualifiedName = dispatcher.visitTerminal(
+        final String unqualifiedName = dispatcher.visit(
                 SSCCUtil.getIdentifierFromDeclarator(ctx.functionHeader().declarator())
         );
         final String currentFunctionName = dispatcher.data
@@ -27,7 +27,7 @@ public class FunctionDefinitionConvertor extends AbstractConvertor<SSCParser.Fun
                 .orElse(unqualifiedName);
 
         dispatcher.pushFunction(currentFunctionName, ctx);
-        final String functionDefinitionString = dispatcher.super_visitFunctionDefinition(ctx);
+        final String functionDefinitionString = dispatcher.visitSuper(ctx);
         dispatcher.popFunction();
 
         return functionDefinitionString;

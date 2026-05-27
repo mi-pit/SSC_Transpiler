@@ -13,14 +13,15 @@ import java.util.Optional;
 public class PrimaryExpressionConvertor
         extends AbstractConvertor<SSCParser.PrimaryExpressionContext> {
     public PrimaryExpressionConvertor(VisitorDispatcher dispatcher) {
-        super(dispatcher);
+        super(dispatcher, SSCParser.PrimaryExpressionContext.class);
     }
 
     @Override
     public String convert(SSCParser.PrimaryExpressionContext ctx) {
         if (ctx.DoubleColon() == null) {
-            return dispatcher.super_visitPrimaryExpression(ctx);
+            return dispatcher.visitSuper(ctx);
         }
+        Main.logger.printDebug(() -> "Double colon in '" + dispatcher.getLiteral(ctx) + "'");
 
         if (ctx.Identifier().isEmpty() || ctx.Identifier().size() > 2) {
             throw dispatcher.getSSCLanguageException(
@@ -32,11 +33,11 @@ public class PrimaryExpressionConvertor
         final String superstructName;
         final ParseTree firstChildCtx; // exception arg
         if (ctx.templateDispatch() != null) {
-            superstructName = dispatcher.visitTemplateDispatch(ctx.templateDispatch());
+            superstructName = dispatcher.visit(ctx.templateDispatch());
             identIdx = 0;
             firstChildCtx = ctx.templateDispatch();
         } else {
-            superstructName = dispatcher.visitTerminal(ctx.Identifier().getFirst());
+            superstructName = dispatcher.visit(ctx.Identifier().getFirst());
             identIdx = 1;
             firstChildCtx = ctx.Identifier().getFirst();
         }
@@ -46,7 +47,7 @@ public class PrimaryExpressionConvertor
                     "Invalid number of identifiers", ctx
             );
         }
-        final String superstructMethodName = dispatcher.visitTerminal(ctx.Identifier().getLast());
+        final String superstructMethodName = dispatcher.visit(ctx.Identifier().getLast());
 
         final SuperStruct superstruct = dispatcher.data.superStructs().get(superstructName);
         if (superstruct == null) {
@@ -68,15 +69,15 @@ public class PrimaryExpressionConvertor
         final Optional<SuperstructMethod> maybeMethod = superstruct.findMethod(methodName);
         if (maybeMethod.isEmpty()) {
             throw dispatcher.getSSCLanguageException("Superstruct '" + className
-                    + "' has no method called '" + methodName
-                    + "'", ctx);
+                                                     + "' has no method called '" + methodName
+                                                     + "'", ctx);
         }
         final SuperstructMethod method = maybeMethod.get();
 
         if (method.isPrivate()) {
             Main.logger.printDebug(() -> "Method '" + methodName + "' is private. Going to check if it may be used here...");
             if (dispatcher.data.currentSuperstruct().isEmpty()
-                    || !dispatcher.data.currentSuperstruct().get().name().equals(className)) {
+                || !dispatcher.data.currentSuperstruct().get().name().equals(className)) {
                 throw dispatcher.getSSCLanguageException(
                         "Cannot access private static method `" + methodName + "` from outside the superstruct",
                         ctx

@@ -82,7 +82,7 @@ public final class FunctionHeaderData {
                     declarator
             );
         }
-        final String unqualifiedName = dispatcher.visitTerminal(identifier);
+        final String unqualifiedName = dispatcher.visit(identifier);
 
         return new FunctionHeaderData(
                 dispatcher, isStatic, isPure, withoutCustom,
@@ -103,7 +103,7 @@ public final class FunctionHeaderData {
                 continue;
             }
 
-            withoutCustom.add(dispatcher.visitDeclarationSpecifier(declSpec));
+            withoutCustom.add(dispatcher.visit(declSpec));
         }
         return withoutCustom;
     }
