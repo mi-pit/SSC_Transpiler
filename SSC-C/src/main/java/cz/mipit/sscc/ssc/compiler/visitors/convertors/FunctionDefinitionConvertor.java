@@ -27,7 +27,7 @@ public class FunctionDefinitionConvertor extends AbstractConvertor<SSCParser.Fun
                 .orElse(unqualifiedName);
 
         dispatcher.pushFunction(currentFunctionName, ctx);
-        final String functionDefinitionString = dispatcher.visitSuper(ctx);
+        final String functionDefinitionString = dispatcher.super_visitFunctionDefinition(ctx);
         dispatcher.popFunction();
 
         return functionDefinitionString;

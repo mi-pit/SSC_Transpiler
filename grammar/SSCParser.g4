@@ -851,7 +851,7 @@ templateDefinition
     : templateHeader {this.EnterTemplate();}
     (
         functionDefinition
-        | superStructSpecifier
+        | superStructSpecifier ';'
         | superStructInterface
     )
       {this.ExitTemplate();}

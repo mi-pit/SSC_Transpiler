@@ -70,10 +70,10 @@ public final class ArgumentParser {
                 }
 
                 case LibPath -> {
-                    Set<InputFile> inputFiles;
+                    final Set<InputFile> inputFiles;
                     try {
                         inputFiles = DirectoryTreeParser.getFilesInDirectory(Path.of(arg), Set.of("ssc", "c"));
-                    } catch (IOException io) {
+                    } catch (final IOException io) {
                         Logger.errExit(ExitValue.IO_EXCEPTION, io.getMessage());
                         throw new UnreachableCodeException();
                     }
@@ -83,10 +83,10 @@ public final class ArgumentParser {
 
                 case FileType -> {
                     nextFileType = FileType.fromString(arg);
-                    yield NextOperation.File;
+                    yield NextOperation.InputFile;
                 }
 
-                case File -> {
+                case InputFile -> {
                     final Path path = Path.of(arg);
                     final InputFile in = nextFileType == null
                             ? InputFile.fromPath(path)
@@ -119,6 +119,11 @@ public final class ArgumentParser {
                     }
                     Logger.errExit(ExitValue.INVALID_ARGUMENTS, "Unknown option: " + arg);
                     throw new AssertionError("Unreachable");
+                }
+
+                case OutputFile -> {
+                    options.setFormatOutputFile(arg);
+                    yield NextOperation.None;
                 }
             };
         }

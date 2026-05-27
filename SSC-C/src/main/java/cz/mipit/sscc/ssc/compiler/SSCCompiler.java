@@ -5,7 +5,9 @@ import cz.mipit.sscc.args.SSCCOptions;
 import cz.mipit.sscc.file.FileType;
 import cz.mipit.sscc.file.InputFile;
 import cz.mipit.sscc.ssc.Compiler;
+import cz.mipit.sscc.ssc.compiler.visitors.BaseConvertorVisitor;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
+import cz.mipit.sscc.ssc.compiler.visitors.fmt.FormattingConvertor;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.ssc.exceptions.children.AntlrException;
 import cz.mipit.sscc.util.ExitValue;
@@ -124,8 +126,12 @@ public final class SSCCompiler implements Compiler {
                 return;
             }
 
+            final InputFile outputFile = options.formatOnly()
+                    ? options.formatOutputFile()
+                    : fileArg.getChangedSuffix("c");
+
             try {
-                final Optional<Path> processed = transpileFile(fileArg);
+                final Optional<Path> processed = transpileFile(fileArg, outputFile);
                 if (processed.isPresent()) {
                     final Path file = processed.get();
                     outputtedFiles.add(file);
@@ -154,11 +160,11 @@ public final class SSCCompiler implements Compiler {
         return totalFailed.get();
     }
 
-    private Optional<Path> transpileFile(final InputFile inputFile)
+    private Optional<Path> transpileFile(final InputFile inputFile,
+                                         final InputFile workingFile)
             throws IOException, InterruptedException {
         logger.printVerboseFilename("Processing file", inputFile.absolutePathString());
 
-        final InputFile workingFile = inputFile.getChangedSuffix("c");
         final Path workingFileAbsolutePath = workingFile.toAbsolutePath();
 
         logger.printVerbose("Preprocessing file...");
@@ -176,14 +182,18 @@ public final class SSCCompiler implements Compiler {
             return Optional.empty();
         }
 
-        logger.printVerbose("Extracting superstructs...");
-        if (!extractSuperstructMembers(data, workingFileAbsolutePath)) {
-            logger.printVerbose("Failed to extract superstructs.");
+        logger.printVerbose("Converting SSC to C code...");
+        if (!processSSCCode(data, workingFileAbsolutePath)) {
+            logger.printVerbose("Failed to convert SSC code.");
             return Optional.empty();
         }
 
         if (options.compileTarget().isPresent()) {
             /* don't verify if you're going to compile the files anyway */
+            return Optional.of(workingFileAbsolutePath);
+        }
+
+        if (options.formatOnly()) {
             return Optional.of(workingFileAbsolutePath);
         }
 
@@ -197,10 +207,12 @@ public final class SSCCompiler implements Compiler {
         return Optional.of(workingFileAbsolutePath);
     }
 
-    private boolean extractSuperstructMembers(final VisitorInput data,
-                                              final Path outputFile)
+    private boolean processSSCCode(final VisitorInput data,
+                                   final Path outputFile)
             throws IOException {
-        final VisitorDispatcher visitor = new VisitorDispatcher(data);
+        final BaseConvertorVisitor visitor = options.formatOnly()
+                ? new FormattingConvertor(data.tokens(), data.inputFile())
+                : new VisitorDispatcher(data);
         final String result = visitor.visit(data.tree());
 
         if (options.debug()) {

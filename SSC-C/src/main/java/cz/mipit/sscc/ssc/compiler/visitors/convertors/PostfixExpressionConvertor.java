@@ -7,7 +7,6 @@ import cz.mipit.sscc.ssc.compiler.data.ss.SuperstructMethod;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import org.antlr.v4.runtime.tree.ParseTree;
-import org.antlr.v4.runtime.tree.RuleNode;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.Optional;
@@ -22,15 +21,22 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
     @Override
     public String convert(SSCParser.PostfixExpressionContext ctx) {
         /* Compound literals for some reason count as postfix expressions */
-        final Optional<String> res = getCompoundLiteralReplaced(ctx);
-        if (res.isPresent()) {
-            return res.get();
+        {
+            final Optional<String> res = getCompoundLiteralReplaced(ctx);
+            if (res.isPresent()) {
+                return res.get();
+            }
         }
 
-        if (!ctx.Arrow().isEmpty() || !ctx.Dot().isEmpty()) {
+        if (
+                ctx.children.size() >= 3
+                        // must be first child
+                        && ctx.children.get(1) instanceof TerminalNode t
+                        && (t.getSymbol().getType() == SSCParser.Arrow || t.getSymbol().getType() == SSCParser.Dot)
+        ) {
             return convertMethodCall(ctx);
         }
-        return dispatcher.visitSuper(ctx);
+        return dispatcher.super_visitPostfixExpression(ctx);
     }
 
     private Optional<String> getCompoundLiteralReplaced(SSCParser.PostfixExpressionContext ctx) {
@@ -41,7 +47,7 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
             return Optional.empty();
         }
 
-        final String res = dispatcher.visitSuper(ctx);
+        final String res = dispatcher.super_visitPostfixExpression(ctx);
 
         Main.logger.printDebug(() -> "superStructSpecifier in: "
                 + dispatcher.getLiteral(ctx).replace(lineSeparator(), " ")
@@ -82,7 +88,7 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
         if (maybeSSVar.isEmpty()) {
             Main.logger.printDebug(() -> "\tVariable is not superstruct\tlocal vars (" + currentFn + "): "
                     + dispatcher.data.functionVariables().get(currentFn));
-            return dispatcher.visitSuper(ctx);
+            return dispatcher.super_visitPostfixExpression(ctx);
         }
         final SuperstructVariable ssVar = maybeSSVar.get();
 
@@ -117,13 +123,13 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
                     .anyMatch(decl -> decl.getName().equals(methodName));
             if (isAField) {
                 Main.logger.printDebug(() -> "\t\tSeems to be a field. No conversion");
-                return dispatcher.visitSuper(ctx);
+                return dispatcher.super_visitPostfixExpression(ctx);
             }
 
             if (dispatcher.data.currentSuperstruct().isEmpty() ||
                     !dispatcher.data.currentSuperstruct().get().equals(superStruct)) {
                 throw dispatcher.getSSCLanguageException(
-                        "Superstruct '" + superStruct + "' has no such method",
+                        "Superstruct '" + superStruct.name() + "' has no method called '" + methodName + "'",
                         ctx
                 );
             }
@@ -149,10 +155,10 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
                     || !(ctx.children.get(3) instanceof TerminalNode t)
                     || t.getSymbol().getType() != SSCParser.LeftParen) {
                 Main.logger.printDebug(() -> "\tNo parentheses");
-                return dispatcher.visitSuper(ctx);
+                return dispatcher.super_visitPostfixExpression(ctx);
             }
         }
-        expressionBuilder.append('(');
+        expressionBuilder.append("( ");
 
         if (arrowOrDot == ArrowOrDot.Dot && !ssVar.getPointers().isEmpty()) {
             throw dispatcher.getSSCLanguageException("Cannot access non-local superstruct variable using `.`", ctx);
@@ -175,6 +181,7 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
                         dispatcher.visitArgumentExpressionList(argumentExprLs)
                 );
             } else if (fifthChild instanceof TerminalNode t && t.getSymbol().getType() == SSCParser.RightParen) {
+                expressionBuilder.append(" ");
                 expressionBuilder.append(dispatcher.visitTerminal(t));
             } else {
                 throw new AssertionError("Left-paren not followed by either arguments list or right-paren");
@@ -184,16 +191,26 @@ public class PostfixExpressionConvertor extends AbstractConvertor<SSCParser.Post
         assert ctx.children.size() == ctx.getChildCount();
         for (; currentChildIndex < ctx.getChildCount(); ++currentChildIndex) {
             final ParseTree child = ctx.children.get(currentChildIndex);
-            final String converted;
-            if (child instanceof TerminalNode t) {
-                converted = dispatcher.visitTerminal(t);
-            } else if (child instanceof RuleNode prc) {
-                converted = dispatcher.visitSuper(prc);
-            } else {
-                throw new UnsupportedOperationException("Unable to convert " + child.getClass().getSimpleName());
+
+            assert !(child instanceof SSCParser.PrimaryExpressionContext);
+
+            if (child instanceof TerminalNode t &&
+                    (t.getSymbol().getType() == SSCParser.RightParen ||
+                            t.getSymbol().getType() == SSCParser.RightBracket ||
+                            t.getSymbol().getType() == SSCParser.RightBrace)
+            ) {
+                expressionBuilder.append(' ');
             }
 
-            expressionBuilder.append(converted);
+            expressionBuilder.append(dispatcher.visit(child));
+
+            if (child instanceof TerminalNode t &&
+                    (t.getSymbol().getType() == SSCParser.LeftParen ||
+                            t.getSymbol().getType() == SSCParser.LeftBracket ||
+                            t.getSymbol().getType() == SSCParser.LeftBrace)
+            ) {
+                expressionBuilder.append(' ');
+            }
         }
         assert currentChildIndex == ctx.getChildCount();
 

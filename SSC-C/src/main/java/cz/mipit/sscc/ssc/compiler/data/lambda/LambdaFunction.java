@@ -1,9 +1,11 @@
 package cz.mipit.sscc.ssc.compiler.data.lambda;
 
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 
-public final class LambdaFunction implements Comparable<LambdaFunction> {
+import static java.util.Objects.requireNonNull;
+
+public final class LambdaFunction {
     private final String returnType;
     private final String params;
     private final String body;
@@ -11,13 +13,12 @@ public final class LambdaFunction implements Comparable<LambdaFunction> {
 
     private final String name;
 
-    private final long id;
     private static final AtomicLong nextId = new AtomicLong(0);
 
     public static String createName(
             final String surroundingFunctionName
     ) {
-        return "SSC_LAMBDA_DeclaredIn__" + surroundingFunctionName;
+        return "SSClambda_from_" + surroundingFunctionName;
     }
 
     public LambdaFunction(
@@ -27,14 +28,12 @@ public final class LambdaFunction implements Comparable<LambdaFunction> {
             String ctx,
             String attributes
     ) {
-        this.returnType = Objects.requireNonNull(returnType);
-        this.params = Objects.requireNonNull(params);
-        this.body = Objects.requireNonNull(ctx);
-        this.attributes = Objects.requireNonNull(attributes);
+        this.returnType = " " + requireNonBlank(requireNonNull(returnType)) + " ";
+        this.params = padIfBlank(requireNonNull(params), s -> " " + s + " ");
+        this.body = requireNonNull(ctx);
+        this.attributes = padIfBlank(requireNonNull(attributes), s -> s + " ");
 
-        id = nextId.getAndIncrement();
-
-        this.name = prettifiedName + "__ID" + id;
+        this.name = "ID" + nextId.getAndIncrement() + "_" + prettifiedName;
     }
 
     public String getName() {
@@ -42,24 +41,25 @@ public final class LambdaFunction implements Comparable<LambdaFunction> {
     }
 
     public String getDefinition() {
-        return attributes + " static " + returnType + " " + getName() + "(" + params + ")" + body;
+        return attributes + "static" + returnType + getName() + "(" + params + ")" + body;
     }
 
-    @Override
-    public int compareTo(LambdaFunction o) {
-        Objects.requireNonNull(o);
-        return Long.compare(id, o.id);
+    private static String padIfBlank(
+            final String string,
+            final Function<String, String> mapper
+    ) {
+        if (!string.isBlank()) {
+            return string;
+        }
+
+        return mapper.apply(string);
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (!(o instanceof LambdaFunction that))
-            return false;
-        return compareTo(that) == 0;
-    }
+    private static String requireNonBlank(String string) {
+        if (string.isBlank()) {
+            throw new IllegalArgumentException(string);
+        }
 
-    @Override
-    public int hashCode() {
-        return (int) id;
+        return string;
     }
 }

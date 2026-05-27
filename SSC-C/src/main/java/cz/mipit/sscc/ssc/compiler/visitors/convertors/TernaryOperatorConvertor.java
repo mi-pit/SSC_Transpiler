@@ -11,8 +11,9 @@ public class TernaryOperatorConvertor extends AbstractConvertor<SSCParser.Condit
     @Override
     public String convert(SSCParser.ConditionalExpressionContext ctx) {
         if (ctx.If() == null) {
-            return dispatcher.visitSuper(ctx);
+            return dispatcher.visitChildren(ctx);
         }
+
         assert ctx.If() != null;
         assert ctx.Then() != null;
         assert ctx.Else() != null;

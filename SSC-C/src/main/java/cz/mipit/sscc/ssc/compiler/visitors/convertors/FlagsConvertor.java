@@ -45,7 +45,7 @@ public class FlagsConvertor extends AbstractConvertor<SSCParser.FlagsSpecifierCo
     @Override
     public String convert(SSCParser.FlagsSpecifierContext ctx) {
         if (ctx.flagsInitializerList() == null) {
-            return dispatcher.visitSuper(ctx);
+            return dispatcher.visitChildren(ctx);
         }
 
         final String identifier = ctx.Identifier() == null ? "" : dispatcher.visitTerminal(ctx.Identifier());

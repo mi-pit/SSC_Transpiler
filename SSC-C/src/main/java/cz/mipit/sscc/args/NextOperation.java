@@ -3,20 +3,23 @@ package cz.mipit.sscc.args;
 enum NextOperation {
     None(false),
     FilesOnly(false),
+
     CompileTarget(true),
     LibPath(true),
 
     FileType(true),
-    File(true),
+    InputFile(true),
+
+    OutputFile(true),
     ;
 
-    private final boolean r;
+    private final boolean reqArg;
 
     NextOperation(boolean r) {
-        this.r = r;
+        this.reqArg = r;
     }
 
     public boolean requiresArgument() {
-        return r;
+        return reqArg;
     }
 }

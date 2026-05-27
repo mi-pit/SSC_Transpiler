@@ -163,8 +163,8 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
     }
 
     /// Creates a generic (not type specified) template name from an identifier
-    public static String mangleFunctionName(String identifier) {
-        return "SSC_TMPL__" + identifier;
+    private static String mangleFunctionName(String identifier) {
+        return "SSCtmpl__" + identifier;
     }
 
     public static String convertTypeArgumentToShorthand(

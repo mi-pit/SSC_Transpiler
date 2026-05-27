@@ -74,6 +74,14 @@ public final class SSCCOptions implements Iterable<Option<?>> {
             List.of(), Boolean.class, false, NextOperation.FilesOnly
     );
 
+    private static final String OPTSTR_FORMAT_ONLY_SHORT = "-f";
+    public static final String OPTSTR_FORMAT_ONLY_LONG = "--format";
+    private final Option<InputFile> OPTION_FORMAT = new Option<>(
+            new OptionString(OPTSTR_FORMAT_ONLY_SHORT, OPTSTR_FORMAT_ONLY_LONG),
+            "Format the code", "Preprocesses and formats the code and outputs to the output file",
+            List.of("output-file"), InputFile.class, null, NextOperation.OutputFile
+    );
+
     private final List<Option<?>> OPTIONS = List.of(
             OPTION_HELP,
             OPTION_VERBOSE,
@@ -82,7 +90,8 @@ public final class SSCCOptions implements Iterable<Option<?>> {
             OPTION_COMPILE,
             OPTION_DIR,
             OPTION_FILETYPE,
-            OPTION_STOP_OPTS
+            OPTION_STOP_OPTS,
+            OPTION_FORMAT
     );
 
     private final Set<InputFile> filesToProcess = new HashSet<>();
@@ -102,6 +111,10 @@ public final class SSCCOptions implements Iterable<Option<?>> {
         return OPTION_DEBUG.value();
     }
 
+    public boolean formatOnly() {
+        return OPTION_FORMAT.value() != null;
+    }
+
     public Optional<String> compileTarget() {
         return Optional.ofNullable(OPTION_COMPILE.value());
     }
@@ -116,6 +129,16 @@ public final class SSCCOptions implements Iterable<Option<?>> {
 
     public void addFiles(Set<InputFile> inputFiles) {
         filesToProcess.addAll(inputFiles);
+    }
+
+    public void setFormatOutputFile(String filename) {
+        OPTION_FORMAT.setValue(
+                InputFile.fromPath(Path.of(filename))
+        );
+    }
+
+    public InputFile formatOutputFile() {
+        return OPTION_FORMAT.value();
     }
 
     public Set<InputFile> filesToProcess() {

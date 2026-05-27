@@ -17,13 +17,12 @@ import cz.mipit.sscc.ssc.compiler.visitors.convertors.SuperstructInterfaceConver
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateDefinitionConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateDispatchConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TernaryOperatorConvertor;
+import cz.mipit.sscc.ssc.compiler.visitors.fmt.FormattingConvertor;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.ssc.exceptions.children.SSCLanguageException;
-import cz.mipit.sscc.util.SSCCUtil;
 import cz.mipit.sscc.util.VisitorInput;
 import cz.mipit.sscc.util.annotations.Nullable;
 import org.antlr.v4.runtime.ParserRuleContext;
-import org.antlr.v4.runtime.tree.RuleNode;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -33,29 +32,30 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.StringJoiner;
 
 import static cz.mipit.sscc.Main.logger;
 
 
-public class VisitorDispatcher extends BaseConvertorVisitor {
+public class VisitorDispatcher extends FormattingConvertor {
     public final CompilerData data;
 
     private final List<String> externalDeclarationsToEmitBefore;
     private final List<String> externalDeclarationsToEmitAfter;
 
+    private final Convertor<SSCParser.ConditionalExpressionContext> ternaryOperatorConvertor;
     private final Convertor<SSCParser.PostfixExpressionContext> postfixExpressionConvertor;
     private final Convertor<SSCParser.PrimaryExpressionContext> primaryExpressionConvertor;
     private final Convertor<SSCParser.FunctionDefinitionContext> functionConvertor;
-    private final Convertor<SSCParser.ConditionalExpressionContext> ternaryOperatorConvertor;
-    private final Convertor<SSCParser.FlagsSpecifierContext> flagsConvertor;
 
-    private final Convertor<SSCParser.SuperStructInterfaceContext> superstructInterfaceConvertor;
+    private final Convertor<SSCParser.FlagsSpecifierContext> flagsConvertor;
+    private final Convertor<SSCParser.LambdaFunctionContext> lambdaConvertor;
 
     private final Convertor<SSCParser.TemplateDispatchContext> templateDispatchConvertor;
     private final Convertor<SSCParser.TemplateDefinitionContext> templateDefinitionConvertor;
 
-    private final Convertor<SSCParser.LambdaFunctionContext> lambdaConvertor;
 
+    private final Convertor<SSCParser.SuperStructInterfaceContext> superstructInterfaceConvertor;
     private final Convertor<SSCParser.SuperStructSpecifierContext> superstructConvertor;
 
 
@@ -88,14 +88,13 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
     }
 
 
-    public String visitSuper(final RuleNode ctx) {
-        return super.visitChildren(ctx);
-    }
-
-
     @Override
     public String visitSuperStructSpecifier(final SSCParser.SuperStructSpecifierContext ctx) {
         return superstructConvertor.convert(ctx);
+    }
+
+    public String super_visitSuperStructSpecifier(final SSCParser.SuperStructSpecifierContext ctx) {
+        return super.visitSuperStructSpecifier(ctx);
     }
 
     @Override
@@ -108,14 +107,26 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
         return primaryExpressionConvertor.convert(ctx);
     }
 
+    public String super_visitPrimaryExpression(SSCParser.PrimaryExpressionContext ctx) {
+        return super.visitPrimaryExpression(ctx);
+    }
+
     @Override
     public String visitFunctionDefinition(final SSCParser.FunctionDefinitionContext ctx) {
         return functionConvertor.convert(ctx);
     }
 
+    public String super_visitFunctionDefinition(final SSCParser.FunctionDefinitionContext ctx) {
+        return super.visitFunctionDefinition(ctx);
+    }
+
     @Override
     public String visitPostfixExpression(SSCParser.PostfixExpressionContext ctx) {
         return postfixExpressionConvertor.convert(ctx);
+    }
+
+    public String super_visitPostfixExpression(SSCParser.PostfixExpressionContext ctx) {
+        return super.visitPostfixExpression(ctx);
     }
 
     @Override
@@ -145,15 +156,27 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
 
     @Override
     public String visitExternalDeclaration(SSCParser.ExternalDeclarationContext ctx) {
+        final StringJoiner joiner = new StringJoiner(System.lineSeparator());
+
         final String external = super.visitExternalDeclaration(ctx);
 
-        final String before = String.join(System.lineSeparator(), externalDeclarationsToEmitBefore);
-        externalDeclarationsToEmitBefore.clear();
+        if (!externalDeclarationsToEmitBefore.isEmpty()) {
+            joiner.add(
+                    String.join(System.lineSeparator(), externalDeclarationsToEmitBefore)
+            );
+            externalDeclarationsToEmitBefore.clear();
+        }
 
-        final String after = String.join(System.lineSeparator(), externalDeclarationsToEmitAfter);
-        externalDeclarationsToEmitAfter.clear();
+        joiner.add(external);
 
-        return before + external + after;
+        if (!externalDeclarationsToEmitAfter.isEmpty()) {
+            joiner.add(
+                    String.join(System.lineSeparator(), externalDeclarationsToEmitAfter)
+            );
+            externalDeclarationsToEmitAfter.clear();
+        }
+
+        return joiner.toString();
     }
 
     @Override
@@ -195,10 +218,9 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
                     super(
                             Type.Language,
                             exception.getMessage()
-                                    + System.lineSeparator()
-                                    + COLOR_LOCATOR
-                                    + SSCCUtil.Text.INDENT
-                                    + "Previous definition here: ",
+                            + System.lineSeparator()
+                            + COLOR_LOCATOR
+                            + "\tPrevious definition here: ",
                             _functionDefinitions.get(name),
                             tokens,
                             currentFile

@@ -56,7 +56,7 @@ public class SuperstructMethod {
         if (body == null) {
             return Optional.empty();
         }
-        return Optional.of(declaration + System.lineSeparator() + body);
+        return Optional.of(declaration + body);
     }
 
     private String createDeclaration() {

@@ -25,7 +25,7 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
         final String thisSSName = dispatcher.visitTerminal(ctx.Identifier());
 
         if (ctx.superStructBody() == null) {
-            return dispatcher.visitSuper(ctx);
+            return dispatcher.super_visitSuperStructSpecifier(ctx);
         }
         Main.logger.printDebug("Entering Superstruct Body");
 

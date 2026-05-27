@@ -19,7 +19,7 @@ public class PrimaryExpressionConvertor
     @Override
     public String convert(SSCParser.PrimaryExpressionContext ctx) {
         if (ctx.DoubleColon() == null) {
-            return dispatcher.visitSuper(ctx);
+            return dispatcher.super_visitPrimaryExpression(ctx);
         }
 
         if (ctx.Identifier().isEmpty() || ctx.Identifier().size() > 2) {

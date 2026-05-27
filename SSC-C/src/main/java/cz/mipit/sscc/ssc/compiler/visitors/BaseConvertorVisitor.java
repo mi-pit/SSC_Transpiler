@@ -44,6 +44,8 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
         return !hasErrors;
     }
 
+    abstract public void debugPrintDump();
+
     @Override
     protected String defaultResult() {
         return "";
@@ -51,12 +53,9 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
 
     @Override
     public String visitTerminal(TerminalNode node) {
-        if (node.getSymbol().getType() == SSCParser.Identifier
-                && replacements.containsKey(node.getText())) {
-            return replacements.get(node.getText());
-        }
-
         return switch (node.getSymbol().getType()) {
+            case SSCParser.Identifier -> replacements.getOrDefault(node.getText(), node.getText());
+
             case Token.EOF,
                  SSCParser.StaticFunction,
                  SSCParser.Pure,
@@ -74,18 +73,17 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
 
     private int level = 0;
 
-    /// Also formats the result
     @Override
     public String visitChildren(RuleNode node) {
         final StringBuilder builder = new StringBuilder();
 
         boolean isOffset = node instanceof SSCParser.CompoundStatementContext
-                || node instanceof SSCParser.SuperStructSpecifierContext
-                || node instanceof SSCParser.StructOrUnionContext
-                || node instanceof SSCParser.EnumSpecifierContext
-                || node instanceof SSCParser.IterationStatementContext
-                || node instanceof SSCParser.SelectionStatementContext
-                || nodeIsTerminal(node, SSCParser.LeftBrace);
+                           || node instanceof SSCParser.SuperStructSpecifierContext
+                           || node instanceof SSCParser.StructOrUnionContext
+                           || node instanceof SSCParser.EnumSpecifierContext
+                           || node instanceof SSCParser.IterationStatementContext
+                           || node instanceof SSCParser.SelectionStatementContext
+                           || nodeIsTerminal(node, SSCParser.LeftBrace);
 
         if (isOffset) {
             level++;
@@ -95,8 +93,8 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
             final ParseTree child = node.getChild(i);
 
             final boolean shouldLinebreak = child instanceof SSCParser.DeclarationContext
-                    || child instanceof SSCParser.ExternalDeclarationContext
-                    || child instanceof SSCParser.StatementContext;
+                                            || child instanceof SSCParser.ExternalDeclarationContext
+                                            || child instanceof SSCParser.StatementContext;
             if (shouldLinebreak) {
                 if (!builder.isEmpty() && builder.charAt(builder.length() - 1) == ' ') {
                     builder.deleteCharAt(builder.length() - 1);
@@ -124,8 +122,8 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
             }
 
             if (!builder.isEmpty()
-                    && builder.charAt(builder.length() - 1) != '\n'
-                    && !childText.equals(";")) {
+                && builder.charAt(builder.length() - 1) != '\n'
+                && !childText.equals(";")) {
                 builder.append(" ");
             }
 
@@ -157,11 +155,11 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
     }
 
     public SSCLanguageException getSSCLanguageException(String message, ParseTree ctx) {
-        if (ctx instanceof ParserRuleContext prc) {
+        if (ctx instanceof ParserRuleContext prc)
             return new SSCLanguageException(message, prc, tokens, currentFile);
-        } else if (ctx instanceof TerminalNode t) {
+        if (ctx instanceof TerminalNode t)
             return new SSCLanguageException(message, t, tokens, currentFile);
-        }
-        throw new IllegalStateException("Invalid parse tree: " + ctx);
+
+        throw new IllegalStateException("Invalid parse tree: " + ctx.getClass().getName());
     }
 }
