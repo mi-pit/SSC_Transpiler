@@ -7,10 +7,12 @@ import cz.mipit.sscc.ssc.compiler.visitors.BaseConvertorVisitor;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.util.SSCCUtil;
 import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.RuleNode;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.StringJoiner;
 import java.util.function.Supplier;
@@ -19,7 +21,6 @@ import java.util.stream.Collectors;
 public class FormattingConvertor extends BaseConvertorVisitor {
     @Override
     public void debugPrintDump() {
-        Main.logger.printDebug("Formatting. Nothing to dump.");
     }
 
     @Override
@@ -40,6 +41,10 @@ public class FormattingConvertor extends BaseConvertorVisitor {
     private int level;
 
     private String getIndent() {
+        return getIndent(level);
+    }
+
+    private String getIndent(int level) {
         return SSCCUtil.Text.INDENT.repeat(level);
     }
 
@@ -76,6 +81,14 @@ public class FormattingConvertor extends BaseConvertorVisitor {
         super(tokens, currentFile);
 
         level = 0;
+    }
+
+    @Override
+    public String visitErrorNode(ErrorNode node) {
+        final String literal = getLiteral(node);
+
+        Main.logger.printDebug("Error node: '" + literal + "'");
+        return literal;
     }
 
     @Override
@@ -137,7 +150,12 @@ public class FormattingConvertor extends BaseConvertorVisitor {
         final String paramTypeLs = visit(ctx.parameterTypeList());
         final String typeName = visit(ctx.typeName());
         final String attrs = ctx.lambdaAttributes() != null ? " " + visit(ctx.lambdaAttributes()) : "";
-        return String.format("|[ %s ]| -> %s%s%s", paramTypeLs, typeName, attrs, visit(ctx.functionBody()));
+
+        final SSCParser.FunctionBodyContext fnBodyCtx = ctx.functionBody();
+        final String body = fnBodyCtx.compoundStatement().blockItemList() == null
+                ? " " + visit(fnBodyCtx)
+                : visit(fnBodyCtx);
+        return String.format("|[ %s ]| -> %s%s%s", paramTypeLs, typeName, attrs, body);
     }
 
     // (Identifier | templateDispatch) '::' Identifier
@@ -257,12 +275,69 @@ public class FormattingConvertor extends BaseConvertorVisitor {
                         ssTerminal,
                         ident,
                         intfcTerminal,
-                        getNamespaceBlock(() -> ctx
-                                .functionHeader()
-                                .stream().map(fnHeader -> getIndent() + visit(fnHeader) + ";\n")
-                                .toList()
-                        )
+                        getNamespaceBlock(() -> convertFunctionHeaderContexts(ctx.functionHeader()))
                 );
+    }
+
+    // attributeSpecifierSequence? declarationSpecifiers? declarator
+    private List<String> convertFunctionHeaderContexts(List<SSCParser.FunctionHeaderContext> functionHeaderContexts) {
+        enum SSCSpecifier {
+            NONE,
+            PURE, PRIVATE, STATIC,
+            ;
+
+            static SSCSpecifier from(SSCParser.DeclarationSpecifierContext declSpec) {
+                if (declSpec.functionSpecifier() == null) {
+                    return NONE;
+                }
+
+                final SSCParser.FunctionSpecifierContext fnSpec = declSpec.functionSpecifier();
+                if (fnSpec.StaticFunction() != null) {
+                    return STATIC;
+                }
+                if (fnSpec.Pure() != null) {
+                    return PURE;
+                }
+                if (fnSpec.Private() != null) {
+                    return PRIVATE;
+                }
+
+                return NONE;
+            }
+
+            static SSCSpecifier from(SSCParser.FunctionHeaderContext functionHeaderContext) {
+                if (functionHeaderContext.declarationSpecifiers() == null) {
+                    return NONE;
+                }
+                final var declSpecsCtx = functionHeaderContext.declarationSpecifiers();
+                // declarationSpecifier+
+                if (declSpecsCtx.declarationSpecifier().isEmpty()) {
+                    return NONE;
+                }
+
+                for (SSCParser.DeclarationSpecifierContext declSpecCtx : declSpecsCtx.declarationSpecifier()) {
+                    final SSCSpecifier s = from(declSpecCtx);
+                    if (s != NONE) {
+                        return s;
+                    }
+                }
+                return NONE;
+            }
+        }
+
+        SSCSpecifier prevSpecifier = null;
+        final List<String> res = new ArrayList<>();
+        for (final SSCParser.FunctionHeaderContext fnHeader : functionHeaderContexts) {
+
+            final SSCSpecifier curr = SSCSpecifier.from(fnHeader);
+            if (prevSpecifier != null && curr != prevSpecifier) {
+                res.add("\n");
+            }
+            prevSpecifier = curr;
+
+            res.add(getIndent() + visit(fnHeader) + ";\n");
+        }
+        return res;
     }
 
     // Superstruct Identifier '{' superStructBody '}'
@@ -288,10 +363,16 @@ public class FormattingConvertor extends BaseConvertorVisitor {
 
     @Override
     public String visitSuperStructMember(SSCParser.SuperStructMemberContext ctx) {
-        if (ctx.functionDefinition() != null) {
-            return "\n" + getIndent() + visit(ctx.functionDefinition()) + "\n";
+        if (ctx.functionDefinition() == null) {
+            return super.visitSuperStructMember(ctx);
         }
-        return getIndent() + super.visitSuperStructMember(ctx);
+
+        return "\n" + getIndent() + visit(ctx.functionDefinition());
+    }
+
+    @Override
+    public String visitFunctionDefinition(SSCParser.FunctionDefinitionContext ctx) {
+        return super.visitFunctionDefinition(ctx) + "\n";
     }
 
     // FlagsSet attributeSpecifierSequence? gnuAttributes? Identifier? '{' flagsInitializerList ','? '}'
@@ -593,50 +674,74 @@ public class FormattingConvertor extends BaseConvertorVisitor {
             s.charAt(s.length() - 2) != ';' ||
             s.charAt(s.length() - 3) != ' '
         ) {
-            return getIndent() + s;
+            return s;
         }
 
         final StringBuilder builder = new StringBuilder(s);
         builder.deleteCharAt(builder.length() - 3);
 
-        return getIndent() + builder;
+        return builder.toString();
     }
 
     @Override
     public String visitCompoundStatement(SSCParser.CompoundStatementContext ctx) {
         if (ctx.blockItemList() == null) {
-            return super.visitCompoundStatement(ctx);
+            return visit(ctx.LeftBrace()) + visit(ctx.RightBrace());
         }
 
         return getIndentedBlock(() -> visit(ctx.blockItemList()));
     }
 
+    // TODO: make configurable
+    private static final int LIMIT_LINES = 4;
+    private static final int LIMIT_CHARS = 80;
+
     // blockItem+
     @Override
     public String visitBlockItemList(SSCParser.BlockItemListContext ctx) {
-        // TODO: make configurable
-        final int LIMIT_LINES = 5;
-        final int LIMIT_CHARS = 200;
-
         int prevLines = 0;
         int prevChars = 0;
+        boolean justLinebroke = false;
 
         final StringBuilder builder = new StringBuilder();
-        for (SSCParser.BlockItemContext blockItemContext : ctx.blockItem()) {
-            if (prevChars > LIMIT_CHARS || prevLines > LIMIT_LINES) {
-                //builder.append("\n");
-            }
+
+        final List<SSCParser.BlockItemContext> blockItems = ctx.blockItem();
+        for (int i = 0; i < blockItems.size(); i++) {
+            final SSCParser.BlockItemContext blockItemContext = blockItems.get(i);
 
             final String blockItemString = visit(blockItemContext);
-            builder.append(blockItemString);
+            final int nLines = (int) blockItemString.lines().count();
+            final int nChars = blockItemString.length();
 
-            final long nLines = blockItemString.lines().count();
-            assert nLines <= Integer.MAX_VALUE;
-            prevLines = (int) nLines;
-            prevChars = blockItemString.length();
+            final boolean linebreakBefore = i != 0
+                                            && !justLinebroke
+                                            && (lineTooLongOrTooManyLines(prevLines, prevChars)
+                                                || lineTooLongOrTooManyLines(nLines, nChars));
+            final boolean linebreakAfter_ = i != blockItems.size() - 1
+                                            && lineTooLongOrTooManyLines(nLines, nChars);
+
+            if (linebreakBefore) {
+                builder.append("\n");
+            }
+            builder.append(blockItemString);
+            if (linebreakAfter_) {
+                builder.append("\n");
+            }
+
+            justLinebroke = linebreakAfter_;
+            prevLines = nLines;
+            prevChars = nChars;
         }
 
         return builder.toString();
+    }
+
+    private static boolean lineTooLongOrTooManyLines(final int nLines, final int nChars) {
+        assert nLines >= 0;
+        if (nLines == 0)
+            return false;
+
+        return nChars / nLines > LIMIT_CHARS || nLines > LIMIT_LINES;
     }
 
     @Override
@@ -712,9 +817,35 @@ public class FormattingConvertor extends BaseConvertorVisitor {
         return joiner.toString();
     }
 
+    // assignmentExpression (',' assignmentExpression)*
+    @Override
+    public String visitArgumentExpressionList(SSCParser.ArgumentExpressionListContext ctx) {
+        final StringJoiner joiner = new StringJoiner(", ");
+
+        for (SSCParser.AssignmentExpressionContext a : ctx.assignmentExpression()) {
+            joiner.add(visit(a));
+        }
+
+        return joiner.toString();
+    }
+
+    private boolean EXT_justLinebroke = false;
+
     @Override
     public String visitExternalDeclaration(SSCParser.ExternalDeclarationContext ctx) {
-        return super.visitExternalDeclaration(ctx) + "\n";
+        final String s = super.visitExternalDeclaration(ctx);
+
+        final int nLines = (int) s.lines().count();
+
+        if (nLines > LIMIT_LINES) {
+            final String linebreakBefore = EXT_justLinebroke ? "" : "\n";
+
+            EXT_justLinebroke = true;
+            return linebreakBefore + s + "\n";
+        }
+
+        EXT_justLinebroke = false;
+        return s;
     }
 
     // Attribute '(' '(' gnuAttributeList ')' ')'
@@ -723,12 +854,12 @@ public class FormattingConvertor extends BaseConvertorVisitor {
         final String attr = visit(ctx.Attribute());
         final String list = visit(ctx.gnuAttributeList());
 
-        return attr + "(( " + list + " ))";
+        return "%s((%s))".formatted(attr, list);
     }
 
     @Override
     public String visitExpressionStatement(SSCParser.ExpressionStatementContext ctx) {
-        return super.visitExpressionStatement(ctx) + "\n";
+        return getIndent() + super.visitExpressionStatement(ctx) + "\n";
     }
 
 //iterationStatement
@@ -743,6 +874,10 @@ public class FormattingConvertor extends BaseConvertorVisitor {
     //    ;
     @Override
     public String visitSelectionStatement(SSCParser.SelectionStatementContext ctx) {
+        return getIndent() + visitSelectionStatement_(ctx) + "\n";
+    }
+
+    private String visitSelectionStatement_(SSCParser.SelectionStatementContext ctx) {
         if (ctx.statement().getFirst().compoundStatement() != null) {
             return super.visitSelectionStatement(ctx);
         }
@@ -758,13 +893,7 @@ public class FormattingConvertor extends BaseConvertorVisitor {
         level--;
 
         if (ctx.Else() == null) {
-            return String.format(
-                    """
-                            %s ( %s )
-                            %s
-                            """,
-                    selectionKeyword, expression, statement
-            );
+            return selectionKeyword + " ( " + expression + " )\n" + statement;
         }
 
         assert ctx.statement().size() == 2;
@@ -772,19 +901,20 @@ public class FormattingConvertor extends BaseConvertorVisitor {
         final String elseKeyword = visit(ctx.Else());
 
         final SSCParser.StatementContext elseStatementCtx = ctx.statement().getLast();
+
         final boolean elif = elseStatementCtx.selectionStatement() != null && elseStatementCtx.selectionStatement().If() != null;
         final boolean compound = elseStatementCtx.compoundStatement() != null;
-        final boolean indent = !elif && !compound;
-        if (indent)
+        final boolean shouldIndent = !elif && !compound;
+        if (shouldIndent)
             level++;
-        final String linebreak = !indent ? "" : "\n";
+        final String linebreak = !shouldIndent ? "" : "\n";
 
         String elseStatement = visit(elseStatementCtx);
         if (elif) {
             elseStatement = " " + elseStatement.strip();
         }
 
-        if (indent)
+        if (shouldIndent)
             level--;
 
         return selectionKeyword + " ( " + expression + " )\n"
@@ -802,7 +932,7 @@ public class FormattingConvertor extends BaseConvertorVisitor {
     //    ) ';'
     @Override
     public String visitJumpStatement(SSCParser.JumpStatementContext ctx) {
-        return super.visitJumpStatement(ctx) + "\n";
+        return getIndent() + super.visitJumpStatement(ctx) + "\n";
     }
 
     //labeledStatement
@@ -813,17 +943,155 @@ public class FormattingConvertor extends BaseConvertorVisitor {
     //    ;
     @Override
     public String visitLabeledStatement(SSCParser.LabeledStatementContext ctx) {
-        if (ctx.Colon() == null) {
+        assert level > 0;
+
+        level--;
+        final String s = getIndent() + visitLabeledStatement_(ctx);
+        level++;
+
+        return s;
+    }
+
+    private String visitLabeledStatement_(SSCParser.LabeledStatementContext ctx) {
+        final TerminalNode colonNode = ctx.Colon();
+        if (colonNode == null) {
             // Label Identifier ';'
             return visit(ctx.Label()) + " " + visit(ctx.Identifier()) + ";";
         }
+
+        final String colon = visit(colonNode);
+
+        final SSCParser.StatementContext statementCtx = ctx.statement();
+
+        final String statementFormatted;
+        if (statementCtx != null) {
+            level++;
+            final String statementLiteral = visit(statementCtx);
+            statementFormatted = statementCtx.compoundStatement() != null
+                    ? " " + statementLiteral
+                    : "\n" + statementLiteral;
+            level--;
+        } else {
+            statementFormatted = "";
+        }
+
         if (ctx.Identifier() != null) {
             // Identifier ':' statement?
             final String identifier = visit(ctx.Identifier());
-            final String statement = ctx.statement() != null ? " " + visit(ctx.statement()) : "";
-            return identifier + ":" + statement;
+            return identifier + colon + statementFormatted;
         }
 
-        return super.visitLabeledStatement(ctx);
+        if (ctx.Case() != null) {
+            // 'case' constantExpression ':' statement
+            final String constantExpression = visit(ctx.constantExpression());
+            return visit(ctx.Case()) + " " + constantExpression + colon + statementFormatted;
+        }
+
+        // 'default' ':' statement
+        final String default_ = visit(ctx.Default());
+
+        return default_ + colon + statementFormatted;
+    }
+
+    // logicalOrExpression (Question expression Colon conditionalExpression)?
+    // 'if' logicalOrExpression 'then' expression 'else' conditionalExpression
+    @Override
+    public String visitConditionalExpression(SSCParser.ConditionalExpressionContext ctx) {
+        return condExprHelper(ctx);
+    }
+
+    private String condExprHelper(final SSCParser.ConditionalExpressionContext orig) {
+        final List<String> ifs = new ArrayList<>();
+        final List<String> thens = new ArrayList<>();
+        final List<String> elses = new ArrayList<>();
+        final List<String> conds = new ArrayList<>();
+        final List<String> exprs = new ArrayList<>();
+        String last = null;
+
+        for (SSCParser.ConditionalExpressionContext ctx = orig; ctx != null; ctx = ctx.conditionalExpression()) {
+            if (ctx.conditionalExpression() == null) {
+                last = visit(ctx.logicalOrExpression());
+                continue;
+            }
+
+            ifs.add(
+                    ctx.If() != null ? visit(ctx.If()) : ""
+            );
+            thens.add(
+                    ctx.Then() != null ? visit(ctx.Then()) : visit(ctx.Question())
+            );
+            elses.add(
+                    ctx.Else() != null ? visit(ctx.Else()) : visit(ctx.Colon())
+            );
+
+            conds.add(
+                    visit(ctx.logicalOrExpression())
+            );
+            exprs.add(
+                    visit(ctx.expression())
+            );
+        }
+        assert conds.size() == exprs.size();
+        assert last != null;
+
+        if (conds.isEmpty()) {
+            // logicalOrExpression
+            return last;
+        }
+        if (conds.size() == 1) {
+            return String.format("%s %s %s %s %s %s",
+                    ifs.getFirst(), conds.getFirst(),
+                    thens.getFirst(), exprs.getFirst(),
+                    elses.getFirst(), last
+            );
+        }
+
+        assert !conds.isEmpty();
+        final boolean padIfThenElses = ifs.stream().anyMatch(s -> !s.isBlank());
+
+        final int maxCondLength = conds.stream().mapToInt(String::length).max().getAsInt();
+
+        final StringBuilder builder = new StringBuilder(
+                "\n" + getIndent(level + 1) + " "
+        );
+        for (int i = 0; i < conds.size(); i++) {
+            final boolean isFirst = i == 0;
+            final boolean isLast = i == conds.size() - 1;
+
+            String if_ = ifs.get(i);
+            if (padIfThenElses && if_.isEmpty()) {
+                if_ = "  ";
+            }
+
+            String then = thens.get(i);
+            if (padIfThenElses && "?".equals(then)) {
+                then += "   ";
+            }
+
+            String else_ = elses.get(i);
+            if (padIfThenElses && ":".equals(else_)) {
+                else_ += "   ";
+            }
+
+            final String fstPad = isFirst ? " ".repeat(else_.length()) : "";
+
+            final String condition = conds.get(i);
+            final String conditionPadding = " ".repeat(maxCondLength - condition.length());
+
+            final String expression = exprs.get(i);
+
+            final int constantStuffLength = (else_ + " " + if_ + "  ").length();
+
+            final String elseIndent = getIndent(level + 1)
+                                      + (!isLast ? "" : " ".repeat(maxCondLength + constantStuffLength));
+
+            final String e = fstPad + if_ + " " + condition + conditionPadding + " "
+                             + then + " " + expression + "\n"
+                             + elseIndent + else_ + " ";
+            builder.append(e);
+        }
+        builder.append(last);
+
+        return builder.toString();
     }
 }
