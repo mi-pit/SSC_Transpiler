@@ -232,7 +232,6 @@ public final class SSCCompiler implements Compiler {
                 .plusMany(
                         "-E",
                         "-D" + SSC_DEF_MACRO_STRING_NAME,
-                        "-Davailability(...)=", // TODO? remove
                         "-x", "c", inFile.absolutePathString(),
                         "-o", outputFile.toString()
                 )
