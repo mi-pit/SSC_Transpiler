@@ -22,7 +22,9 @@ import cz.mipit.sscc.ssc.exceptions.children.SSCLanguageException;
 import cz.mipit.sscc.util.VisitorInput;
 import cz.mipit.sscc.util.annotations.Nullable;
 import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -42,6 +44,7 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
 
     private final List<String> externalDeclarationsToEmitBefore;
     private final List<String> externalDeclarationsToEmitAfter;
+    private final Map<String, String> replacements;
 
 
     private final VariableCollector collector;
@@ -55,6 +58,7 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
         data = new CompilerData(input.symbolTable());
         externalDeclarationsToEmitBefore = new ArrayList<>();
         externalDeclarationsToEmitAfter = new ArrayList<>();
+        replacements = new HashMap<>();
 
         collector = new VariableCollector(this);
 
@@ -94,6 +98,25 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
         }
 
         return applyConvertor(convertors.get(treeClass), prc);
+    }
+
+    @Override
+    public String visitTerminal(TerminalNode node) {
+        return switch (node.getSymbol().getType()) {
+            case SSCParser.Identifier -> replacements.getOrDefault(node.getText(), node.getText());
+
+            case Token.EOF,
+                 SSCParser.StaticFunction,
+                 SSCParser.Pure,
+                 SSCParser.Private -> "";
+
+            case SSCParser.Superstruct -> "struct";
+            case SSCParser.FlagsSet -> "enum";
+
+            case SSCParser.Then -> "?";
+
+            default -> node.getText();
+        };
     }
 
     public String visitSuper(ParseTree tree) {

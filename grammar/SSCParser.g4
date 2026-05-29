@@ -298,16 +298,9 @@ logicalOrExpression
     ;
 
 // ISO C: conditional-expression (6.5.16)
-// ISO C: conditional-expression (6.5.16)
 conditionalExpression
     : logicalOrExpression (Question expression Colon conditionalExpression)?
-    /* SSC */
-    | 'if'
-        logicalOrExpression
-        'then'
-        expression
-        'else'
-        conditionalExpression
+    | 'if' logicalOrExpression 'then' expression 'else' conditionalExpression // SSC
     ;
 
 // ISO C: assignment-expression (6.5.17.1)

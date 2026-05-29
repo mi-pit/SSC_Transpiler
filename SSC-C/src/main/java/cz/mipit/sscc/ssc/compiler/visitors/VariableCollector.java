@@ -156,6 +156,7 @@ public class VariableCollector {
 
         for (final SSCParser.DeclaratorContext declarator : declarators) {
             if (!declarator.directDeclarator().parameterTypeList().isEmpty()) {
+                // Function declaration
                 continue;
             }
 

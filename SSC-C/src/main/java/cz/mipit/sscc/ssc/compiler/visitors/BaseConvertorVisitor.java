@@ -14,9 +14,6 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.RuleNode;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
-import java.util.HashMap;
-import java.util.Map;
-
 /**
  * Abstract class for low-level visitor stuff.
  * <p>
@@ -28,10 +25,6 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
     protected final InputFile currentFile;
 
     private boolean hasErrors;
-
-
-    protected final Map<String, String> replacements = new HashMap<>();
-
 
     protected BaseConvertorVisitor(CommonTokenStream tokens, InputFile currentFile) {
         this.tokens = tokens;
@@ -59,21 +52,11 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
 
     @Override
     public String visitTerminal(TerminalNode node) {
-        return switch (node.getSymbol().getType()) {
-            case SSCParser.Identifier -> replacements.getOrDefault(node.getText(), node.getText());
+        if (node.getSymbol().getType() == Token.EOF) {
+            return "";
+        }
 
-            case Token.EOF,
-                 SSCParser.StaticFunction,
-                 SSCParser.Pure,
-                 SSCParser.Private -> "";
-
-            case SSCParser.Superstruct -> "struct";
-            case SSCParser.FlagsSet -> "enum";
-
-            case SSCParser.Then -> "?";
-
-            default -> node.getText();
-        };
+        return node.getText();
     }
 
 
