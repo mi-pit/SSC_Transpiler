@@ -106,6 +106,6 @@ public class SuperstructMethod {
 
     @Override
     public String toString() {
-        return "FunctionDefinition{" + declaration + "}";
+        return "SuperstructMethod{" + declaration + "}";
     }
 }

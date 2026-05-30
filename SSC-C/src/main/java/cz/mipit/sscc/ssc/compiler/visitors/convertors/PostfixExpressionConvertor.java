@@ -87,7 +87,7 @@ public class PostfixExpressionConvertor
 
         final Optional<SuperstructVariable> maybeSSVar = dispatcher.findSuperstructVariable(currentFn, objectName);
         if (maybeSSVar.isEmpty()) {
-            Main.logger.printDebug(() -> "\tVariable is not superstruct\tlocal vars (" + currentFn + "): "
+            Main.logger.printDebug(() -> "\tVariable is not superstruct; local vars (" + currentFn + "): "
                                          + dispatcher.data.functionVariables().get(currentFn));
             return dispatcher.visitSuper(ctx);
         }

@@ -84,14 +84,14 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
         Main.logger.printDebug(() -> "Converting template dispatch: " + dispatcher.getLiteral(ctx));
         final List<SSCParser.TypeArgumentContext> typeArgs = ctx.templateDispatchTypeArguments().typeArgument();
 
-        final String nameRaw = dispatcher.visit(ctx.Identifier());
+        final String nameRaw = dispatcher.getLiteral(ctx.Identifier());
         Main.logger.printDebug(() -> "\tRaw name: " + nameRaw);
         final String nameUnqualifiedMangled = mangleFunctionName(nameRaw);
         Main.logger.printDebug(() -> "\tUnqualified but mangled name: " + nameUnqualifiedMangled);
         final String nameTypeResolved = typeSpecifyTemplateName(
                 nameUnqualifiedMangled,
                 typeArgs.stream()
-                        .map(o -> TemplateDispatchConvertor.convertTypeArgumentToShorthand(o, dispatcher))
+                        .map(o -> TemplateDispatchConvertor.convertTypeArgumentToShorthand(dispatcher, o))
                         .toList()
         );
         Main.logger.printDebug(() -> "\tResolved template call name: " + nameTypeResolved);
@@ -107,10 +107,9 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
             Main.logger.printDebug("\tAlready emitted template '" + nameTypeResolved + "'; no need to re-emit.");
             return nameTypeResolved;
         }
+        alreadyEmitted.add(nameTypeResolved);
 
-        final List<SSCParser.TemplateDefinitionContext> tmplContexts = tmpl.contexts();
-
-        for (final SSCParser.TemplateDefinitionContext tmplContext : tmplContexts) {
+        for (final SSCParser.TemplateDefinitionContext tmplContext : tmpl.contexts()) {
             final Map<String, String> typeArgMap = new HashMap<>();
             if (tmplContext.templateHeader().templateTypes().Identifier().size() != typeArgs.size()) {
                 throw dispatcher.getSSCLanguageException("Invalid number of type arguments", ctx);
@@ -136,9 +135,8 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
                             .toList()
             );
 
-            final String toReplace = dispatcher.visit(ctx.Identifier());
-            dispatcher.addReplacement(toReplace, nameTypeResolved);
-            Main.logger.printDebug(() -> "\tAdded identifier replacement: `" + toReplace
+            dispatcher.addReplacement(nameRaw, nameTypeResolved);
+            Main.logger.printDebug(() -> "\tAdded identifier replacement: `" + nameRaw
                                          + "` -> `" + nameTypeResolved + "`");
 
             final String tmplConverted;
@@ -151,12 +149,11 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
             }
 
             dispatcher.addExternalDeclarationToEmitBefore(tmplConverted);
-            alreadyEmitted.add(nameTypeResolved);
 
             dispatcher.removeReplacements(typeArgMap);
-            dispatcher.removeReplacement(toReplace);
 
-            Main.logger.printDebug(() -> "\tRemoved identifier replacement: `" + toReplace + "`");
+            dispatcher.removeReplacement(nameRaw);
+            Main.logger.printDebug(() -> "\tRemoved identifier replacement: `" + nameRaw + "`");
         }
 
         return nameTypeResolved;
@@ -168,8 +165,8 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
     }
 
     public static String convertTypeArgumentToShorthand(
-            SSCParser.TypeArgumentContext ctx,
-            VisitorDispatcher dispatcher
+            VisitorDispatcher dispatcher,
+            SSCParser.TypeArgumentContext ctx
     ) {
         final StringBuilder builder = new StringBuilder();
         for (ParseTree child : ctx.children) {

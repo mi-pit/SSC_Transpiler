@@ -68,14 +68,14 @@ public final class SSCCOptions implements Iterable<Option<?>> {
             List.of("('c' | 'ssc')", "filename"), Path.class, null, NextOperation.FileType
     );
 
-    public static final String OPTSTR_STOP_OPTS_LONG = "--";
+    public static final String OPTSTR_STOP_OPTS = "--";
     private final Option<Boolean> OPTION_STOP_OPTS = new Option<>(
-            new OptionString(OPTSTR_STOP_OPTS_LONG),
+            new OptionString(OPTSTR_STOP_OPTS),
             "Terminate options parsing", "Treats all following strings as file names",
             List.of(), Boolean.class, false, NextOperation.FilesOnly
     );
 
-    private static final String OPTSTR_FORMAT_ONLY_SHORT = "-f";
+    public static final String OPTSTR_FORMAT_ONLY_SHORT = "-f";
     public static final String OPTSTR_FORMAT_ONLY_LONG = "--format";
     private final Option<InputFile> OPTION_FORMAT = new Option<>(
             new OptionString(OPTSTR_FORMAT_ONLY_SHORT, OPTSTR_FORMAT_ONLY_LONG),

@@ -124,10 +124,6 @@ public class VisitorDispatcher extends FormattingConvertor {
         return super.visit(tree);
     }
 
-    public String visitDefault(ParseTree tree) {
-        return super.visitDefault(tree);
-    }
-
     private <T extends ParserRuleContext> String applyConvertor(
             final Convertor<T> convertor,
             final ParserRuleContext ctx

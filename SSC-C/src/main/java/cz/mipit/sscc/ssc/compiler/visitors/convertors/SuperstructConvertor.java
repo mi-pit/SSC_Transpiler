@@ -37,13 +37,13 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
 
         final SuperStruct superStruct = got != null ? got : new SuperStruct(thisSSName);
         dispatcher.data.superStructs().put(thisSSName, superStruct);
-        dispatcher.data.setCurrentSuperstruct(superStruct);
+        dispatcher.data.pushSuperstruct(superStruct);
 
         for (SSCParser.SuperStructMemberContext memberCtx : ctx.superStructBody().superStructMember()) {
             processMemberCtx(memberCtx);
         }
 
-        dispatcher.data.setCurrentSuperstruct(null);
+        dispatcher.data.popSuperstruct();
 
         final String structDeclaration = superStruct.emitStructDeclaration();
         final String structDefinition = superStruct.emitStructDefinition();

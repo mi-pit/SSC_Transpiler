@@ -20,10 +20,16 @@ public class TemplateDefinitionConvertor extends AbstractConvertor<SSCParser.Tem
     }
 
     private void collect(SSCParser.TemplateDefinitionContext ctx) {
+        Main.logger.printDebug("Found template definition");
+
         final String name = parseRawName(ctx);
+        Main.logger.printDebug("\tName: " + name);
 
         if (!dispatcher.data.templates().containsKey(name)) {
+            Main.logger.printDebug("\tTemplate '" + name + "' does not exist yet; creating new template.");
             final Template thisTmpl = new Template(name, ctx);
+
+            Main.logger.printDebug(() -> "\t" + thisTmpl);
             final String tmplName = thisTmpl.name();
 
             dispatcher.data.templates().put(tmplName, thisTmpl);
@@ -40,8 +46,8 @@ public class TemplateDefinitionConvertor extends AbstractConvertor<SSCParser.Tem
         if (definedBefore.contexts().size() > 1) {
             Main.logger.printDebug(() ->
                     "\tPreviously defined in too many contexts: \""
-                            + definedBefore.contexts().stream().map(RuleContext::getText).collect(Collectors.joining(", "))
-                            + "\""
+                    + definedBefore.contexts().stream().map(RuleContext::getText).collect(Collectors.joining(", "))
+                    + "\""
             );
             justFinishingSSDefinition = false;
         } else if (definedBefore.contexts().getFirst().superStructInterface() == null) {

@@ -17,29 +17,27 @@ import java.util.Optional;
 import java.util.Set;
 
 public final class CompilerData {
-    private @Nullable SuperStruct currentSS;
-
     private final SymbolTable symbolTable;
 
     private final Map<@NotNull String, SuperStruct> superStructs;
+    private final Deque<SuperStruct> superstructStack;
+
     private final Map<@NotNull String, Typedef<SuperStruct>> superstructTypedefs;
-    private final Map<@Nullable String, Set<SuperstructVariable>> functionVariables;
 
     private final Map<@NotNull String, Template> templates;
 
+    private final Map<@Nullable String, Set<SuperstructVariable>> functionVariables;
     private final Deque<@NotNull String> functionCallStack;
 
     public CompilerData(SymbolTable symbolTable) {
         this.symbolTable = symbolTable;
 
-        currentSS = null;
-
         superStructs = new HashMap<>();
         superstructTypedefs = new HashMap<>();
         functionVariables = new HashMap<>();
-
         templates = new HashMap<>();
 
+        superstructStack = new ArrayDeque<>();
         functionCallStack = new ArrayDeque<>();
 
         functionVariables.put(null, new HashSet<>());
@@ -49,12 +47,16 @@ public final class CompilerData {
         return superStructs;
     }
 
-    public void setCurrentSuperstruct(final SuperStruct currentSS) {
-        this.currentSS = currentSS;
+    public void pushSuperstruct(final SuperStruct currentSS) {
+        superstructStack.push(currentSS);
     }
 
     public Optional<SuperStruct> currentSuperstruct() {
-        return Optional.ofNullable(currentSS);
+        return Optional.ofNullable(superstructStack.peek());
+    }
+
+    public void popSuperstruct() {
+        superstructStack.poll();
     }
 
     public Map<String, Typedef<SuperStruct>> superstructTypedefs() {
