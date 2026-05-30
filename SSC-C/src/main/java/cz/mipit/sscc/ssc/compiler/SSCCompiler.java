@@ -25,13 +25,15 @@ import java.util.SequencedCollection;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static cz.mipit.sscc.Logger.errReturn;
 import static cz.mipit.sscc.Main.logger;
 
 public final class SSCCompiler implements Compiler {
-    public static final String SSC_DEF_MACRO_STRING_NAME = "__SSC_SOURCE__";
-    public static final Path SSCLIB_HOME;
+    // TODO? define this to be the date value of the last commit
+    private static final String SSC_DEF_MACRO_STRING_NAME = "__SSC_SOURCE__";
+    private static final Path SSCLIB_HOME;
 
     static {
         final String sscLibHomeEnv = System.getenv("SSCLIB_HOME");
@@ -50,6 +52,7 @@ public final class SSCCompiler implements Compiler {
             Logger.errExit(ExitValue.LIBRARY_NOT_FOUND, "not a directory: " + sscLibHomeEnv);
         }
 
+        assert asPath != null;
         SSCLIB_HOME = asPath;
     }
 
@@ -213,7 +216,14 @@ public final class SSCCompiler implements Compiler {
         final BaseConvertorVisitor visitor = options.formatOnly()
                 ? new FormattingConvertor(data.tokens(), data.inputFile())
                 : new VisitorDispatcher(data);
-        final String result = visitor.visit(data.tree());
+
+        String result = visitor.visit(data.tree());
+        if (options.formatOnly()) {
+            result = result
+                    .lines()
+                    .map(line -> line.stripTrailing())
+                    .collect(Collectors.joining("\n"));
+        }
 
         if (options.debug()) {
             visitor.debugPrintDump();

@@ -343,6 +343,14 @@ declarationSpecifier
     | typeQualifier
     | functionSpecifier
     | alignmentSpecifier
+    | superstructMemberDeclarationSpecifier // SSC
+    ;
+
+// SSC: declaration specifier for superstruct members
+superstructMemberDeclarationSpecifier
+    : Pure
+    | Private
+    | StaticFunction
     ;
 
 // ISO C: init-declarator-list (6.7.1)
@@ -543,9 +551,6 @@ functionSpecifier
 		| Restrict // CLANG
 		| 'deprecated' '(' StringLiteral? ')'
 		) ')'
-    | Pure      // SSC
-    | Private   // SSC TODO: move (to storage-class-spec ?)
-    | StaticFunction  // SSC
     ;
 
 // ISO C: alignment-specifier (6.7.6)

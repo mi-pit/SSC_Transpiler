@@ -64,13 +64,13 @@ public final class FunctionHeaderData {
         assert functionCtx != null;
         assert dispatcher.data.currentSuperstruct().isPresent() : "Member of no struct";
 
-        final List<SSCParser.FunctionSpecifierContext> fnSpecs = declSpecs
+        final List<SSCParser.SuperstructMemberDeclarationSpecifierContext> sscSpecifiers = declSpecs
                 .stream()
-                .map(SSCParser.DeclarationSpecifierContext::functionSpecifier)
+                .map(SSCParser.DeclarationSpecifierContext::superstructMemberDeclarationSpecifier)
                 .filter(Objects::nonNull)
                 .toList();
-        final boolean isStatic = fnSpecs.stream().anyMatch(fnSpec -> fnSpec.StaticFunction() != null);
-        final boolean isPure = fnSpecs.stream().anyMatch(fnSpec -> fnSpec.Pure() != null);
+        final boolean isStatic = sscSpecifiers.stream().anyMatch(fnSpec -> fnSpec.StaticFunction() != null);
+        final boolean isPure = sscSpecifiers.stream().anyMatch(fnSpec -> fnSpec.Pure() != null);
 
         final List<String> withoutCustom = getDeclSpecsWithoutCustom(declSpecs, dispatcher);
 
@@ -109,11 +109,6 @@ public final class FunctionHeaderData {
     }
 
     private static boolean declSpecIsCustom(SSCParser.DeclarationSpecifierContext declSpec) {
-        final SSCParser.FunctionSpecifierContext funcSpec = declSpec.functionSpecifier();
-        if (funcSpec == null) {
-            return false;
-        }
-
-        return funcSpec.Pure() != null || funcSpec.Private() != null || funcSpec.StaticFunction() != null;
+        return declSpec.superstructMemberDeclarationSpecifier() != null;
     }
 }

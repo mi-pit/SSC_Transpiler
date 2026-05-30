@@ -62,7 +62,7 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
             //  getting attributed to their surrounding functions
             dispatcher.pushFunction(
                     "<function interface>: '" + functionData.unqualifiedName()
-                            + "' (" + COUNTER++ + ")"
+                    + "' (" + COUNTER++ + ")"
             );
 
             final SuperstructMethod functionDefinition = new SuperstructMethod(
@@ -70,7 +70,7 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
                     interfaceOf,
                     functionData,
                     declSpecs.stream().anyMatch(ds ->
-                            ds.functionSpecifier() != null && ds.functionSpecifier().Private() != null
+                            ds.superstructMemberDeclarationSpecifier() != null && ds.superstructMemberDeclarationSpecifier().Private() != null
                     ),
                     SuperstructConvertor.parseFunctionParameters(dispatcher, functionData.declarator()),
                     null

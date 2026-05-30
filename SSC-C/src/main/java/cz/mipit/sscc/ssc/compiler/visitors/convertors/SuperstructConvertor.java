@@ -68,8 +68,8 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
 
         final boolean isPrivate = declSpecs
                 .stream()
-                .anyMatch(ds -> ds.functionSpecifier() != null
-                                && ds.functionSpecifier().Private() != null);
+                .anyMatch(ds -> ds.superstructMemberDeclarationSpecifier() != null
+                                && ds.superstructMemberDeclarationSpecifier().Private() != null);
 
         if (memberCtx.functionDefinition() != null) {
             processMemberFunction(memberCtx.functionDefinition(), declSpecs, isPrivate);
@@ -89,8 +89,8 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
 
         final List<SSCParser.DeclarationSpecifierContext> noPrivateSpecs = declSpecs
                 .stream()
-                .filter(declSpec -> declSpec.functionSpecifier() == null
-                                    || declSpec.functionSpecifier().Private() == null)
+                .filter(declSpec -> declSpec.superstructMemberDeclarationSpecifier() == null
+                                    || declSpec.superstructMemberDeclarationSpecifier().Private() == null)
                 .toList();
         if (noPrivateSpecs.isEmpty()) {
             throw dispatcher.getSSCLanguageException("No type specifier for superstruct member", memberCtx);

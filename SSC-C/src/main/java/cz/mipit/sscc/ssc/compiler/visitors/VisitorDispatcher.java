@@ -17,6 +17,7 @@ import cz.mipit.sscc.ssc.compiler.visitors.convertors.SuperstructInterfaceConver
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateDefinitionConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateDispatchConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TernaryOperatorConvertor;
+import cz.mipit.sscc.ssc.compiler.visitors.fmt.FormattingConvertor;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.ssc.exceptions.children.SSCLanguageException;
 import cz.mipit.sscc.util.VisitorInput;
@@ -39,7 +40,7 @@ import java.util.StringJoiner;
 import static cz.mipit.sscc.Main.logger;
 
 
-public class VisitorDispatcher extends BaseConvertorVisitor {
+public class VisitorDispatcher extends FormattingConvertor {
     public final CompilerData data;
 
     private final List<String> externalDeclarationsToEmitBefore;
@@ -120,6 +121,10 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
     }
 
     public String visitSuper(ParseTree tree) {
+        return super.visit(tree);
+    }
+
+    public String visitDefault(ParseTree tree) {
         return super.visitDefault(tree);
     }
 
@@ -129,7 +134,7 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
     ) {
         final Class<T> cnvClass = convertor.getContextClass();
 
-        if (!ctx.getClass().equals(cnvClass))
+        if (ctx.getClass() != cnvClass)
             throw new AssertionError("Trying to convert '"
                                      + ctx.getClass() + "' using convertor of class '" + cnvClass + "'");
 
@@ -173,6 +178,17 @@ public class VisitorDispatcher extends BaseConvertorVisitor {
         return super.visitParameterDeclaration(ctx);
     }
 
+    @Override
+    public String visitSuperstructMemberDeclarationSpecifier(SSCParser.SuperstructMemberDeclarationSpecifierContext ctx) {
+        if (data.currentSuperstruct().isEmpty()) {
+            throw getSSCLanguageException(
+                    "Superstruct member modifier used outside of a superstruct",
+                    ctx
+            );
+        }
+
+        return super.visitSuperstructMemberDeclarationSpecifier(ctx);
+    }
 
     /* ==== DATA ==== */
 

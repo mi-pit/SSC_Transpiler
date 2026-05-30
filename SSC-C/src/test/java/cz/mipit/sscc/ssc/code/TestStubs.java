@@ -22,11 +22,6 @@ public class TestStubs {
     private static final Path VALID = Path.of(DIRECTORY, "valid");
     private static final Path INVALID = Path.of(DIRECTORY, "invalid");
 
-    @BeforeAll
-    static void ensureSSCLib() {
-        Assertions.assertNotNull(SSCCompiler.SSCLIB_HOME);
-    }
-
     @AfterAll
     static void deleteJunkFiles() {
         final Set<InputFile> files = new HashSet<>();

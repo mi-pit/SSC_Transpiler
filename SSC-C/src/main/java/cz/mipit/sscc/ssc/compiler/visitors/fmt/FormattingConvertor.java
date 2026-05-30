@@ -287,11 +287,12 @@ public class FormattingConvertor extends BaseConvertorVisitor {
             ;
 
             static SSCSpecifier from(SSCParser.DeclarationSpecifierContext declSpec) {
-                if (declSpec.functionSpecifier() == null) {
+                if (declSpec.superstructMemberDeclarationSpecifier() == null) {
                     return NONE;
                 }
 
-                final SSCParser.FunctionSpecifierContext fnSpec = declSpec.functionSpecifier();
+                final SSCParser.SuperstructMemberDeclarationSpecifierContext fnSpec =
+                        declSpec.superstructMemberDeclarationSpecifier();
                 if (fnSpec.StaticFunction() != null) {
                     return STATIC;
                 }
