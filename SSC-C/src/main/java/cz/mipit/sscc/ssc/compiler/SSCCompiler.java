@@ -61,10 +61,23 @@ public final class SSCCompiler implements Compiler {
     private static final List<String> CC_OPTIONS = List.of(
             "-Wall",
             "-Wextra",
+            "-pedantic",
 
-            /* no `pedantic` or `W-unused-function` because of preprocessor
-             * (stdlib contains platform specific code and unused functions) */
+            /* stdlib contains platform specific code */
+            "-Wno-nullability-extension",
+            /* and unused functions */
             "-Wno-unused-function",
+
+            /* Things like `object Template<void *> var = {};`
+             * turns into
+             * struct (Template__void*); // <- semicolon inserted; needed
+             * struct (Template__void*) var = {};
+             *
+             * while `object NotATemplate { ... };`
+             * turns into
+             * struct NotATemplate { ... };; // <- semicolon inserted; extraneous
+             */
+            "-Wno-extra-semi",
 
             "-Werror"
     );
@@ -217,7 +230,7 @@ public final class SSCCompiler implements Compiler {
                 ? new FormattingConvertor(data.tokens(), data.inputFile())
                 : new VisitorDispatcher(data);
 
-        String result = visitor.visit(data.tree());
+        String result = visitor.visit(data.tree()) + "\n";
         if (options.formatOnly()) {
             result = result
                     .lines()

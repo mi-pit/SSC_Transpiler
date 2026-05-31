@@ -35,7 +35,7 @@ public class Pointer {
     }
 
     public static List<Pointer> oneQualified(List<String> qualifiers) {
-        return List.of(new Pointer(qualifiers));
+        return List.of(qualified(qualifiers));
     }
 
     public static List<Pointer> oneConst() {
@@ -64,8 +64,8 @@ public class Pointer {
 
     @Override
     public String toString() {
-        return "Pointer{" +
-                "qualifiers=" + qualifiers +
-                '}';
+        return "ptr={"
+               + toCString()
+               + '}';
     }
 }

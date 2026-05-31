@@ -1,5 +1,6 @@
 package cz.mipit.sscc.ssc.compiler.data.ss;
 
+import cz.mipit.sscc.util.SSCCUtil;
 import cz.mipit.sscc.util.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -7,6 +8,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.StringJoiner;
+import java.util.stream.Collectors;
 
 public class SuperStruct {
     private final String name;
@@ -23,7 +25,7 @@ public class SuperStruct {
 
 
     public String qualifyName(String unqualifiedName) {
-        return this.name + "__" + unqualifiedName;
+        return "__ssc_ss_" + this.name + "__" + unqualifiedName;
     }
 
 
@@ -38,7 +40,7 @@ public class SuperStruct {
         for (Field field : fields) {
             resultBuilder
                     /* do a little bit of formatting for mid-compilation error messages */
-                    .append("    ")
+                    .append(SSCCUtil.Text.INDENT)
                     .append(field.getWhole())
                     .append(";")
                     .append(System.lineSeparator());
@@ -99,7 +101,13 @@ public class SuperStruct {
 
     @Override
     public String toString() {
-        return "SuperStruct{" +
-                "name='" + name + '\'' + '}';
+        final String fields = this.fields.stream().map(Field::toString).collect(Collectors.joining("; "));
+        final String methods = this.methods.stream().map(SuperstructMethod::toString).collect(Collectors.joining("; "));
+        return String.format("""
+                        SuperStruct: '%s'
+                            fields:  %s
+                            methods: %s""",
+                name, fields, methods
+        );
     }
 }

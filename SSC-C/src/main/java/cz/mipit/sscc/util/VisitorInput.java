@@ -32,6 +32,7 @@ public record VisitorInput(
         parser.removeErrorListeners();
         parser.addErrorListener(listener);
 
-        return new VisitorInput(tokens, parser.compilationUnit(), inputFile, parser.getSymbolTable());
+        final ParseTree root = parser.compilationUnit();
+        return new VisitorInput(tokens, root, inputFile, parser.getSymbolTable());
     }
 }

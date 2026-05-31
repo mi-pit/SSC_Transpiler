@@ -14,6 +14,7 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStructSpecifierContext> {
     public SuperstructConvertor(VisitorDispatcher dispatcher) {
@@ -32,10 +33,12 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
         final SuperStruct got = dispatcher.data.superStructs().get(thisSSName);
         // superstructs only have fields if they are defined
         if (got != null && !got.fields().isEmpty()) {
-            throw dispatcher.getSSCLanguageException("Superstruct with name '" + thisSSName + "' already exists", ctx);
+            throw dispatcher.getSSCLanguageException(
+                    "Superstruct with name '" + thisSSName + "' already exists", ctx.Identifier()
+            );
         }
 
-        final SuperStruct superStruct = got != null ? got : new SuperStruct(thisSSName);
+        final SuperStruct superStruct = Objects.requireNonNullElseGet(got, () -> new SuperStruct(thisSSName));
         dispatcher.data.superStructs().put(thisSSName, superStruct);
         dispatcher.data.pushSuperstruct(superStruct);
 
@@ -50,10 +53,26 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
         final String methodDeclarations = superStruct.emitMethodDeclarations();
         final String methodDefinitions = superStruct.emitMethodDefinitions();
 
-        dispatcher.addExternalDeclarationToEmitBefore(structDefinition);
-        dispatcher.addExternalDeclarationToEmitBefore(methodDeclarations);
+        dispatcher.addExternalDeclarationToEmitBefore("""
+                /* SuperstructSpecifier -- definition; START */
+                %s
+                /* SuperstructSpecifier -- definition; END */
+                """.formatted(structDefinition)
+        );
+        dispatcher.addExternalDeclarationToEmitBefore("""
+                /* SuperstructSpecifier -- method declarations; START */
+                %s
+                /* SuperstructSpecifier -- method declarations; END */
+                """.formatted(methodDeclarations)
+        );
 
-        dispatcher.addExternalDeclarationToEmitAfter(methodDefinitions);
+        dispatcher.addExternalDeclarationToEmitAfter(
+                """
+                        /* SuperstructSpecifier -- method definitions; START */
+                        %s
+                        /* SuperstructSpecifier -- method definitions; END */
+                        """.formatted(methodDefinitions)
+        );
 
         return structDeclaration;
     }
@@ -61,6 +80,13 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
     private void processMemberCtx(
             final SSCParser.SuperStructMemberContext memberCtx
     ) {
+        if (memberCtx.declaration() != null && memberCtx.declaration().staticAssertDeclaration() != null) {
+            dispatcher.addExternalDeclarationToEmitAfter(
+                    dispatcher.visit(memberCtx.declaration().staticAssertDeclaration())
+            );
+            return;
+        }
+
         final SSCParser.DeclarationSpecifiersContext declSpecsCtx = (memberCtx.functionDefinition() != null
                 ? memberCtx.functionDefinition().functionHeader().declarationSpecifiers()
                 : memberCtx.declaration().declarationSpecifiers());
@@ -80,6 +106,7 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
     }
 
     private void processMemberField(
+            // declarationSpecifiers initDeclaratorList? ';'
             SSCParser.DeclarationContext memberCtx,
             List<SSCParser.DeclarationSpecifierContext> declSpecs,
             boolean isPrivate
@@ -87,17 +114,21 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
         final SSCParser.InitDeclaratorListContext initDeclaratorList =
                 memberCtx.initDeclaratorList();
 
+        if (initDeclaratorList == null) {
+            throw dispatcher.getSSCLanguageException(
+                    "Declaration does not declare a field", memberCtx
+            );
+        }
+
         final List<SSCParser.DeclarationSpecifierContext> noPrivateSpecs = declSpecs
                 .stream()
                 .filter(declSpec -> declSpec.superstructMemberDeclarationSpecifier() == null
                                     || declSpec.superstructMemberDeclarationSpecifier().Private() == null)
                 .toList();
         if (noPrivateSpecs.isEmpty()) {
-            throw dispatcher.getSSCLanguageException("No type specifier for superstruct member", memberCtx);
-        }
-
-        if (initDeclaratorList.initDeclarator().isEmpty()) {
-            throw dispatcher.getSSCLanguageException("Init declarator list is empty", memberCtx);
+            throw dispatcher.getSSCLanguageException(
+                    "No type specifier for superstruct member", memberCtx.declarationSpecifiers()
+            );
         }
 
         // declarator ('=' initializer)?

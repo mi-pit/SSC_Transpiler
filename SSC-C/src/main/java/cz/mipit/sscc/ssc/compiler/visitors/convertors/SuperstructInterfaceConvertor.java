@@ -44,7 +44,7 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
 
         joiner.add(
                 /* declare the struct to be able to use it in the function declarations */
-                interfaceOf.emitStructDeclaration()
+                interfaceOf.emitStructDeclaration() + ";"
         );
 
         dispatcher.data.pushSuperstruct(interfaceOf);

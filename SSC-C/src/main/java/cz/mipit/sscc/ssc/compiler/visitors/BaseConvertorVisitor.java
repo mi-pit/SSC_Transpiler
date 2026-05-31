@@ -24,7 +24,7 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
     protected final CommonTokenStream tokens;
     protected final InputFile currentFile;
 
-    private boolean hasErrors;
+    protected boolean hasErrors;
 
     protected BaseConvertorVisitor(CommonTokenStream tokens, InputFile currentFile) {
         this.tokens = tokens;

@@ -4,6 +4,8 @@ import antlr.ssc.SSCParser;
 import cz.mipit.sscc.Main;
 import cz.mipit.sscc.ssc.compiler.data.tmpl.Template;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
+import cz.mipit.sscc.util.collection.Enumerable;
+import cz.mipit.sscc.util.collection.EnumeratorImpl;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
@@ -14,68 +16,12 @@ import java.util.Map;
 import java.util.Set;
 
 public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.TemplateDispatchContext> {
-    private static final Map<String, String> TYPE_SHORTHANDS = Map.ofEntries(
-            // type
-            Map.entry("void", "v"),
-
-            Map.entry("bool", "b"),
-            Map.entry("signed", "S"),
-            Map.entry("unsigned", "U"),
-
-            Map.entry("char", "c"),
-            Map.entry("signed char", "Sc"),
-            Map.entry("unsigned char", "Uc"),
-
-            Map.entry("short", "Ss"),
-            Map.entry("unsigned short", "Us"),
-
-            Map.entry("int", "Si"),
-            Map.entry("unsigned int", "Ui"),
-
-            Map.entry("long", "Sl"),
-            Map.entry("unsigned long", "Ul"),
-
-            Map.entry("long long", "Sll"),
-            Map.entry("unsigned long long", "Ull"),
-
-            Map.entry("float", "f"),
-            Map.entry("double", "d"),
-            Map.entry("long double", "ld"),
-
-            // Qual
-            Map.entry("const", "C"),
-            Map.entry("volatile", "V"),
-            Map.entry("restrict", "R"),
-            Map.entry("_Atomic", "A"),
-
-            // Compound
-            Map.entry("struct", "s"),
-            Map.entry("object", "o"),
-            Map.entry("enum", "e"),
-            Map.entry("flagset", "f"),
-            Map.entry("union", "u")
-    );
-
     private final Set<String> alreadyEmitted;
 
     public TemplateDispatchConvertor(VisitorDispatcher dispatcher) {
         super(dispatcher, SSCParser.TemplateDispatchContext.class);
 
         alreadyEmitted = new HashSet<>();
-    }
-
-    public static String typeSpecifyTemplateName(String functionName, List<String> typeArgumentsConverted) {
-        final StringBuilder sBuilder = new StringBuilder(
-                functionName
-        );
-
-        for (int i = 0; i < typeArgumentsConverted.size(); i++) {
-            final String typeArg = typeArgumentsConverted.get(i);
-            sBuilder.append(i == 0 ? "__" : "_")
-                    .append(typeArg);
-        }
-
-        return sBuilder.toString();
     }
 
     // Called `func<t1, t2>`
@@ -160,8 +106,23 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
     }
 
     /// Creates a generic (not type specified) template name from an identifier
-    private static String mangleFunctionName(String identifier) {
-        return "SSCtmpl__" + identifier;
+    public static String mangleFunctionName(String identifier) {
+        return "__ssc_tmpl_" + identifier;
+    }
+
+    private static String typeSpecifyTemplateName(String functionName,
+                                                  List<String> typeArgumentsConverted) {
+        final StringBuilder sBuilder = new StringBuilder(
+                functionName
+        );
+
+        for (Enumerable.Entry<String> s : new EnumeratorImpl<>(typeArgumentsConverted.iterator())) {
+            sBuilder.append("_")
+                    .append(s.index() + 1)
+                    .append(s.item());
+        }
+
+        return sBuilder.toString();
     }
 
     public static String convertTypeArgumentToShorthand(
@@ -171,7 +132,7 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
         final StringBuilder builder = new StringBuilder();
         for (ParseTree child : ctx.children) {
             final String type = dispatcher.visit(child);
-            final String converted = convertTypeToShorthand(type);
+            final String converted = convertTypeToIdentifierPart(type);
             builder.append(converted);
         }
 
@@ -179,8 +140,7 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
     }
 
     /**
-     * If `type` is present as a key in {@link TemplateDispatchConvertor#TYPE_SHORTHANDS}, return the value.
-     * Else, return a string converted char-by-char according to this contract:
+     * return a string converted char-by-char according to this contract:
      * <table>
      *   <tr>
      *     <th>Condition</th>
@@ -203,13 +163,9 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
      * @param type String representation of the type. Preferably should be only a single keyword (like `int` or `size_t`),
      *             but this function is made to
      */
-    private static String convertTypeToShorthand(
+    private static String convertTypeToIdentifierPart(
             String type
     ) {
-        if (TYPE_SHORTHANDS.containsKey(type)) {
-            return TYPE_SHORTHANDS.get(type);
-        }
-
         final StringBuilder builder = new StringBuilder();
         for (final char ch : type.toCharArray()) {
             if (Character.isAlphabetic(ch) || ch == '_') {

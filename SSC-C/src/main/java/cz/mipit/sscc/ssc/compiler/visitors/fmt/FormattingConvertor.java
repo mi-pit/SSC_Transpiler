@@ -106,6 +106,7 @@ public class FormattingConvertor extends BaseConvertorVisitor {
                 childText = visit(child);
             } catch (final SSCTranspilerException e) {
                 Main.logger.printException(e);
+                hasErrors = true;
                 continue;
             }
 
@@ -662,7 +663,7 @@ public class FormattingConvertor extends BaseConvertorVisitor {
     @Override
     public String visitStaticAssertDeclaration(SSCParser.StaticAssertDeclarationContext ctx) {
         final String constantExpression = visit(ctx.constantExpression());
-        final String strLiteral = ctx.StringLiteral() == null ? ", " + visit(ctx.StringLiteral()) : "";
+        final String strLiteral = ctx.StringLiteral() != null ? ", " + visit(ctx.StringLiteral()) : "";
         return "_Static_assert( " + constantExpression + strLiteral + " );\n";
     }
 

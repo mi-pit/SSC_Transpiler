@@ -62,7 +62,7 @@ public class TestStubs {
             Assertions.assertTrue(
                     exitValue.item == ExitValue.C_COMPILATION_FAIL
                             || exitValue.item == ExitValue.TRANSPILATION_FAIL,
-                    "`%s`".formatted(fileName)
+                    "ex=%s: `%s`".formatted(exitValue, fileName)
             );
         }
     }

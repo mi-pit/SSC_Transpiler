@@ -18,7 +18,7 @@ public final class LambdaFunction {
     public static String createName(
             final String surroundingFunctionName
     ) {
-        return "SSClambda_from_" + surroundingFunctionName;
+        return String.format("__ssc_lambda_id%019d_%s", nextId.getAndIncrement(), surroundingFunctionName);
     }
 
     public LambdaFunction(
@@ -29,11 +29,11 @@ public final class LambdaFunction {
             String attributes
     ) {
         this.returnType = " " + requireNonBlank(requireNonNull(returnType)) + " ";
-        this.params = padIfBlank(requireNonNull(params), s -> " " + s + " ");
+        this.params = padIfNotBlank(requireNonNull(params), s -> " " + s + " ");
         this.body = requireNonNull(ctx);
-        this.attributes = padIfBlank(requireNonNull(attributes), s -> s + " ");
+        this.attributes = padIfNotBlank(requireNonNull(attributes), s -> s + " ");
 
-        this.name = "ID" + nextId.getAndIncrement() + "_" + prettifiedName;
+        this.name = requireNonNull(prettifiedName);
     }
 
     public String getName() {
@@ -44,7 +44,7 @@ public final class LambdaFunction {
         return attributes + "static" + returnType + getName() + "(" + params + ")" + body;
     }
 
-    private static String padIfBlank(
+    private static String padIfNotBlank(
             final String string,
             final Function<String, String> mapper
     ) {
