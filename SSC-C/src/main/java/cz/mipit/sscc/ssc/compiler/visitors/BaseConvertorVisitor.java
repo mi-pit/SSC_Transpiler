@@ -14,6 +14,8 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.RuleNode;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
+import java.util.List;
+
 /**
  * Abstract class for low-level visitor stuff.
  * <p>
@@ -150,5 +152,28 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
             return new SSCLanguageException(message, t, tokens, currentFile);
 
         throw new IllegalStateException("Invalid parse tree: " + ctx.getClass().getName());
+    }
+
+
+    // ('<<' | '>' '>')
+    @Override
+    final public String visitShiftOperator(SSCParser.ShiftOperatorContext ctx) {
+        if (ctx.Greater().isEmpty()) {
+            return this.visitChildren(ctx);
+        }
+
+        final String validString = ">>";
+
+        final List<TerminalNode> rightShiftTokens = ctx.Greater();
+        final String literal = this.getLiteral(ctx);
+
+        if (rightShiftTokens.size() != 2 || !validString.equals(literal)) {
+            throw this.getSSCLanguageException(
+                    "Invalid operator: '" + literal + "'",
+                    ctx
+            );
+        }
+
+        return validString;
     }
 }

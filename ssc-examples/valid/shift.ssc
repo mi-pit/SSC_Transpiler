@@ -1,0 +1,22 @@
+
+tmpl<T>
+object Thing
+{
+    T t;
+};
+
+int main()
+{
+    object Thing<int> it =
+    {
+        1,
+    };
+    object Thing<object Thing<int>> tt;
+
+    while (it.t < 9'999) {
+        it.t >>= 1;
+        it.t = it.t >> 1;
+    }
+
+    return tt.t.t > 9999;
+}

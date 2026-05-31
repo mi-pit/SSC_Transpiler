@@ -1,0 +1,7 @@
+
+object Duplicate
+{
+    object Duplicate *next;
+
+    object Duplicate { int i; } structure;
+};
