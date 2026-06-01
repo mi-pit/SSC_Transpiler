@@ -6,6 +6,7 @@ import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.tmpl.Template;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.data.var.Typedef;
+import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.util.annotations.NotNull;
 import cz.mipit.sscc.util.annotations.Nullable;
 
@@ -16,6 +17,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 
 public final class CompilerData {
     private final SymbolTable symbolTable;
@@ -27,7 +29,7 @@ public final class CompilerData {
 
     private final Map<@NotNull String, Template> templates;
 
-    private final Map<@Nullable String, Set<SuperstructVariable>> functionVariables;
+    final Map<@Nullable String, Set<SuperstructVariable>> functionVariables;
     private final Deque<@NotNull String> functionCallStack;
 
 
@@ -68,8 +70,23 @@ public final class CompilerData {
         return superstructTypedefs;
     }
 
-    public Map<String, Set<SuperstructVariable>> functionVariables() {
-        return functionVariables;
+
+    public void initializeFunctionVariables(String fnName) {
+        functionVariables.put(fnName, new HashSet<>());
+    }
+
+    public void addFunctionVariable(
+            final String name, final SuperstructVariable var,
+            Supplier<SSCTranspilerException> exceptionSupplier
+    ) {
+        final Set<SuperstructVariable> vars = functionVariables.get(name);
+        if (!vars.add(var)) {
+            throw exceptionSupplier.get();
+        }
+    }
+
+    public Set<SuperstructVariable> functionVariables(String functionName) {
+        return functionVariables.get(functionName);
     }
 
     public Map<String, Template> templates() {

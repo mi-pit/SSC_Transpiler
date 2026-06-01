@@ -22,16 +22,17 @@ import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateDefinitionConverto
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateDispatchConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TernaryOperatorConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.fmt.FormattingConvertor;
+import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.util.VisitorInput;
 import cz.mipit.sscc.util.annotations.Nullable;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.RuleNode;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -91,7 +92,9 @@ public class VisitorDispatcher extends FormattingConvertor {
         convertors = new HashMap<>();
 
         for (final Convertor<? extends ParserRuleContext> convertor : convertorsList) {
-            convertors.put(convertor.getContextClass(), convertor);
+            if (convertors.put(convertor.getContextClass(), convertor) != null) {
+                throw new IllegalStateException("Duplicate convertor found for " + convertor.getContextClass());
+            }
         }
     }
 
@@ -155,7 +158,7 @@ public class VisitorDispatcher extends FormattingConvertor {
     public String visitExternalDeclaration(SSCParser.ExternalDeclarationContext ctx) {
         final StringJoiner joiner = new StringJoiner(System.lineSeparator());
 
-        final String external = super.visitExternalDeclaration(ctx);
+        final String external = visitChildren(ctx);
 
         if (!externalDeclarationsToEmitBefore.isEmpty()) {
             joiner.add(
@@ -220,14 +223,14 @@ public class VisitorDispatcher extends FormattingConvertor {
     public void pushFunction(String name, ParserRuleContext functionCtx) {
         Objects.requireNonNull(name, "Function name cannot be null");
 
-        if (data.functionVariables().containsKey(name)) {
+        if (_functionDefinitions.containsKey(name)) {
             throw getSSCCallbackException(
                     "Duplicate function name: '" + name + "'",
                     functionCtx, _functionDefinitions.get(name)
             );
         }
 
-        data.functionVariables().put(name, new HashSet<>());
+        data.initializeFunctionVariables(name);
         data.functionStack().push(name);
         _functionDefinitions.put(name, functionCtx);
     }
@@ -306,13 +309,13 @@ public class VisitorDispatcher extends FormattingConvertor {
     public Optional<SuperstructVariable> findSuperstructVariable(String objectName) {
         final String functionName = getCurrentFunctionName();
 
-        for (SuperstructVariable var : data.functionVariables().get(functionName)) {
+        for (SuperstructVariable var : data.functionVariables(functionName)) {
             if (var.getIdentifier().equals(objectName)) {
                 return Optional.of(var);
             }
         }
 
-        for (SuperstructVariable var : data.functionVariables().get(null)) {
+        for (SuperstructVariable var : data.functionVariables(null)) {
             if (var.getIdentifier().equals(objectName)) {
                 return Optional.of(var);
             }
@@ -341,7 +344,7 @@ public class VisitorDispatcher extends FormattingConvertor {
         }
 
         logger.printDebug("Function superstruct variables:");
-        for (final Map.Entry<@Nullable String, Set<SuperstructVariable>> fnNameToSSVars : data.functionVariables().entrySet()) {
+        for (final Map.Entry<@Nullable String, Set<SuperstructVariable>> fnNameToSSVars : data.functionVariables.entrySet()) {
             final String name = fnNameToSSVars.getKey();
             if (name != null && name.startsWith("<")) {
                 continue;

@@ -27,4 +27,18 @@ public abstract class Variable {
     protected final String createAbstractDeclarator() {
         return pointers.stream().map(Pointer::toCString).collect(Collectors.joining(" ")) + " " + identifier;
     }
+
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass())
+            return false;
+        Variable variable = (Variable) o;
+        return Objects.equals(identifier, variable.identifier) && Objects.equals(pointers, variable.pointers);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(identifier, pointers);
+    }
 }

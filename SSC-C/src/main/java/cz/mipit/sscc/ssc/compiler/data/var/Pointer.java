@@ -2,6 +2,7 @@ package cz.mipit.sscc.ssc.compiler.data.var;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class Pointer {
     private static final Pointer CONST = new Pointer(List.of("const"));
@@ -67,5 +68,18 @@ public class Pointer {
         return "ptr={"
                + toCString()
                + '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass())
+            return false;
+        Pointer pointer = (Pointer) o;
+        return Objects.equals(qualifiers, pointer.qualifiers);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(qualifiers);
     }
 }

@@ -15,12 +15,6 @@ public class FunctionDefinitionConvertor extends AbstractConvertor<SSCParser.Fun
 
     @Override
     public String convert(SSCParser.FunctionDefinitionContext ctx) {
-        final Optional<SuperStruct> optSS = dispatcher.data.currentSuperstruct();
-        if (optSS.isEmpty()) {
-            return dispatcher.visitSuper(ctx);
-        }
-        final SuperStruct superstruct = optSS.get();
-
         final SSCParser.DeclarationSpecifiersContext declSpecsCtx = ctx.functionHeader().declarationSpecifiers();
         if (declSpecsCtx == null) {
             throw dispatcher.getSSCLanguageException(
@@ -31,9 +25,12 @@ public class FunctionDefinitionConvertor extends AbstractConvertor<SSCParser.Fun
         final TerminalNode identifier = SSCCUtil.getIdentifierFromDeclarator(ctx.functionHeader().declarator());
         assert identifier != null;
 
-        final String qualifiedName = superstruct.qualifyName(
-                dispatcher.visit(identifier)
-        );
+        final Optional<SuperStruct> currentSuperstruct = dispatcher.data.currentSuperstruct();
+
+        final String unqualifiedName = dispatcher.visit(identifier);
+        final String qualifiedName = currentSuperstruct
+                .map(ss -> ss.qualifyName(unqualifiedName))
+                .orElse(unqualifiedName);
 
         dispatcher.pushFunction(qualifiedName, ctx);
 

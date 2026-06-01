@@ -168,7 +168,14 @@ public class VariableCollector {
             );
             mapped.ifPresent(v -> {
                 final String currentFunctionName = dispatcher.getCurrentFunctionName();
-                dispatcher.data.functionVariables().get(currentFunctionName).add(v);
+                dispatcher.data.addFunctionVariable(
+                        currentFunctionName, v,
+                        () -> dispatcher.getSSCLanguageException(
+                                "Variable with name '" + v.getIdentifier() + "' already exists in "
+                                + (currentFunctionName != null ? "'" + currentFunctionName + "'" : "global scope"),
+                                declarator
+                        )
+                );
                 Main.logger.printDebug(() -> "Adding variable '" + v + "' for to function '" + currentFunctionName + "'");
             });
         }

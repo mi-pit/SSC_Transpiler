@@ -96,8 +96,7 @@ public class ParameterTypeListConvertor extends AbstractConvertor<SSCParser.Para
                                      + dispatcher.getCurrentFunctionName()
                                      + "'");
         dispatcher.data
-                .functionVariables()
-                .get(dispatcher.getCurrentFunctionName())
+                .functionVariables(dispatcher.getCurrentFunctionName())
                 .add(selfReferenceVariable);
     }
 }
