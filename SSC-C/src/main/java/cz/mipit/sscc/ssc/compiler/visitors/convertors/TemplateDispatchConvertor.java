@@ -2,6 +2,7 @@ package cz.mipit.sscc.ssc.compiler.visitors.convertors;
 
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.Main;
+import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.tmpl.Template;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import cz.mipit.sscc.util.collection.Enumerated;
@@ -13,6 +14,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.TemplateDispatchContext> {
@@ -92,7 +94,12 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
 
             final String tmplConverted;
             if (tmplContext.functionDefinition() != null) {
+                final Optional<SuperStruct> ss = dispatcher.data.currentSuperstruct();
+                ss.ifPresent(s -> dispatcher.data.popSuperstruct());
+
                 tmplConverted = dispatcher.visit(tmplContext.functionDefinition());
+
+                ss.ifPresent(dispatcher.data::pushSuperstruct);
             } else if (tmplContext.superStructInterface() != null) {
                 tmplConverted = dispatcher.visit(tmplContext.superStructInterface());
             } else {

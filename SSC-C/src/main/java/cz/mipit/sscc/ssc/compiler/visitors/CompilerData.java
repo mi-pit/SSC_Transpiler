@@ -1,6 +1,7 @@
 package cz.mipit.sscc.ssc.compiler.visitors;
 
 import antlr.ssc.SymbolTable;
+import cz.mipit.sscc.ssc.compiler.data.FunctionMetadata;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.tmpl.Template;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
@@ -28,6 +29,10 @@ public final class CompilerData {
 
     private final Map<@Nullable String, Set<SuperstructVariable>> functionVariables;
     private final Deque<@NotNull String> functionCallStack;
+
+
+    public FunctionMetadata currentFunctionMetadata;
+
 
     public CompilerData(SymbolTable symbolTable) {
         this.symbolTable = symbolTable;

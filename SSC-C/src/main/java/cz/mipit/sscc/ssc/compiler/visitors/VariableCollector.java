@@ -1,6 +1,7 @@
 package cz.mipit.sscc.ssc.compiler.visitors;
 
 import antlr.ssc.SSCParser;
+import cz.mipit.sscc.Main;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.data.var.Typedef;
@@ -116,6 +117,7 @@ public class VariableCollector {
             );
 
             dispatcher.data.superstructTypedefs().put(typedeffedName, typedef);
+            Main.logger.printDebug("Added typedef '" + typedeffedName + "' for superstruct '" + ssName + "'");
         }
     }
 
@@ -164,7 +166,11 @@ public class VariableCollector {
                     str -> dispatcher.tryCreateSuperstructVariableFromDeclarator(str, declarator),
                     typedef -> dispatcher.tryCreateSuperstructVariableFromDeclarator(typedef, declarator)
             );
-            mapped.ifPresent(v -> dispatcher.data.functionVariables().get(dispatcher.getCurrentFunctionName()).add(v));
+            mapped.ifPresent(v -> {
+                final String currentFunctionName = dispatcher.getCurrentFunctionName();
+                dispatcher.data.functionVariables().get(currentFunctionName).add(v);
+                Main.logger.printDebug(() -> "Adding variable '" + v + "' for to function '" + currentFunctionName + "'");
+            });
         }
     }
 

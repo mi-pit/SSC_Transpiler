@@ -1,111 +1,59 @@
 package cz.mipit.sscc.ssc.compiler.data.ss;
 
-import cz.mipit.sscc.ssc.compiler.data.FunctionHeaderData;
+import antlr.ssc.SSCParser;
+import cz.mipit.sscc.ssc.compiler.data.FunctionMetadata;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import cz.mipit.sscc.util.annotations.Nullable;
+import org.antlr.v4.runtime.ParserRuleContext;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 public class SuperstructMethod {
-    private final VisitorDispatcher dispatcher;
-    private final FunctionHeaderData functionHeaderData;
+    private final FunctionMetadata metadata;
 
-    private final boolean isPrivate;
+    private final String name;
+    private final String header;
+    private final @Nullable String definition;
 
-    private final List<String> params;
-    private final @Nullable String body;
-
-    private final SuperStruct superstructMemberOf;
-
-    /**
-     * Declaration is cached since it's queried multiple times and immutable.
-     */
-    private final String declaration;
+    private final ParserRuleContext context;
 
     public SuperstructMethod(
-            final VisitorDispatcher dispatcher,
-            final SuperStruct superstructMemberOf,
-            final FunctionHeaderData headerData,
-            final boolean isPrivate,
-            final List<String> params,
-            final String body
+            VisitorDispatcher dispatcher,
+            FunctionMetadata metadata,
+            String name,
+            SSCParser.FunctionDefinitionContext context
     ) {
-        this.dispatcher = dispatcher;
+        this.metadata = metadata;
+        this.name = name;
 
-        this.functionHeaderData = headerData;
-        this.isPrivate = isPrivate;
-        this.params = new ArrayList<>(params);
-        this.body = body;
-        this.superstructMemberOf = superstructMemberOf;
+        this.definition = dispatcher.visit(context);
+        this.header = definition.split("\\{")[0];
 
-        if (!headerData.isStatic() && params.size() == 1 && params.getFirst().equals("void")) {
-            this.params.removeFirst();
-        }
-
-        declaration = createDeclaration();
+        this.context = context;
     }
 
-    public String getDeclaration() {
-        return declaration + ";";
+    public String header() {
+        return header;
     }
 
-    public Optional<String> getDefinition() {
-        if (body == null) {
-            return Optional.empty();
-        }
-        return Optional.of(declaration + body);
+    public FunctionMetadata metadata() {
+        return metadata;
     }
 
-    private String createDeclaration() {
-        final String declSpecs = String.join(" ", functionHeaderData.cDeclarationSpecifiers());
-
-        final String pointers = functionHeaderData.declarator()
-                .pointer()
-                .stream()
-                .map(dispatcher::visit)
-                .collect(Collectors.joining(" "));
-        final String qualifiedName = superstructMemberOf.qualifyName(getUnqualifiedName());
-        final String selfRef = getSelfReferenceVariableDeclaration();
-        final String parametersString = "( " + selfRef + String.join(", ", params) + " )";
-        final String declarator = pointers + qualifiedName + parametersString;
-
-        return declSpecs + " " + declarator;
+    public Optional<String> definition() {
+        return Optional.ofNullable(definition);
     }
 
-    private String getSelfReferenceVariableDeclaration() {
-        final StringBuilder selfRef = new StringBuilder();
-        if (!functionHeaderData.isStatic()) {
-            if (functionHeaderData.isPure()) {
-                selfRef.append("const ");
-            }
-            selfRef
-                    .append("struct ")
-                    .append(superstructMemberOf.name())
-                    .append(" *");
-
-            selfRef.append("const this");
-
-            if (!params.isEmpty()) {
-                selfRef.append(", ");
-            }
-        }
-        return selfRef.toString();
+    public String name() {
+        return name;
     }
 
-    public String getUnqualifiedName() {
-        return functionHeaderData.unqualifiedName();
+    public ParserRuleContext context() {
+        return context;
     }
-
-    public boolean isPrivate() {
-        return isPrivate;
-    }
-
 
     @Override
     public String toString() {
-        return "SuperstructMethod{" + declaration + "}";
+        return "SuperstructMethod{" + metadata() + " | " + name + "}";
     }
 }

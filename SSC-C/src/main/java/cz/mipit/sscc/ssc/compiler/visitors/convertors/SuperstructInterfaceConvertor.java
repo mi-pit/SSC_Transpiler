@@ -2,19 +2,18 @@ package cz.mipit.sscc.ssc.compiler.visitors.convertors;
 
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.Main;
-import cz.mipit.sscc.ssc.compiler.data.FunctionHeaderData;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
-import cz.mipit.sscc.ssc.compiler.data.ss.SuperstructMethod;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
+import cz.mipit.sscc.util.SSCCUtil;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
 
 public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.SuperStructInterfaceContext> {
+    private int counter = 0;
     private final Map<String, SSCParser.SuperStructInterfaceContext> interfaceContexts = new HashMap<>();
-    private int COUNTER = 0;
 
     public SuperstructInterfaceConvertor(VisitorDispatcher dispatcher) {
         super(dispatcher, SSCParser.SuperStructInterfaceContext.class);
@@ -36,10 +35,13 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
     public String convert(SSCParser.SuperStructInterfaceContext ctx) {
         Main.logger.printDebug("Entering Superstruct Interface");
 
-        final StringJoiner joiner = new StringJoiner(System.lineSeparator());
-
         final String ssName = dispatcher.visit(ctx.Identifier());
-        joiner.add("/* Superstruct Interface `" + ssName + "`; START */");
+
+        final StringJoiner joiner = new StringJoiner(
+                ";\n",
+                "/* Superstruct Interface `" + ssName + "`; START */\n",
+                "/* Superstruct Interface `" + ssName + "`; END */\n"
+        );
 
         if (interfaceContexts.containsKey(ssName)) {
             throw dispatcher.getSSCCallbackException(
@@ -57,43 +59,31 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
 
         joiner.add(
                 /* declare the struct to be able to use it in the function declarations */
-                interfaceOf.emitStructDeclaration() + ";"
+                interfaceOf.emitStructDeclaration()
         );
 
         dispatcher.data.pushSuperstruct(interfaceOf);
         Main.logger.printDebug("Added a new superstruct from interface: " + ssName);
 
         // attributeSpecifierSequence? cDeclarationSpecifiers? declarator ';'
-        for (SSCParser.FunctionHeaderContext fnHeaderCtx : ctx.functionHeader()) {
-            final List<SSCParser.DeclarationSpecifierContext> declSpecs = fnHeaderCtx.declarationSpecifiers() == null
-                    ? List.of()
-                    : fnHeaderCtx.declarationSpecifiers().declarationSpecifier();
+        ctx.functionHeader()
+                .stream()
+                .map(fh -> {
+                    final TerminalNode identifier = SSCCUtil.getIdentifierFromDeclarator(fh.declarator());
+                    final String unqualifiedName = dispatcher.visit(identifier);
 
-            final FunctionHeaderData functionData = FunctionHeaderData.parse(dispatcher, fnHeaderCtx, declSpecs);
+                    dispatcher.pushFunction(
+                            "<function interface>: '" + unqualifiedName
+                            + "' (" + counter++ + ")",
+                            null
+                    );
 
-            // Fixme: think of an elegant solution to avoid interface parameters
-            //  getting attributed to their surrounding functions
-            dispatcher.pushFunction(
-                    "<function interface>: '" + functionData.unqualifiedName()
-                    + "' (" + COUNTER++ + ")"
-            );
+                    final String s = dispatcher.visit(fh);
 
-            final SuperstructMethod functionDefinition = new SuperstructMethod(
-                    dispatcher,
-                    interfaceOf,
-                    functionData,
-                    declSpecs.stream().anyMatch(ds ->
-                            ds.superstructMemberDeclarationSpecifier() != null && ds.superstructMemberDeclarationSpecifier().Private() != null
-                    ),
-                    SuperstructConvertor.parseFunctionParameters(dispatcher, functionData.declarator()),
-                    null
-            );
-            interfaceOf.addFunction(functionDefinition);
-
-            joiner.add(functionDefinition.getDeclaration());
-
-            dispatcher.popFunction();
-        }
+                    dispatcher.popFunction();
+                    return s;
+                })
+                .forEach(joiner::add);
 
         dispatcher.data.popSuperstruct();
 

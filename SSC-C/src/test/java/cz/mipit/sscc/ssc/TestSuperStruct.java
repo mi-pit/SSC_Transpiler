@@ -22,7 +22,8 @@ public class TestSuperStruct {
         struct.addField(
                 new Field(
                         true,
-                        "int num",
+                        "int",
+                        "num",
                         "num"
                 )
         );

@@ -49,7 +49,7 @@ public class TestCompiler {
         }
         Assertions.assertTrue(switch (returnValue) {
             case SUCCESS, C_COMPILATION_FAIL, TRANSPILATION_FAIL, IO_EXCEPTION -> true;
-            case INVALID_ARGUMENTS, LIBRARY_NOT_FOUND -> false;
+            case INVALID_ARGUMENTS, LIBRARY_NOT_FOUND, INTERNAL_ERROR -> false;
         });
     }
 }

@@ -1,8 +1,12 @@
 package cz.mipit.sscc.ssc.compiler.visitors.convertors;
 
 import antlr.ssc.SSCParser;
+import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import cz.mipit.sscc.util.SSCCUtil;
+import org.antlr.v4.runtime.tree.TerminalNode;
+
+import java.util.Optional;
 
 public class FunctionDefinitionConvertor extends AbstractConvertor<SSCParser.FunctionDefinitionContext> {
     public FunctionDefinitionConvertor(VisitorDispatcher dispatcher) {
@@ -11,23 +15,30 @@ public class FunctionDefinitionConvertor extends AbstractConvertor<SSCParser.Fun
 
     @Override
     public String convert(SSCParser.FunctionDefinitionContext ctx) {
-        // Set currentFunctionName
-        if (ctx.functionBody() == null) {
-            throw dispatcher.getSSCLanguageException("Function definition without body", ctx);
+        final Optional<SuperStruct> optSS = dispatcher.data.currentSuperstruct();
+        if (optSS.isEmpty()) {
+            return dispatcher.visitSuper(ctx);
         }
-        assert ctx.functionBody() != null;
-        assert ctx.functionBody().compoundStatement() != null;
+        final SuperStruct superstruct = optSS.get();
 
-        final String unqualifiedName = dispatcher.visit(
-                SSCCUtil.getIdentifierFromDeclarator(ctx.functionHeader().declarator())
+        final SSCParser.DeclarationSpecifiersContext declSpecsCtx = ctx.functionHeader().declarationSpecifiers();
+        if (declSpecsCtx == null) {
+            throw dispatcher.getSSCLanguageException(
+                    "Function has no declaration specifiers", ctx
+            );
+        }
+
+        final TerminalNode identifier = SSCCUtil.getIdentifierFromDeclarator(ctx.functionHeader().declarator());
+        assert identifier != null;
+
+        final String qualifiedName = superstruct.qualifyName(
+                dispatcher.visit(identifier)
         );
-        final String currentFunctionName = dispatcher.data
-                .currentSuperstruct()
-                .map(s -> s.qualifyName(unqualifiedName))
-                .orElse(unqualifiedName);
 
-        dispatcher.pushFunction(currentFunctionName, ctx);
+        dispatcher.pushFunction(qualifiedName, ctx);
+
         final String functionDefinitionString = dispatcher.visitSuper(ctx);
+
         dispatcher.popFunction();
 
         return functionDefinitionString;

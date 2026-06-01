@@ -66,6 +66,14 @@ public class PrimaryExpressionConvertor
                                   final SuperStruct superstruct,
                                   final String className,
                                   final String methodName) {
+        if (!className.equals(superstruct.name()))
+            throw new AssertionError();
+
+        final Optional<SuperStruct> maybeCurrentSS = dispatcher.data.currentSuperstruct();
+        if (maybeCurrentSS.isPresent() && maybeCurrentSS.get().name().equals(className)) {
+            return;
+        }
+
         final Optional<SuperstructMethod> maybeMethod = superstruct.findMethod(methodName);
         if (maybeMethod.isEmpty()) {
             throw dispatcher.getSSCLanguageException("Superstruct '" + className
@@ -74,10 +82,10 @@ public class PrimaryExpressionConvertor
         }
         final SuperstructMethod method = maybeMethod.get();
 
-        if (method.isPrivate()) {
+        if (method.metadata().isPrivate()) {
             Main.logger.printDebug(() -> "Method '" + methodName + "' is private. Going to check if it may be used here...");
-            if (dispatcher.data.currentSuperstruct().isEmpty()
-                || !dispatcher.data.currentSuperstruct().get().name().equals(className)) {
+            if (maybeCurrentSS.isEmpty()
+                || !maybeCurrentSS.get().name().equals(className)) {
                 throw dispatcher.getSSCLanguageException(
                         "Cannot access private static method `" + methodName + "` from outside the superstruct",
                         ctx

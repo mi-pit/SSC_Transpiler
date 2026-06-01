@@ -7,11 +7,14 @@ public class Field {
 
     public Field(
             final boolean isPrivate,
-            final String declaration,
+            final String declarationSpecifiers,
+            final String declarator,
             final String identifier
     ) {
         this.isPrivate = isPrivate;
-        this.declaration = declaration;
+
+        this.declaration = declarationSpecifiers + " " + declarator;
+
         this.identifier = identifier;
     }
 

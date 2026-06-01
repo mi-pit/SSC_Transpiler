@@ -2,19 +2,10 @@ package cz.mipit.sscc.ssc.compiler.visitors.convertors;
 
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.Main;
-import cz.mipit.sscc.ssc.compiler.data.FunctionHeaderData;
-import cz.mipit.sscc.ssc.compiler.data.ss.Field;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
-import cz.mipit.sscc.ssc.compiler.data.ss.SuperstructMethod;
-import cz.mipit.sscc.ssc.compiler.data.var.Pointer;
-import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
-import cz.mipit.sscc.util.SSCCUtil;
-import org.antlr.v4.runtime.tree.TerminalNode;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -56,7 +47,7 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
         dispatcher.data.pushSuperstruct(superStruct);
 
         for (SSCParser.SuperStructMemberContext memberCtx : ctx.superStructBody().superStructMember()) {
-            processMemberCtx(memberCtx);
+            dispatcher.visit(memberCtx);
         }
 
         dispatcher.data.popSuperstruct();
@@ -64,7 +55,9 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
         final String structDeclaration = superStruct.emitStructDeclaration();
         final String structDefinition = superStruct.emitStructDefinition();
         final String methodDeclarations = superStruct.emitMethodDeclarations();
-        final String methodDefinitions = superStruct.emitMethodDefinitions();
+        final String methodDefinitions = superStruct.emitMethodDefinitions(
+                fnDef -> dispatcher.getSSCLanguageException("Method '" + fnDef.name() + "' is not defined.", fnDef.context())
+        );
 
         dispatcher.addExternalDeclarationToEmitBefore("""
                 /* SuperstructSpecifier -- definition; START */
@@ -88,164 +81,5 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
         );
 
         return structDeclaration;
-    }
-
-    private void processMemberCtx(
-            final SSCParser.SuperStructMemberContext memberCtx
-    ) {
-        if (memberCtx.declaration() != null && memberCtx.declaration().staticAssertDeclaration() != null) {
-            dispatcher.addExternalDeclarationToEmitAfter(
-                    dispatcher.visit(memberCtx.declaration().staticAssertDeclaration())
-            );
-            return;
-        }
-
-        final SSCParser.DeclarationSpecifiersContext declSpecsCtx = (memberCtx.functionDefinition() != null
-                ? memberCtx.functionDefinition().functionHeader().declarationSpecifiers()
-                : memberCtx.declaration().declarationSpecifiers());
-        final List<SSCParser.DeclarationSpecifierContext> declSpecs = declSpecsCtx.declarationSpecifier();
-
-        final boolean isPrivate = declSpecs
-                .stream()
-                .anyMatch(ds -> ds.superstructMemberDeclarationSpecifier() != null
-                                && ds.superstructMemberDeclarationSpecifier().Private() != null);
-
-        if (memberCtx.functionDefinition() != null) {
-            processMemberFunction(memberCtx.functionDefinition(), declSpecs, isPrivate);
-        } else {
-            assert memberCtx.declaration() != null;
-            processMemberField(memberCtx.declaration(), declSpecs, isPrivate);
-        }
-    }
-
-    private void processMemberField(
-            // declarationSpecifiers initDeclaratorList? ';'
-            SSCParser.DeclarationContext memberCtx,
-            List<SSCParser.DeclarationSpecifierContext> declSpecs,
-            boolean isPrivate
-    ) {
-        final SSCParser.InitDeclaratorListContext initDeclaratorList =
-                memberCtx.initDeclaratorList();
-
-        if (initDeclaratorList == null) {
-            throw dispatcher.getSSCLanguageException(
-                    "Declaration does not declare a field", memberCtx
-            );
-        }
-
-        final List<SSCParser.DeclarationSpecifierContext> noPrivateSpecs = declSpecs
-                .stream()
-                .filter(declSpec -> declSpec.superstructMemberDeclarationSpecifier() == null
-                                    || declSpec.superstructMemberDeclarationSpecifier().Private() == null)
-                .toList();
-        if (noPrivateSpecs.isEmpty()) {
-            throw dispatcher.getSSCLanguageException(
-                    "No type specifier for superstruct member", memberCtx.declarationSpecifiers()
-            );
-        }
-
-        // declarator ('=' initializer)?
-        for (SSCParser.InitDeclaratorContext initDecl : initDeclaratorList.initDeclarator()) {
-            if (initDecl.initializer() != null) {
-                throw dispatcher.getSSCLanguageException(
-                        "Cannot initialize superstruct field (must use a constructor)",
-                        initDecl.initializer()
-                );
-            }
-            // (pointer declarationSpecifiers?)* directDeclarator
-            final SSCParser.DeclaratorContext declarator = initDecl.declarator();
-            final TerminalNode identifier = SSCCUtil.getIdentifierFromDeclarator(declarator);
-            if (identifier == null) {
-                throw dispatcher.getSSCLanguageException(
-                        "Field has no identifier",
-                        declarator.directDeclarator()
-                );
-            }
-
-            final String name = dispatcher.visit(identifier);
-
-            final String declarationSpecifiersString = dispatcher.visit(memberCtx.declarationSpecifiers());
-            final String declaratorString = dispatcher.visit(declarator);
-            final String declaration = declarationSpecifiersString + " " + declaratorString;
-
-            final Field field = new Field(isPrivate, declaration, name);
-            dispatcher.data.currentSuperstruct().ifPresent(ss -> ss.addField(field));
-        }
-    }
-
-    private void processMemberFunction(
-            SSCParser.FunctionDefinitionContext functionCtx,
-            List<SSCParser.DeclarationSpecifierContext> declSpecs,
-            boolean isPrivate
-    ) {
-        assert dispatcher.data.currentSuperstruct().isPresent();
-
-        final FunctionHeaderData fnData = FunctionHeaderData.parse(
-                dispatcher,
-                functionCtx.functionHeader(),
-                declSpecs
-        );
-
-        final SuperStruct superstruct = dispatcher.data.currentSuperstruct().get();
-        final String qualified = superstruct.qualifyName(fnData.unqualifiedName());
-
-        dispatcher.pushFunction(qualified, functionCtx);
-
-        if (!fnData.isStatic()) {
-            final SuperstructVariable selfReferenceVariable =
-                    new SuperstructVariable(superstruct.name(), Pointer.oneConst(), "this");
-
-            Main.logger.printDebug(() -> "Adding self reference variable '"
-                                         + selfReferenceVariable
-                                         + "' to function '"
-                                         + dispatcher.getCurrentFunctionName()
-                                         + "'");
-            dispatcher.data
-                    .functionVariables()
-                    .get(dispatcher.getCurrentFunctionName())
-                    .add(selfReferenceVariable);
-        }
-
-        final List<String> parameters = parseFunctionParameters(dispatcher, fnData.declarator());
-
-        final SuperstructMethod functionDefinition = new SuperstructMethod(
-                dispatcher,
-                superstruct,
-                fnData,
-                isPrivate,
-                parameters,
-                functionCtx.functionBody() == null
-                        ? null
-                        : dispatcher.visit(functionCtx.functionBody())
-        );
-
-        superstruct.addFunction(functionDefinition);
-
-        dispatcher.popFunction();
-    }
-
-
-    public static List<String> parseFunctionParameters(
-            final VisitorDispatcher dispatcher,
-            final SSCParser.DeclaratorContext ctx
-    ) {
-        final List<String> params = new ArrayList<>(ctx
-                .directDeclarator()
-                .parameterTypeList()
-                .stream()
-                .map(paramTypeLsCtx -> paramTypeLsCtx.parameterList().parameterDeclaration())
-                .flatMap(paramsCtxLs -> paramsCtxLs.stream().map(dispatcher::visit))
-                .filter(str -> !str.isBlank())
-                .toList()
-        );
-
-        if (ctx.directDeclarator()
-                .parameterTypeList()
-                .stream()
-                .anyMatch(ptl -> ptl.Ellipsis() != null)) {
-            params.add("...");
-        }
-
-        return params;
     }
 }

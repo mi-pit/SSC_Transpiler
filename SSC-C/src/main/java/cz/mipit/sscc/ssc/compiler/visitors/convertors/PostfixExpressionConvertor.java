@@ -72,6 +72,8 @@ public class PostfixExpressionConvertor
                 ? ArrowOrDot.Arrow
                 : ArrowOrDot.Dot;
 
+        Main.logger.printDebug(() -> arrowOrDot + " in '" + dispatcher.getLiteral(ctx) + "'");
+
         final StringBuilder expressionBuilder = new StringBuilder();
 
         final SSCParser.PrimaryExpressionContext primaryExprCtx = ctx.primaryExpression();
@@ -140,7 +142,7 @@ public class PostfixExpressionConvertor
                     "Did not find method `" + methodName + "`. " +
                     "Converting anyway and hoping it gets defined later"
             );
-        } else if (maybeMethod.get().isPrivate()) {
+        } else if (maybeMethod.get().metadata().isPrivate()) {
             Main.logger.printDebug(() -> "Method '" + methodName + "' is private. Going to check if it may be used here...");
             if (dispatcher.data.currentSuperstruct().isEmpty()
                 || !dispatcher.data.currentSuperstruct().get().name().equals(superStruct.name())) {
@@ -214,6 +216,8 @@ public class PostfixExpressionConvertor
             }
         }
         assert currentChildIndex == ctx.getChildCount();
+
+        Main.logger.printDebug(() -> "Final expression: " + expressionBuilder);
 
         return expressionBuilder.toString();
     }

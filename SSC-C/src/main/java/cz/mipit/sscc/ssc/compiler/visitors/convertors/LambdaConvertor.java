@@ -16,7 +16,7 @@ public class LambdaConvertor
         final String surroundingFunctionName = dispatcher.getCurrentFunctionName();
         final String lambdaName = LambdaFunction.createName(surroundingFunctionName);
 
-        dispatcher.pushFunction(lambdaName);
+        dispatcher.pushFunction(lambdaName, null);
 
         final String returnType = dispatcher.visit(ctx.typeName());
         final String parameters = dispatcher.visit(ctx.parameterTypeList());

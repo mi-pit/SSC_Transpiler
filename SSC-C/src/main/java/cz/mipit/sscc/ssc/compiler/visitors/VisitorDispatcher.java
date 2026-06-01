@@ -7,13 +7,17 @@ import cz.mipit.sscc.ssc.compiler.data.var.Pointer;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.data.var.Typedef;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.Convertor;
+import cz.mipit.sscc.ssc.compiler.visitors.convertors.CustomDeclSpecConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.FlagsConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.FunctionDefinitionConvertor;
+import cz.mipit.sscc.ssc.compiler.visitors.convertors.FunctionHeaderConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.LambdaConvertor;
+import cz.mipit.sscc.ssc.compiler.visitors.convertors.ParameterTypeListConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.PostfixExpressionConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.PrimaryExpressionConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.SuperstructConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.SuperstructInterfaceConvertor;
+import cz.mipit.sscc.ssc.compiler.visitors.convertors.SuperstructMemberConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateDefinitionConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateDispatchConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TernaryOperatorConvertor;
@@ -43,12 +47,13 @@ public class VisitorDispatcher extends FormattingConvertor {
 
     private final List<String> externalDeclarationsToEmitBefore;
     private final List<String> externalDeclarationsToEmitAfter;
-    private final Map<String, String> replacements;
 
+    private final Map<String, String> replacements;
+    public final Map<TerminalNode, String> terminalReplacements;
 
     private final VariableCollector collector;
 
-    public final Map<Class<? extends ParserRuleContext>, Convertor<? extends ParserRuleContext>> convertors;
+    private final Map<Class<? extends ParserRuleContext>, Convertor<? extends ParserRuleContext>> convertors;
 
 
     public VisitorDispatcher(VisitorInput input) {
@@ -58,17 +63,23 @@ public class VisitorDispatcher extends FormattingConvertor {
         externalDeclarationsToEmitBefore = new ArrayList<>();
         externalDeclarationsToEmitAfter = new ArrayList<>();
         replacements = new HashMap<>();
+        terminalReplacements = new HashMap<>();
 
         collector = new VariableCollector(this);
 
         final List<Convertor<? extends ParserRuleContext>> convertorsList = List.of(
                 new PostfixExpressionConvertor(this),
                 new PrimaryExpressionConvertor(this),
-                new FunctionDefinitionConvertor(this),
                 new TernaryOperatorConvertor(this),
 
                 new FlagsConvertor(this),
                 new LambdaConvertor(this),
+
+                new FunctionHeaderConvertor(this),
+                new FunctionDefinitionConvertor(this),
+                new CustomDeclSpecConvertor(this),
+                new SuperstructMemberConvertor(this),
+                new ParameterTypeListConvertor(this),
 
                 new SuperstructInterfaceConvertor(this),
                 new SuperstructConvertor(this),
@@ -101,6 +112,11 @@ public class VisitorDispatcher extends FormattingConvertor {
 
     @Override
     public String visitTerminal(TerminalNode node) {
+        if (terminalReplacements.containsKey(node)) {
+            assert node.getSymbol().getType() == SSCParser.Identifier;
+            return terminalReplacements.get(node);
+        }
+
         return switch (node.getSymbol().getType()) {
             case SSCParser.Identifier -> replacements.getOrDefault(node.getText(), node.getText());
 
@@ -216,10 +232,6 @@ public class VisitorDispatcher extends FormattingConvertor {
         _functionDefinitions.put(name, functionCtx);
     }
 
-    public void pushFunction(String name) {
-        pushFunction(name, null);
-    }
-
     public void popFunction() {
         data.functionStack().poll();
     }
@@ -330,7 +342,12 @@ public class VisitorDispatcher extends FormattingConvertor {
 
         logger.printDebug("Function superstruct variables:");
         for (final Map.Entry<@Nullable String, Set<SuperstructVariable>> fnNameToSSVars : data.functionVariables().entrySet()) {
-            final String funcDisplayName = fnNameToSSVars.getKey() == null ? "<global>" : "'" + fnNameToSSVars.getKey() + "'";
+            final String name = fnNameToSSVars.getKey();
+            if (name != null && name.startsWith("<")) {
+                continue;
+            }
+
+            final String funcDisplayName = name == null ? "<global>" : "'" + name + "'";
             final Set<SuperstructVariable> variables = fnNameToSSVars.getValue();
 
             if (variables.isEmpty()) {

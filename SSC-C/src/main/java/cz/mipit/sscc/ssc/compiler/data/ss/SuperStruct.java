@@ -1,5 +1,6 @@
 package cz.mipit.sscc.ssc.compiler.data.ss;
 
+import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.util.SSCCUtil;
 import cz.mipit.sscc.util.annotations.NotNull;
 
@@ -8,6 +9,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.StringJoiner;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class SuperStruct {
@@ -54,16 +56,21 @@ public class SuperStruct {
         final StringJoiner resultBuilder = new StringJoiner(System.lineSeparator());
         for (final SuperstructMethod fnDef : methods) {
             resultBuilder
-                    .add(fnDef.getDeclaration());
+                    .add(fnDef.header() + ";");
         }
         return resultBuilder.toString();
     }
 
-    public String emitMethodDefinitions() {
+    public String emitMethodDefinitions(Function<SuperstructMethod, SSCTranspilerException> exceptionGetter) {
         final StringJoiner resultBuilder = new StringJoiner(System.lineSeparator());
         for (final SuperstructMethod fnDef : methods) {
-            fnDef.getDefinition()
-                    .ifPresent(resultBuilder::add);
+            final Optional<String> def = fnDef.definition();
+
+            if (def.isEmpty()) {
+                throw exceptionGetter.apply(fnDef);
+            }
+
+            resultBuilder.add(def.get());
         }
         return resultBuilder.toString();
     }
@@ -90,7 +97,7 @@ public class SuperStruct {
 
     public Optional<SuperstructMethod> findMethod(final String methodName) {
         for (final SuperstructMethod func : this.methods()) {
-            if (func.getUnqualifiedName().equals(methodName)) {
+            if (func.name().equals(methodName)) {
                 return Optional.of(func);
             }
         }

@@ -620,7 +620,7 @@ parameterList
 //   attribute-specifier-sequenceopt declaration-specifiers abstract-declaratoropt
 //
 // Includes disambiguating predicate.
-// Note the spec states parameter-declataion cannot be empty. But, we
+// Note the spec states parameter-declaration cannot be empty. But, we
 // found situations where it must be allowed.
 parameterDeclaration
     : (attributeSpecifierSequence? ({this.IsDeclarationSpecifier()}? declarationSpecifiers | ) )
