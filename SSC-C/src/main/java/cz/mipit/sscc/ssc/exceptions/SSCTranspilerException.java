@@ -23,6 +23,9 @@ import static java.lang.System.lineSeparator;
 import static java.util.Objects.requireNonNull;
 
 public class SSCTranspilerException extends RuntimeException {
+    public static final int LINES_BEFORE = 4;
+    public static final int LINES_AFTER = 0;
+
     protected static final ConsoleColor COLOR_FATAL = ConsoleColorFactory.create(Ground.FORE, Color.RED);
     protected static final ConsoleColor COLOR_ANTLR = ConsoleColorFactory.create(Ground.FORE, Color.RED);
 
@@ -65,7 +68,8 @@ public class SSCTranspilerException extends RuntimeException {
                         message,
                         EnumeratedLine.getLines(
                                 requireNonNull(offendingCtx, "Context"),
-                                requireNonNull(tokens, "Token stream")
+                                requireNonNull(tokens, "Token stream"),
+                                LINES_BEFORE, LINES_AFTER
                         ),
                         new Locator(offendingCtx)
                 ),
@@ -84,7 +88,9 @@ public class SSCTranspilerException extends RuntimeException {
                         message,
                         EnumeratedLine.getLines(
                                 offendingToken,
-                                tokens
+                                tokens,
+                                LINES_BEFORE,
+                                LINES_AFTER
                         ),
                         new Locator(offendingToken)
                 ),
@@ -113,9 +119,13 @@ public class SSCTranspilerException extends RuntimeException {
     ) {
         final List<ErrorMessage> list = new ArrayList<>();
         for (final Enumerated<ParseTree> offender : new Enumerator<>(offenders)) {
+            final int linesBefore = offender.index() == 0 ? LINES_BEFORE : 0;
+            final int linesAfter = offender.index() == 0 ? LINES_AFTER : 0;
+            final String actualMessage = offender.index() == 0 ? message : "Previous definition here:";
+
             final ErrorMessage errorMessage = ErrorMessage.fromLines(
-                    offender.index() == 0 ? message : "Previous definition here:",
-                    EnumeratedLine.getLines(offender.item(), tokens),
+                    actualMessage,
+                    EnumeratedLine.getLines(offender.item(), tokens, linesBefore, linesAfter),
                     new Locator(offender.item())
             );
             list.add(errorMessage);

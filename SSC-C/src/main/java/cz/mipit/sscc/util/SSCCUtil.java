@@ -26,8 +26,6 @@ public final class SSCCUtil {
 
     public static class Text {
         public static final String INDENT = "    ";
-        public static final int LINES_BEFORE = 4;
-        public static final int LINES_AFTER = 0;
 
         /**
          * Returns the exact text corresponding to a ParserRuleContext.

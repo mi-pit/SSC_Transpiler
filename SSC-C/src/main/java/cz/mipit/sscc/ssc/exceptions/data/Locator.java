@@ -1,5 +1,6 @@
 package cz.mipit.sscc.ssc.exceptions.data;
 
+import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.util.SSCCUtil;
 import cz.mipit.sscc.util.color.ConsoleColor;
 import cz.mipit.sscc.util.color.ConsoleColorFactory.Color;
@@ -12,8 +13,6 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 import java.util.Objects;
 
 import static cz.mipit.sscc.ssc.exceptions.SSCTranspilerException.LINENO_SEPARATOR;
-import static cz.mipit.sscc.util.SSCCUtil.Text.LINES_AFTER;
-import static cz.mipit.sscc.util.SSCCUtil.Text.LINES_BEFORE;
 import static cz.mipit.sscc.util.color.ConsoleColorFactory.COLOR_DEFAULT;
 import static cz.mipit.sscc.util.color.ConsoleColorFactory.create;
 
@@ -87,7 +86,7 @@ public class Locator {
 
     private static int getLineNumberOffset(final int lineNumber) {
         return SSCCUtil.Text.getLineNumberLength(lineNumber,
-                lineNumber - (LINES_BEFORE + LINES_AFTER)) + LINENO_SEPARATOR.length();
+                lineNumber - (SSCTranspilerException.LINES_BEFORE + SSCTranspilerException.LINES_AFTER)) + LINENO_SEPARATOR.length();
     }
 
 

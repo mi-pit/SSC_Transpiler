@@ -10,7 +10,6 @@ import cz.mipit.sscc.ssc.compiler.data.var.Pointer;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import cz.mipit.sscc.util.SSCCUtil;
-import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.ArrayList;
@@ -20,7 +19,7 @@ import java.util.Map;
 import java.util.Objects;
 
 public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStructSpecifierContext> {
-    private final Map<SuperStruct, ParserRuleContext> superstructContexts = new HashMap<>();
+    private final Map<SuperStruct, SSCParser.SuperStructSpecifierContext> superstructContexts = new HashMap<>();
 
     public SuperstructConvertor(VisitorDispatcher dispatcher) {
         super(dispatcher, SSCParser.SuperStructSpecifierContext.class);
@@ -40,7 +39,7 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
         if (got != null && !got.fields().isEmpty()) {
             throw dispatcher.getSSCCallbackException(
                     "Superstruct with name '" + thisSSName + "' already exists",
-                    ctx.Identifier(), superstructContexts.get(got)
+                    ctx.Identifier(), superstructContexts.get(got).Identifier()
             );
         }
 
@@ -52,6 +51,7 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
                     return ss;
                 }
         );
+
         dispatcher.data.superStructs().put(thisSSName, superStruct);
         dispatcher.data.pushSuperstruct(superStruct);
 

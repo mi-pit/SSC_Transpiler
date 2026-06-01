@@ -23,27 +23,28 @@ public record EnumeratedLine(int lineNumber, String line) {
     }
 
 
-    public static List<EnumeratedLine> getLines(Token token, CommonTokenStream tokens) {
-        return SSCCUtil.Text.getLinesAroundToken(token, tokens, SSCCUtil.Text.LINES_BEFORE, SSCCUtil.Text.LINES_AFTER);
+    public static List<EnumeratedLine> getLines(
+            Token token, CommonTokenStream tokens,
+            int linesBefore, int linesAfter
+    ) {
+        return SSCCUtil.Text.getLinesAroundToken(token, tokens, linesBefore, linesAfter);
     }
 
-    private static List<EnumeratedLine> getLines(ParserRuleContext ctx, CommonTokenStream tokens) {
-        return getLines(ctx.getStart(), tokens);
-    }
-
-    private static List<EnumeratedLine> getLines(TerminalNode node, CommonTokenStream tokens) {
-        return getLines(node.getSymbol(), tokens);
-    }
-
-    public static List<EnumeratedLine> getLines(ParseTree ctx, CommonTokenStream tokens) {
+    public static List<EnumeratedLine> getLines(
+            final ParseTree ctx,
+            final CommonTokenStream tokens,
+            final int linesBefore,
+            final int linesAfter
+    ) {
         if (ctx instanceof ParserRuleContext prc) {
-            return getLines(prc, tokens);
+            return getLines(prc.getStart(), tokens, linesBefore, linesAfter);
         }
-        if (ctx instanceof TerminalNode) {
-            return getLines((TerminalNode) ctx, tokens);
+        if (ctx instanceof TerminalNode t) {
+            return getLines(t.getSymbol(), tokens, linesBefore, linesAfter);
         }
         throw new IllegalArgumentException("Unrecognized ParseTree type: " + ctx.getClass().getName());
     }
+
 
     public static String formatLines(
             final List<EnumeratedLine> lines,

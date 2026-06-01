@@ -7,10 +7,13 @@ import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperstructMethod;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.StringJoiner;
 
 public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.SuperStructInterfaceContext> {
+    private final Map<String, SSCParser.SuperStructInterfaceContext> interfaceContexts = new HashMap<>();
     private int COUNTER = 0;
 
     public SuperstructInterfaceConvertor(VisitorDispatcher dispatcher) {
@@ -31,7 +34,6 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
      */
     @Override
     public String convert(SSCParser.SuperStructInterfaceContext ctx) {
-        // TODO: check if methods declared here are implemented
         Main.logger.printDebug("Entering Superstruct Interface");
 
         final StringJoiner joiner = new StringJoiner(System.lineSeparator());
@@ -39,8 +41,19 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
         final String ssName = dispatcher.visit(ctx.Identifier());
         joiner.add("/* Superstruct Interface `" + ssName + "`; START */");
 
+        if (interfaceContexts.containsKey(ssName)) {
+            throw dispatcher.getSSCCallbackException(
+                    "Interface of superstruct '" + ssName + "' is already defined",
+                    ctx.Identifier(), interfaceContexts.get(ssName).Identifier()
+            );
+        }
+
         final SuperStruct interfaceOf = dispatcher.data.superStructs()
-                .computeIfAbsent(ssName, SuperStruct::new);
+                .computeIfAbsent(ssName, name -> {
+                    final SuperStruct ss = new SuperStruct(name);
+                    interfaceContexts.put(name, ctx);
+                    return ss;
+                });
 
         joiner.add(
                 /* declare the struct to be able to use it in the function declarations */
