@@ -3,6 +3,7 @@ package cz.mipit.sscc.ssc.compiler.data.lambda;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
+import static cz.mipit.sscc.util.Util.requireNonBlank;
 import static java.util.Objects.requireNonNull;
 
 public final class LambdaFunction {
@@ -53,13 +54,5 @@ public final class LambdaFunction {
         }
 
         return mapper.apply(string);
-    }
-
-    private static String requireNonBlank(String string) {
-        if (string.isBlank()) {
-            throw new IllegalArgumentException(string);
-        }
-
-        return string;
     }
 }

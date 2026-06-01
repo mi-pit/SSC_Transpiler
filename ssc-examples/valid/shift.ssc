@@ -1,21 +1,35 @@
 
-tmpl<T>
+tmpl<A, B>
 object Thing
 {
-    T t;
+    A t;
+    B b;
+};
+
+#ifdef __SSC_SOURCE__
+    object
+#else
+    struct
+#endif
+    Other
+{
+#ifdef __SSC_SOURCE__
+    private
+#endif
+    bool b;
 };
 
 int main()
 {
-    object Thing<int> it =
+    object Thing<int, bool> it =
     {
-        1,
+        .t = 1,
     };
-    object Thing<object Thing<int>> tt;
+    object Thing<object Thing<int, bool>, struct Other> tt;
 
     while (it.t < 9'999) {
         it.t >>= 1;
-        it.t = it.t >> 1;
+        it.b = 1'000'000 << it.t >> 1;
     }
 
     return tt.t.t > 9999;

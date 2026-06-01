@@ -18,7 +18,7 @@ import java.util.Objects;
  * @apiNote Sibling to {@link Path}, may be converted to and from a {@link Path}
  * @implNote All getters have their data cached.
  */
-public final class InputFile {
+public final class File {
     private final FileType fileType;
 
     private final Path dir;
@@ -31,10 +31,10 @@ public final class InputFile {
 
     private final String absolutePathString;
 
-    private InputFile(FileType fileType,
-                      Path dir, String name,
-                      @Nullable String suffix,
-                      Path path, Path absolutePath) {
+    private File(FileType fileType,
+                 Path dir, String name,
+                 @Nullable String suffix,
+                 Path path, Path absolutePath) {
         this.fileType = Objects.requireNonNull(fileType);
         this.dir = Objects.requireNonNull(dir, "File must have a directory");
         this.name = Objects.requireNonNull(name, "File must have a name");
@@ -46,12 +46,12 @@ public final class InputFile {
         this.absolutePathString = absolutePath.toString();
     }
 
-    public static InputFile create(Path dir, String name, @Nullable String suffix) {
+    public static File create(Path dir, String name, @Nullable String suffix) {
         final String fullName = suffix == null ? name : name + "." + suffix;
         final Path path = Path.of(dir.toString(), fullName);
         final Path absolutePath = path.toAbsolutePath();
 
-        return new InputFile(
+        return new File(
                 FileType.fromString(suffix), dir, name, suffix,
                 path, absolutePath
         );
@@ -74,19 +74,19 @@ public final class InputFile {
         }
     }
 
-    public static InputFile fromPath(FileType fileType, Path path) {
+    public static File fromPath(FileType fileType, Path path) {
         FileData result = FileData.fromPath(path);
-        return new InputFile(
+        return new File(
                 fileType, result.dir(), result.name(),
                 result.suffix(), path, path.toAbsolutePath()
         );
     }
 
 
-    public static InputFile fromPath(final Path path) {
+    public static File fromPath(final Path path) {
         final FileData result = FileData.fromPath(path);
 
-        return new InputFile(
+        return new File(
                 FileType.fromString(result.suffix()),
                 result.dir(), result.name(), result.suffix(),
                 path, path.toAbsolutePath()
@@ -94,7 +94,7 @@ public final class InputFile {
     }
 
     /// Creates a new object with the same directory and name and changed extension
-    public InputFile getChangedSuffix(final @Nullable String newSuffix) {
+    public File getChangedSuffix(final @Nullable String newSuffix) {
         return create(dir, name, newSuffix);
     }
 
@@ -132,10 +132,10 @@ public final class InputFile {
 
     @Override
     public boolean equals(Object o) {
-        if (o instanceof InputFile inputFile) {
-            return Objects.equals(dir, inputFile.dir)
-                    && Objects.equals(name, inputFile.name)
-                    && Objects.equals(suffix, inputFile.suffix);
+        if (o instanceof File file) {
+            return Objects.equals(dir, file.dir)
+                   && Objects.equals(name, file.name)
+                   && Objects.equals(suffix, file.suffix);
         }
         if (o instanceof Path p) {
             return equals(p);

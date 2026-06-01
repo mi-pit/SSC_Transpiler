@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.StringJoiner;
 
 public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.SuperStructInterfaceContext> {
-    private static int COUNTER = 0;
+    private int COUNTER = 0;
 
     public SuperstructInterfaceConvertor(VisitorDispatcher dispatcher) {
         super(dispatcher, SSCParser.SuperStructInterfaceContext.class);

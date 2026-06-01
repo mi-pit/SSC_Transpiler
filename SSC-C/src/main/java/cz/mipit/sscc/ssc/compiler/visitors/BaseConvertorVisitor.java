@@ -3,8 +3,9 @@ package cz.mipit.sscc.ssc.compiler.visitors;
 import antlr.ssc.SSCParser;
 import antlr.ssc.SSCParserBaseVisitor;
 import cz.mipit.sscc.Main;
-import cz.mipit.sscc.file.InputFile;
+import cz.mipit.sscc.file.File;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
+import cz.mipit.sscc.ssc.exceptions.children.SSCCallbackException;
 import cz.mipit.sscc.ssc.exceptions.children.SSCLanguageException;
 import cz.mipit.sscc.util.SSCCUtil;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -24,11 +25,11 @@ import java.util.List;
  */
 public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> {
     protected final CommonTokenStream tokens;
-    protected final InputFile currentFile;
+    protected final File currentFile;
 
     protected boolean hasErrors;
 
-    protected BaseConvertorVisitor(CommonTokenStream tokens, InputFile currentFile) {
+    protected BaseConvertorVisitor(CommonTokenStream tokens, File currentFile) {
         this.tokens = tokens;
         this.currentFile = currentFile;
 
@@ -39,9 +40,16 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
         return !hasErrors;
     }
 
+    protected void processTranspilerException(SSCTranspilerException e) {
+        Main.logger.printException(e);
+        hasErrors = true;
+    }
+
+
     abstract public void debugPrintDump();
 
     abstract public String visit(ParseTree node);
+
 
     protected final String visitDefault(ParseTree node) {
         return super.visit(node);
@@ -107,8 +115,7 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
             try {
                 childText = visit(child);
             } catch (final SSCTranspilerException e) {
-                hasErrors = true;
-                Main.logger.printException(e);
+                processTranspilerException(e);
                 continue;
             }
 
@@ -145,13 +152,19 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
         return "";
     }
 
-    public SSCLanguageException getSSCLanguageException(String message, ParseTree ctx) {
+    public SSCTranspilerException getSSCLanguageException(String message, ParseTree ctx) {
         if (ctx instanceof ParserRuleContext prc)
             return new SSCLanguageException(message, prc, tokens, currentFile);
         if (ctx instanceof TerminalNode t)
             return new SSCLanguageException(message, t, tokens, currentFile);
 
         throw new IllegalStateException("Invalid parse tree: " + ctx.getClass().getName());
+    }
+
+    public SSCTranspilerException getSSCCallbackException(
+            String message, ParseTree curr, ParseTree old
+    ) {
+        return new SSCCallbackException(message, List.of(curr, old), tokens, currentFile);
     }
 
 

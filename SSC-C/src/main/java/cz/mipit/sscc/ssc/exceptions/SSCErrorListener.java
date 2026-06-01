@@ -1,7 +1,7 @@
 package cz.mipit.sscc.ssc.exceptions;
 
 import antlr.ssc.SSCParser;
-import cz.mipit.sscc.file.InputFile;
+import cz.mipit.sscc.file.File;
 import cz.mipit.sscc.ssc.exceptions.children.AntlrException;
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -12,13 +12,13 @@ import org.antlr.v4.runtime.Token;
 import java.util.SequencedCollection;
 
 public class SSCErrorListener extends BaseErrorListener {
-    private final InputFile inputFile;
+    private final File file;
     private final SequencedCollection<AntlrException> errors;
 
-    public SSCErrorListener(InputFile inputFile,
+    public SSCErrorListener(File file,
                             SequencedCollection<AntlrException> errors) {
         super();
-        this.inputFile = inputFile;
+        this.file = file;
         this.errors = errors;
     }
 
@@ -40,7 +40,7 @@ public class SSCErrorListener extends BaseErrorListener {
                 msg + symbolicNameMsg,
                 token,
                 tokenStream,
-                inputFile
+                file
         ));
     }
 }

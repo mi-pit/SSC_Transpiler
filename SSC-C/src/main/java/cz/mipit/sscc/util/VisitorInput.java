@@ -3,7 +3,7 @@ package cz.mipit.sscc.util;
 import antlr.ssc.SSCLexer;
 import antlr.ssc.SSCParser;
 import antlr.ssc.SymbolTable;
-import cz.mipit.sscc.file.InputFile;
+import cz.mipit.sscc.file.File;
 import cz.mipit.sscc.ssc.exceptions.SSCErrorListener;
 import cz.mipit.sscc.ssc.exceptions.children.AntlrException;
 import org.antlr.v4.runtime.CharStreams;
@@ -17,22 +17,22 @@ import java.util.SequencedCollection;
 public record VisitorInput(
         CommonTokenStream tokens,
         ParseTree tree,
-        InputFile inputFile,
+        File file,
         SymbolTable symbolTable
 ) {
-    public static VisitorInput fromFile(final InputFile inputFile,
+    public static VisitorInput fromFile(final File file,
                                         final SequencedCollection<AntlrException> errors)
             throws IOException {
-        final SSCLexer lexer = new SSCLexer(CharStreams.fromString(Files.readString(inputFile.toPath())));
+        final SSCLexer lexer = new SSCLexer(CharStreams.fromString(Files.readString(file.toPath())));
         final CommonTokenStream tokens = new CommonTokenStream(lexer);
 
         final SSCParser parser = new SSCParser(tokens);
 
-        final SSCErrorListener listener = new SSCErrorListener(inputFile, errors);
+        final SSCErrorListener listener = new SSCErrorListener(file, errors);
         parser.removeErrorListeners();
         parser.addErrorListener(listener);
 
         final ParseTree root = parser.compilationUnit();
-        return new VisitorInput(tokens, root, inputFile, parser.getSymbolTable());
+        return new VisitorInput(tokens, root, file, parser.getSymbolTable());
     }
 }

@@ -2,7 +2,7 @@ package cz.mipit.sscc.ssc;
 
 import cz.mipit.sscc.args.ArgumentParser;
 import cz.mipit.sscc.args.SSCCOptions;
-import cz.mipit.sscc.file.InputFile;
+import cz.mipit.sscc.file.File;
 import cz.mipit.sscc.ssc.compiler.SSCCompiler;
 import cz.mipit.sscc.util.ExitValue;
 import org.junit.jupiter.api.AfterEach;
@@ -38,7 +38,7 @@ public class TestCompiler {
     @Test
     void test() {
         final SSCCOptions options = SSCCOptions.newWithDefaults();
-        options.addFile(InputFile.fromPath(PATH));
+        options.addFile(File.fromPath(PATH));
         final Compiler compiler = new SSCCompiler(options);
         final ExitValue returnValue;
         try {

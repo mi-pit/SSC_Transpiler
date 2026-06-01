@@ -4,8 +4,8 @@ import antlr.ssc.SSCParser;
 import cz.mipit.sscc.Main;
 import cz.mipit.sscc.ssc.compiler.data.tmpl.Template;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
-import cz.mipit.sscc.util.collection.Enumerable;
-import cz.mipit.sscc.util.collection.EnumeratorImpl;
+import cz.mipit.sscc.util.collection.Enumerated;
+import cz.mipit.sscc.util.collection.Enumerator;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
@@ -57,8 +57,13 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
 
         for (final SSCParser.TemplateDefinitionContext tmplContext : tmpl.contexts()) {
             final Map<String, String> typeArgMap = new HashMap<>();
-            if (tmplContext.templateHeader().templateTypes().Identifier().size() != typeArgs.size()) {
-                throw dispatcher.getSSCLanguageException("Invalid number of type arguments", ctx);
+            final int templateTypeArgs = tmplContext.templateHeader().templateTypes().Identifier().size();
+            final int calledTypeArgs = typeArgs.size();
+            if (templateTypeArgs != calledTypeArgs) {
+                throw dispatcher.getSSCLanguageException(
+                        "Invalid number of type arguments (expected %d, got %d)".formatted(templateTypeArgs, calledTypeArgs),
+                        ctx.templateDispatchTypeArguments()
+                );
             }
 
             for (int i = 0; i < typeArgs.size(); i++) {
@@ -116,7 +121,7 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
                 functionName
         );
 
-        for (Enumerable.Entry<String> s : new EnumeratorImpl<>(typeArgumentsConverted.iterator())) {
+        for (Enumerated<String> s : new Enumerator<>(typeArgumentsConverted)) {
             sBuilder.append("_")
                     .append(s.index() + 1)
                     .append(s.item());
@@ -172,7 +177,7 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
                 builder.append(ch);
             } else if (ch == '*') {
                 builder.append('p');
-            } else {
+            } else if (!Character.isWhitespace(ch)) {
                 // '0' is an invalid start of an identifier => must be coming from here
                 builder.append('0');
             }

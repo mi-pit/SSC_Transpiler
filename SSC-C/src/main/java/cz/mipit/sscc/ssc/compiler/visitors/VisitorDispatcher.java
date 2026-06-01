@@ -18,8 +18,6 @@ import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateDefinitionConverto
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateDispatchConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TernaryOperatorConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.fmt.FormattingConvertor;
-import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
-import cz.mipit.sscc.ssc.exceptions.children.SSCLanguageException;
 import cz.mipit.sscc.util.VisitorInput;
 import cz.mipit.sscc.util.annotations.Nullable;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -54,7 +52,7 @@ public class VisitorDispatcher extends FormattingConvertor {
 
 
     public VisitorDispatcher(VisitorInput input) {
-        super(input.tokens(), input.inputFile());
+        super(input.tokens(), input.file());
 
         data = new CompilerData(input.symbolTable());
         externalDeclarationsToEmitBefore = new ArrayList<>();
@@ -207,24 +205,12 @@ public class VisitorDispatcher extends FormattingConvertor {
         Objects.requireNonNull(name, "Function name cannot be null");
 
         if (data.functionVariables().containsKey(name)) {
-            class StackedException extends SSCTranspilerException {
-                StackedException(SSCTranspilerException exception) {
-                    super(
-                            Type.Language,
-                            exception.getMessage()
-                            + System.lineSeparator()
-                            + COLOR_LOCATOR
-                            + "\tPrevious definition here: ",
-                            _functionDefinitions.get(name),
-                            tokens,
-                            currentFile
-                    );
-                }
-            }
-
-            final SSCLanguageException exception = getSSCLanguageException("Duplicate function name: '" + name + "'", functionCtx);
-            throw new StackedException(exception);
+            throw getSSCCallbackException(
+                    "Duplicate function name: '" + name + "'",
+                    functionCtx, _functionDefinitions.get(name)
+            );
         }
+
         data.functionVariables().put(name, new HashSet<>());
         data.functionStack().push(name);
         _functionDefinitions.put(name, functionCtx);
@@ -304,13 +290,16 @@ public class VisitorDispatcher extends FormattingConvertor {
         return Optional.of(ssVar);
     }
 
-    public Optional<SuperstructVariable> findSuperstructVariable(String functionName, String objectName) {
+    /// Searches current function & global variables
+    public Optional<SuperstructVariable> findSuperstructVariable(String objectName) {
+        final String functionName = getCurrentFunctionName();
+
         for (SuperstructVariable var : data.functionVariables().get(functionName)) {
             if (var.getIdentifier().equals(objectName)) {
                 return Optional.of(var);
             }
         }
-        /* check global variables too */
+
         for (SuperstructVariable var : data.functionVariables().get(null)) {
             if (var.getIdentifier().equals(objectName)) {
                 return Optional.of(var);

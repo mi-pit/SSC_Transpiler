@@ -68,12 +68,12 @@ public class SuperStruct {
         return resultBuilder.toString();
     }
 
-    public List<SuperstructMethod> methods() {
-        return methods;
-    }
-
     public String name() {
         return name;
+    }
+
+    public List<SuperstructMethod> methods() {
+        return methods;
     }
 
     public List<Field> fields() {

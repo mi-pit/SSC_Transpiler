@@ -8,8 +8,8 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 public final class DirectoryTreeParser {
-    public static Set<InputFile> getFilesInDirectory(final Path root, Set<String> extensions) throws IOException {
-        final Set<InputFile> files = new HashSet<>();
+    public static Set<File> getFilesInDirectory(final Path root, Set<String> extensions) throws IOException {
+        final Set<File> files = new HashSet<>();
         try (Stream<Path> entries = Files.walk(root)) {
             entries.forEach(path -> {
                 if (!Files.isRegularFile(path)) {
@@ -24,8 +24,8 @@ public final class DirectoryTreeParser {
                 }
 
                 final Path abs = path.toAbsolutePath();
-                final InputFile inputFile = InputFile.fromPath(abs);
-                files.add(inputFile);
+                final File file = File.fromPath(abs);
+                files.add(file);
             });
         }
         return files;

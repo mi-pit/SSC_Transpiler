@@ -2,7 +2,7 @@ package cz.mipit.sscc.ssc.compiler.visitors.fmt;
 
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.Main;
-import cz.mipit.sscc.file.InputFile;
+import cz.mipit.sscc.file.File;
 import cz.mipit.sscc.ssc.compiler.visitors.BaseConvertorVisitor;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
 import cz.mipit.sscc.util.SSCCUtil;
@@ -76,7 +76,7 @@ public class FormattingConvertor extends BaseConvertorVisitor {
 
     public FormattingConvertor(
             CommonTokenStream tokens,
-            InputFile currentFile
+            File currentFile
     ) {
         super(tokens, currentFile);
 
@@ -105,8 +105,7 @@ public class FormattingConvertor extends BaseConvertorVisitor {
             try {
                 childText = visit(child);
             } catch (final SSCTranspilerException e) {
-                Main.logger.printException(e);
-                hasErrors = true;
+                processTranspilerException(e);
                 continue;
             }
 
@@ -864,11 +863,52 @@ public class FormattingConvertor extends BaseConvertorVisitor {
         return getIndent() + super.visitExpressionStatement(ctx) + "\n";
     }
 
-//iterationStatement
+    //iterationStatement
     //    : While '(' expression ')' statement
     //    | Do statement While '(' expression ')' ';'
     //    | For '(' forCondition ')' statement
     //    ;
+    @Override
+    public String visitIterationStatement(SSCParser.IterationStatementContext ctx) {
+        return getIndent() + visitIterationStatement_(ctx) + "\n";
+    }
+
+    private String visitIterationStatement_(SSCParser.IterationStatementContext ctx) {
+        final String visitedStatement;
+        if (ctx.statement().compoundStatement() == null) {
+            level++;
+            visitedStatement = "\n" + visit(ctx.statement());
+            level--;
+        } else {
+            final String s = visit(ctx.statement());
+            if (ctx.Do() != null) {
+                visitedStatement = s + "\n";
+            } else {
+                visitedStatement = s;
+            }
+        }
+
+        final String lParen = visit(ctx.LeftParen());
+        final String rParen = visit(ctx.RightParen());
+
+        if (ctx.Do() != null) {
+            return visit(ctx.Do()) + visitedStatement
+                   + getIndent() + visit(ctx.While()) + " "
+                   + lParen + " " + visit(ctx.expression()) + " " + rParen + ";";
+        }
+
+        final String keyword = visit(ctx.children.getFirst());
+
+        final ParseTree conditionalNode = ctx.expression() != null ? ctx.expression() : ctx.forCondition();
+        final String conditional = visit(conditionalNode);
+
+        return keyword + " " + lParen + " " + conditional + " " + rParen + visitedStatement;
+    }
+
+    @Override
+    public String visitForCondition(SSCParser.ForConditionContext ctx) {
+        return super.visitForCondition(ctx);
+    }
 
     //selectionStatement
     //    : 'if' '(' expression ')' statement ('else' statement)?

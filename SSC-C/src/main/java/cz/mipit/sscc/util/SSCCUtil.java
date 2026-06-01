@@ -1,6 +1,7 @@
 package cz.mipit.sscc.util;
 
 import antlr.ssc.SSCParser;
+import cz.mipit.sscc.ssc.exceptions.data.EnumeratedLine;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
@@ -10,6 +11,7 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 import java.util.ArrayList;
 import java.util.List;
 
+import static cz.mipit.sscc.util.SSCCUtil.Maths.digitsOf;
 import static java.lang.System.lineSeparator;
 
 public final class SSCCUtil {
@@ -24,6 +26,8 @@ public final class SSCCUtil {
 
     public static class Text {
         public static final String INDENT = "    ";
+        public static final int LINES_BEFORE = 4;
+        public static final int LINES_AFTER = 0;
 
         /**
          * Returns the exact text corresponding to a ParserRuleContext.
@@ -59,6 +63,10 @@ public final class SSCCUtil {
             }
 
             return ls;
+        }
+
+        public static int getLineNumberLength(final int min, final int max) {
+            return Math.max(1, Math.max(digitsOf(min), digitsOf(max)));
         }
     }
 

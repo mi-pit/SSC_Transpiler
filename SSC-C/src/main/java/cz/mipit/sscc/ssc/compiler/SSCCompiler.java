@@ -3,7 +3,7 @@ package cz.mipit.sscc.ssc.compiler;
 import cz.mipit.sscc.Logger;
 import cz.mipit.sscc.args.SSCCOptions;
 import cz.mipit.sscc.file.FileType;
-import cz.mipit.sscc.file.InputFile;
+import cz.mipit.sscc.file.File;
 import cz.mipit.sscc.ssc.Compiler;
 import cz.mipit.sscc.ssc.compiler.visitors.BaseConvertorVisitor;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
@@ -142,7 +142,7 @@ public final class SSCCompiler implements Compiler {
                 return;
             }
 
-            final InputFile outputFile = options.formatOnly()
+            final File outputFile = options.formatOnly()
                     ? options.formatOutputFile()
                     : fileArg.getChangedSuffix("c");
 
@@ -176,15 +176,15 @@ public final class SSCCompiler implements Compiler {
         return totalFailed.get();
     }
 
-    private Optional<Path> transpileFile(final InputFile inputFile,
-                                         final InputFile workingFile)
+    private Optional<Path> transpileFile(final File file,
+                                         final File workingFile)
             throws IOException, InterruptedException {
-        logger.printVerboseFilename("Processing file", inputFile.absolutePathString());
+        logger.printVerboseFilename("Processing file", file.absolutePathString());
 
         final Path workingFileAbsolutePath = workingFile.toAbsolutePath();
 
         logger.printVerbose("Preprocessing file...");
-        if (!preprocessSSCCode(inputFile, workingFileAbsolutePath)) {
+        if (!preprocessSSCCode(file, workingFileAbsolutePath)) {
             logger.printVerbose("Preprocessing failed.");
             return Optional.empty();
         }
@@ -227,7 +227,7 @@ public final class SSCCompiler implements Compiler {
                                    final Path outputFile)
             throws IOException {
         final BaseConvertorVisitor visitor = options.formatOnly()
-                ? new FormattingConvertor(data.tokens(), data.inputFile())
+                ? new FormattingConvertor(data.tokens(), data.file())
                 : new VisitorDispatcher(data);
 
         String result = visitor.visit(data.tree()) + "\n";
@@ -247,7 +247,7 @@ public final class SSCCompiler implements Compiler {
         return visitor.hasNoErrors();
     }
 
-    private boolean preprocessSSCCode(final InputFile inFile,
+    private boolean preprocessSSCCode(final File inFile,
                                       final Path outputFile)
             throws IOException, InterruptedException {
         return 0 == doProcess(ListBuilder

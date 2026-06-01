@@ -3,7 +3,7 @@ package cz.mipit.sscc.args;
 import cz.mipit.sscc.Logger;
 import cz.mipit.sscc.file.DirectoryTreeParser;
 import cz.mipit.sscc.file.FileType;
-import cz.mipit.sscc.file.InputFile;
+import cz.mipit.sscc.file.File;
 import cz.mipit.sscc.util.ExitValue;
 import cz.mipit.sscc.util.UnreachableCodeException;
 
@@ -70,14 +70,14 @@ public final class ArgumentParser {
                 }
 
                 case LibPath -> {
-                    final Set<InputFile> inputFiles;
+                    final Set<File> files;
                     try {
-                        inputFiles = DirectoryTreeParser.getFilesInDirectory(Path.of(arg), Set.of("ssc", "c"));
+                        files = DirectoryTreeParser.getFilesInDirectory(Path.of(arg), Set.of("ssc", "c"));
                     } catch (final IOException io) {
                         Logger.errExit(ExitValue.IO_EXCEPTION, io.getMessage());
                         throw new UnreachableCodeException();
                     }
-                    options.addFiles(inputFiles);
+                    options.addFiles(files);
                     yield NextOperation.None;
                 }
 
@@ -88,9 +88,9 @@ public final class ArgumentParser {
 
                 case InputFile -> {
                     final Path path = Path.of(arg);
-                    final InputFile in = nextFileType == null
-                            ? InputFile.fromPath(path)
-                            : InputFile.fromPath(nextFileType, path);
+                    final File in = nextFileType == null
+                            ? File.fromPath(path)
+                            : File.fromPath(nextFileType, path);
                     nextFileType = null;
 
                     options.addFile(in);
@@ -100,9 +100,9 @@ public final class ArgumentParser {
                 case None -> {
                     if (!arg.startsWith("-")) {
                         final Path path = Path.of(arg);
-                        final InputFile inputFile = verifyInputFilePath(path);
+                        final File file = verifyInputFilePath(path);
 
-                        options.addFile(inputFile);
+                        options.addFile(file);
                         yield NextOperation.None;
                     }
                     if (OPTION_HELP.matches(arg)) {
@@ -135,7 +135,7 @@ public final class ArgumentParser {
         return options;
     }
 
-    private static InputFile verifyInputFilePath(final Path path) {
+    private static File verifyInputFilePath(final Path path) {
         if (!Files.exists(path)) {
             Logger.errExit(ExitValue.INVALID_ARGUMENTS, "File '" + path + "' does not exist");
         }
@@ -143,13 +143,13 @@ public final class ArgumentParser {
             Logger.errExit(ExitValue.INVALID_ARGUMENTS, "File '" + path + "' is not a regular file");
         }
 
-        final InputFile inputFile = InputFile.fromPath(path.toAbsolutePath());
+        final File file = File.fromPath(path.toAbsolutePath());
 
-        if (inputFile.suffix() == null) {
-            Logger.errExit(ExitValue.INVALID_ARGUMENTS, "Could not verify type of file '" + inputFile.absolutePathString() + "'");
+        if (file.suffix() == null) {
+            Logger.errExit(ExitValue.INVALID_ARGUMENTS, "Could not verify type of file '" + file.absolutePathString() + "'");
         }
 
-        return inputFile;
+        return file;
     }
 
     private ArgumentParser() {

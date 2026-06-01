@@ -2,19 +2,18 @@ package cz.mipit.sscc.ssc.code;
 
 import cz.mipit.sscc.args.SSCCOptions;
 import cz.mipit.sscc.file.DirectoryTreeParser;
-import cz.mipit.sscc.file.InputFile;
+import cz.mipit.sscc.file.File;
 import cz.mipit.sscc.ssc.compiler.SSCCompiler;
 import cz.mipit.sscc.util.ExitValue;
 import cz.mipit.sscc.util.collection.Box;
+import cz.mipit.sscc.util.collection.builder.HashSetBuilder;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashSet;
 import java.util.Set;
 
 public class TestStubs {
@@ -24,21 +23,22 @@ public class TestStubs {
 
     @AfterAll
     static void deleteJunkFiles() {
-        final Set<InputFile> files = new HashSet<>();
-        files.addAll(getInputFiles(VALID));
-        files.addAll(getInputFiles(INVALID));
+        final Set<File> files = HashSetBuilder
+                .from(getInputFiles(VALID))
+                .plusMany(getInputFiles(INVALID))
+                .build();
 
-        for (InputFile file : files) {
+        for (final File file : files) {
             Assertions.assertEquals("ssc", file.suffix());
-            final InputFile correspondingCFile = file.getChangedSuffix("c");
+            final File correspondingCFile = file.getChangedSuffix("c");
             Assertions.assertDoesNotThrow(() -> Files.deleteIfExists(correspondingCFile.toPath()));
         }
     }
 
     @Test
     void testSuccesses() {
-        final Set<InputFile> files = getInputFiles(VALID);
-        for (final InputFile fileName : files) {
+        final Set<File> files = getInputFiles(VALID);
+        for (final File fileName : files) {
             final SSCCompiler compiler = getCompilerOfFile(fileName);
 
             final Box<ExitValue> exitValue = new Box<>();
@@ -51,8 +51,8 @@ public class TestStubs {
 
     @Test
     void testFailures() {
-        final Set<InputFile> files = getInputFiles(INVALID);
-        for (final InputFile fileName : files) {
+        final Set<File> files = getInputFiles(INVALID);
+        for (final File fileName : files) {
             final SSCCompiler compiler = getCompilerOfFile(fileName);
 
             final Box<ExitValue> exitValue = new Box<>();
@@ -61,14 +61,14 @@ public class TestStubs {
             });
             Assertions.assertTrue(
                     exitValue.item == ExitValue.C_COMPILATION_FAIL
-                            || exitValue.item == ExitValue.TRANSPILATION_FAIL,
+                    || exitValue.item == ExitValue.TRANSPILATION_FAIL,
                     "ex=%s: `%s`".formatted(exitValue, fileName)
             );
         }
     }
 
-    private static Set<InputFile> getInputFiles(Path dir) {
-        final Set<InputFile> files;
+    private static Set<File> getInputFiles(Path dir) {
+        final Set<File> files;
         try {
             files = DirectoryTreeParser.getFilesInDirectory(dir, Set.of("ssc"));
         } catch (IOException e) {
@@ -78,7 +78,7 @@ public class TestStubs {
         return files;
     }
 
-    private static SSCCompiler getCompilerOfFile(InputFile inFile) {
+    private static SSCCompiler getCompilerOfFile(File inFile) {
         final SSCCOptions options = SSCCOptions.newWithDefaults();
         options.addFile(inFile);
 

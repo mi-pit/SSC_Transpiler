@@ -1,6 +1,6 @@
 package cz.mipit.sscc.args;
 
-import cz.mipit.sscc.file.InputFile;
+import cz.mipit.sscc.file.File;
 
 import java.nio.file.Path;
 import java.util.Collections;
@@ -77,10 +77,10 @@ public final class SSCCOptions implements Iterable<Option<?>> {
 
     public static final String OPTSTR_FORMAT_ONLY_SHORT = "-f";
     public static final String OPTSTR_FORMAT_ONLY_LONG = "--format";
-    private final Option<InputFile> OPTION_FORMAT = new Option<>(
+    private final Option<File> OPTION_FORMAT = new Option<>(
             new OptionString(OPTSTR_FORMAT_ONLY_SHORT, OPTSTR_FORMAT_ONLY_LONG),
             "Format the code", "Preprocesses and formats the code and outputs to the output file",
-            List.of("output-file"), InputFile.class, null, NextOperation.OutputFile
+            List.of("output-file"), File.class, null, NextOperation.OutputFile
     );
 
     private final List<Option<?>> OPTIONS = List.of(
@@ -95,7 +95,7 @@ public final class SSCCOptions implements Iterable<Option<?>> {
             OPTION_FORMAT
     );
 
-    private final Set<InputFile> filesToProcess = new HashSet<>();
+    private final Set<File> filesToProcess = new HashSet<>();
 
     private SSCCOptions() {
     }
@@ -124,25 +124,25 @@ public final class SSCCOptions implements Iterable<Option<?>> {
         OPTION_COMPILE.setValue(Objects.requireNonNull(filename));
     }
 
-    public void addFile(InputFile file) {
+    public void addFile(File file) {
         filesToProcess.add(Objects.requireNonNull(file));
     }
 
-    public void addFiles(Set<InputFile> inputFiles) {
-        filesToProcess.addAll(inputFiles);
+    public void addFiles(Set<File> files) {
+        filesToProcess.addAll(files);
     }
 
     public void setFormatOutputFile(String filename) {
         OPTION_FORMAT.setValue(
-                InputFile.fromPath(Path.of(filename))
+                File.fromPath(Path.of(filename))
         );
     }
 
-    public InputFile formatOutputFile() {
+    public File formatOutputFile() {
         return OPTION_FORMAT.value();
     }
 
-    public Set<InputFile> filesToProcess() {
+    public Set<File> filesToProcess() {
         return Collections.unmodifiableSet(filesToProcess);
     }
 
