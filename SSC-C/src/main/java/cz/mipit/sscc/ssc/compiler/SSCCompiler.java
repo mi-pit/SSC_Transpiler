@@ -2,8 +2,8 @@ package cz.mipit.sscc.ssc.compiler;
 
 import cz.mipit.sscc.Logger;
 import cz.mipit.sscc.args.SSCCOptions;
-import cz.mipit.sscc.file.FileType;
 import cz.mipit.sscc.file.File;
+import cz.mipit.sscc.file.FileType;
 import cz.mipit.sscc.ssc.Compiler;
 import cz.mipit.sscc.ssc.compiler.visitors.BaseConvertorVisitor;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
@@ -160,7 +160,7 @@ public final class SSCCompiler implements Compiler {
 
                 final boolean shouldPrintStackTrace = options.verbose() || options.debug();
                 Logger.errReturn(
-                        ExitValue.TRANSPILATION_FAIL,
+                        ExitValue.INTERNAL_ERROR,
                         "Caught exception while processing file '%s'%s",
                         fileArg.fullName(),
                         (shouldPrintStackTrace ? "" : " (run with verbose or debug option to see stack trace)")
