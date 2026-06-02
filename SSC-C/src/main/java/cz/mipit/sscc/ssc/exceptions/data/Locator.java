@@ -5,6 +5,7 @@ import cz.mipit.sscc.util.SSCCUtil;
 import cz.mipit.sscc.util.color.ConsoleColor;
 import cz.mipit.sscc.util.color.ConsoleColorFactory.Color;
 import cz.mipit.sscc.util.color.ConsoleColorFactory.Ground;
+import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -25,8 +26,8 @@ public class Locator {
         this.data = Objects.requireNonNull(data);
     }
 
-    public Locator(ParseTree tree) {
-        this(getLocator(tree));
+    public Locator(ParseTree tree, CommonTokenStream tokens) {
+        this(getLocator(tree, tokens));
     }
 
     public Locator(Token token) {
@@ -44,32 +45,33 @@ public class Locator {
     }
 
     /// Creates a locator highlighting a context
-    private static String getLocator(ParserRuleContext ctx) {
+    private static String getLocator(ParserRuleContext ctx, CommonTokenStream tokens) {
         final int startLine = ctx.getStart().getLine();
         final int endLine = ctx.getStop().getLine();
 
         final int offset = getLineNumberOffset(startLine);
 
         final int start = ctx.getStart().getCharPositionInLine();
-        final int stop = ctx.getStop().getCharPositionInLine();
+
+        final String literal = SSCCUtil.Text.getLiteral(ctx, tokens);
 
         final int nSpaces = offset + start;
         final int nCarets = Math.max(
                 1,
                 endLine == startLine
-                        ? stop - start
+                        ? literal.length()
                         : 1
         );
 
         return getLocator(nSpaces, nCarets);
     }
 
-    private static String getLocator(ParseTree node) {
+    private static String getLocator(ParseTree node, CommonTokenStream tokens) {
         if (node instanceof TerminalNode t) {
             return getLocator(t.getSymbol());
         }
         if (node instanceof ParserRuleContext p) {
-            return getLocator(p);
+            return getLocator(p, tokens);
         }
 
         throw new IllegalArgumentException("Unrecognized ParseTree type: " + node.getClass().getName());

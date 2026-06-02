@@ -71,7 +71,7 @@ public class SSCTranspilerException extends RuntimeException {
                                 requireNonNull(tokens, "Token stream"),
                                 LINES_BEFORE, LINES_AFTER
                         ),
-                        new Locator(offendingCtx)
+                        new Locator(offendingCtx, tokens)
                 )
         );
     }
@@ -122,7 +122,7 @@ public class SSCTranspilerException extends RuntimeException {
             final ErrorMessage errorMessage = ErrorMessage.fromLines(
                     actualMessage,
                     EnumeratedLine.getLines(offender.item(), tokens, linesBefore, linesAfter),
-                    new Locator(offender.item())
+                    new Locator(offender.item(), tokens)
             );
             list.add(errorMessage);
         }
