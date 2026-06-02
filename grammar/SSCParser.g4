@@ -135,6 +135,7 @@ primaryExpression
     | '(' expression ')'
     | genericSelection
     | lambdaFunction // SSC: lambda definition as primary expression
+    | switchExpression // SSC: switch expression as primary expression
     // GNU
     // https://github.com/gcc-mirror/gcc/blob/5d69161a7c36a2da8565967eb0cc2df1322a05a3/gcc/c/c-parser.cc#L11715-L11734
     | '__func__' //GNU
@@ -159,6 +160,14 @@ lambdaFunction
 // SSC: Lambda attributes
 lambdaAttributes
     : (attributeSpecifier | gnuAttribute | declarationSpecifier)+
+    ;
+
+// SSC
+switchExpression
+    : 'swex' '(' expression ')' '->' typeName '{'
+          ('case'    (constant | StringLiteral) '=>' statement)+
+          ('default'                            '=>' statement)?
+      '}'
     ;
 
 // GNU exprList
@@ -486,7 +495,7 @@ enumSpecifier
     ;
 
 // SSC: Flag set specifier
-flagsSpecifier
+flagsSpecifier // TODO: allow type specifier
     : FlagsSet attributeSpecifierSequence? gnuAttributes? Identifier? '{' flagsInitializerList ','? '}'
     | FlagsSet Identifier
     ;

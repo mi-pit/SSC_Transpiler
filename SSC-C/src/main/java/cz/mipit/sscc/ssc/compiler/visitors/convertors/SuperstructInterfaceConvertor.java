@@ -40,7 +40,7 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
         final StringJoiner joiner = new StringJoiner(
                 ";\n",
                 "/* Superstruct Interface `" + ssName + "`; START */\n",
-                "/* Superstruct Interface `" + ssName + "`; END */\n"
+                ";/* Superstruct Interface `" + ssName + "`; END */\n"
         );
 
         if (interfaceContexts.containsKey(ssName)) {
@@ -87,7 +87,6 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
 
         dispatcher.data.popSuperstruct();
 
-        joiner.add("/* Superstruct Interface `" + ssName + "`; END */");
         return joiner.toString();
     }
 }

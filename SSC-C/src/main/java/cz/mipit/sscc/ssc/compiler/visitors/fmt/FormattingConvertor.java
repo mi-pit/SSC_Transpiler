@@ -40,7 +40,7 @@ public class FormattingConvertor extends BaseConvertorVisitor {
 
     private int level;
 
-    private String getIndent() {
+    protected String getIndent() {
         return getIndent(level);
     }
 

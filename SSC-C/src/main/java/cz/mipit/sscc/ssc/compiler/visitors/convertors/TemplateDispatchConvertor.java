@@ -68,15 +68,17 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
                 );
             }
 
+            final List<TerminalNode> aliasIdentifiers = tmplContext.templateHeader().templateTypes().Identifier();
             for (int i = 0; i < typeArgs.size(); i++) {
+                final String typeAlias = dispatcher.getLiteral(aliasIdentifiers.get(i));
                 final String actualType = dispatcher.visit(typeArgs.get(i));
-                final TerminalNode typeAliasIdent = tmplContext.templateHeader().templateTypes().Identifier().get(i);
-                final String typeAlias = dispatcher.visit(typeAliasIdent);
 
                 if (typeArgMap.put(typeAlias, actualType) != null) {
                     throw dispatcher.getSSCLanguageException("Duplicate type alias", ctx);
                 }
             }
+
+            dispatcher.pushReplacementsFrame();
 
             dispatcher.addReplacements(typeArgMap);
             Main.logger.printDebug(() -> "\tType replacements: '" + typeArgMap + "'");
@@ -112,6 +114,8 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
 
             dispatcher.removeReplacement(nameRaw);
             Main.logger.printDebug(() -> "\tRemoved identifier replacement: `" + nameRaw + "`");
+
+            dispatcher.popReplacementsFrame();
         }
 
         return nameTypeResolved;

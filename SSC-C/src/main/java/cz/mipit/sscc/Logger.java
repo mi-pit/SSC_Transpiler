@@ -118,7 +118,7 @@ public final class Logger {
             System.err.print("Unexpected exception caught: ");
         }
 
-        if (options.debug() || (isUnexpected && options.verbose())) {
+        if (isUnexpected && (options.debug() || options.verbose())) {
             e.printStackTrace(System.err);
             return;
         }

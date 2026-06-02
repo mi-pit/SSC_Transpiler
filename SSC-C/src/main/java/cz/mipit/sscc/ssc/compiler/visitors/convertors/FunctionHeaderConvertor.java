@@ -3,6 +3,7 @@ package cz.mipit.sscc.ssc.compiler.visitors.convertors;
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.ssc.compiler.data.FunctionMetadata;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
+import cz.mipit.sscc.ssc.compiler.data.ss.SuperstructMethod;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import cz.mipit.sscc.util.SSCCUtil;
 import org.antlr.v4.runtime.tree.TerminalNode;
@@ -14,6 +15,7 @@ public class FunctionHeaderConvertor extends AbstractConvertor<SSCParser.Functio
         super(dispatcher, SSCParser.FunctionHeaderContext.class);
     }
 
+    // attributeSpecifierSequence? declarationSpecifiers? declarator
     @Override
     public String convert(SSCParser.FunctionHeaderContext ctx) {
         final Optional<SuperStruct> optSS = dispatcher.data.currentSuperstruct();
@@ -32,13 +34,27 @@ public class FunctionHeaderConvertor extends AbstractConvertor<SSCParser.Functio
         final TerminalNode identifier = SSCCUtil.getIdentifierFromDeclarator(ctx.declarator());
         assert identifier != null;
 
+        final String unqualifiedName = dispatcher.visit(identifier);
         final String qualifiedName = superstruct.qualifyName(
-                dispatcher.visit(identifier)
+                unqualifiedName
         );
 
         dispatcher.terminalReplacements.put(identifier, qualifiedName);
         dispatcher.data.currentFunctionMetadata =
                 FunctionMetadata.fromDeclarationSpecifiers(declSpecsCtx.declarationSpecifier());
+
+        if (dispatcher.data.interfaceOf != null) {
+            final SuperstructMethod fn = new SuperstructMethod(
+                    dispatcher,
+                    FunctionMetadata.fromDeclarationSpecifiers(
+                            ctx.declarationSpecifiers().declarationSpecifier()
+                    ),
+                    unqualifiedName,
+                    ctx
+            );
+
+            superstruct.addFunction(fn);
+        }
 
         final String ret = dispatcher.visitChildren(ctx);
 

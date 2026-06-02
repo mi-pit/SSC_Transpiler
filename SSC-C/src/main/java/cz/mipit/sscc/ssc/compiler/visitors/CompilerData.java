@@ -34,6 +34,7 @@ public final class CompilerData {
 
 
     public FunctionMetadata currentFunctionMetadata;
+    public SuperStruct interfaceOf;
 
 
     public CompilerData(SymbolTable symbolTable) {
@@ -81,7 +82,7 @@ public final class CompilerData {
     ) {
         final Set<SuperstructVariable> vars = functionVariables.get(name);
         if (!vars.add(var)) {
-            throw exceptionSupplier.get();
+            //throw exceptionSupplier.get();
         }
     }
 

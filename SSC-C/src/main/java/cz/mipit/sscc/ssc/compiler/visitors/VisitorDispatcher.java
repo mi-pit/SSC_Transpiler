@@ -18,6 +18,7 @@ import cz.mipit.sscc.ssc.compiler.visitors.convertors.PrimaryExpressionConvertor
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.SuperstructConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.SuperstructInterfaceConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.SuperstructMemberConvertor;
+import cz.mipit.sscc.ssc.compiler.visitors.convertors.SwitchExpressionConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateDefinitionConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateDispatchConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TernaryOperatorConvertor;
@@ -36,6 +37,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.Stack;
 import java.util.StringJoiner;
 
 import static cz.mipit.sscc.Main.logger;
@@ -44,11 +46,13 @@ import static cz.mipit.sscc.Main.logger;
 public class VisitorDispatcher extends FormattingConvertor {
     public final CompilerData data;
 
-    private final List<String> externalDeclarationsToEmitBefore;
-    private final List<String> externalDeclarationsToEmitAfter;
+    private final List<String> externalDeclarationsToEmitBefore = new ArrayList<>();
+    private final List<String> externalDeclarationsToEmitAfter = new ArrayList<>();
 
-    private final Map<String, String> replacements;
-    public final Map<TerminalNode, String> terminalReplacements;
+    private final List<String> blockListItemsToEmitBefore = new ArrayList<>();
+
+    private final Stack<Map<String, String>> replacements = new Stack<>();
+    public final Map<TerminalNode, String> terminalReplacements = new HashMap<>();
 
     private final VariableCollector collector;
 
@@ -59,10 +63,6 @@ public class VisitorDispatcher extends FormattingConvertor {
         super(input.tokens(), input.file());
 
         data = new CompilerData(input.symbolTable());
-        externalDeclarationsToEmitBefore = new ArrayList<>();
-        externalDeclarationsToEmitAfter = new ArrayList<>();
-        replacements = new HashMap<>();
-        terminalReplacements = new HashMap<>();
 
         collector = new VariableCollector(this);
 
@@ -73,6 +73,7 @@ public class VisitorDispatcher extends FormattingConvertor {
 
                 new FlagsConvertor(this),
                 new LambdaConvertor(this),
+                new SwitchExpressionConvertor(this),
 
                 new FunctionHeaderConvertor(this),
                 new FunctionDefinitionConvertor(this),
@@ -119,7 +120,12 @@ public class VisitorDispatcher extends FormattingConvertor {
         }
 
         return switch (node.getSymbol().getType()) {
-            case SSCParser.Identifier -> replacements.getOrDefault(node.getText(), node.getText());
+            case SSCParser.Identifier -> {
+                if (replacements.isEmpty() || !replacements.peek().containsKey(node.getText())) {
+                    yield node.getText();
+                }
+                yield replacements.peek().get(node.getText());
+            }
 
             case Token.EOF,
                  SSCParser.StaticFunction,
@@ -154,27 +160,34 @@ public class VisitorDispatcher extends FormattingConvertor {
 
     @Override
     public String visitExternalDeclaration(SSCParser.ExternalDeclarationContext ctx) {
+        // visit first
+        final String external = super.visitChildren(ctx);
+
         final StringJoiner joiner = new StringJoiner(System.lineSeparator());
-
-        final String external = visitChildren(ctx);
-
-        if (!externalDeclarationsToEmitBefore.isEmpty()) {
-            joiner.add(
-                    String.join(System.lineSeparator(), externalDeclarationsToEmitBefore)
-            );
-            externalDeclarationsToEmitBefore.clear();
-        }
-
+        dumpListToJoiner(externalDeclarationsToEmitBefore, joiner, "");
         joiner.add(external);
-
-        if (!externalDeclarationsToEmitAfter.isEmpty()) {
-            joiner.add(
-                    String.join(System.lineSeparator(), externalDeclarationsToEmitAfter)
-            );
-            externalDeclarationsToEmitAfter.clear();
-        }
+        dumpListToJoiner(externalDeclarationsToEmitAfter, joiner, "");
 
         return joiner.toString();
+    }
+
+    @Override
+    public String visitBlockItem(SSCParser.BlockItemContext ctx) {
+        final String item = super.visitBlockItem(ctx);
+
+        final StringJoiner joiner = new StringJoiner(System.lineSeparator());
+
+        dumpListToJoiner(blockListItemsToEmitBefore, joiner, getIndent());
+        joiner.add(item);
+
+        return joiner.toString();
+    }
+
+    private static void dumpListToJoiner(List<String> ls, StringJoiner joiner, String indent) {
+        for (final String item : ls) {
+            joiner.add(indent + item);
+        }
+        ls.clear();
     }
 
     @Override
@@ -189,17 +202,6 @@ public class VisitorDispatcher extends FormattingConvertor {
         return super.visitParameterDeclaration(ctx);
     }
 
-    @Override
-    public String visitSuperstructMemberDeclarationSpecifier(SSCParser.SuperstructMemberDeclarationSpecifierContext ctx) {
-        if (data.currentSuperstruct().isEmpty()) {
-            throw getSSCLanguageException(
-                    "Superstruct member modifier used outside of a superstruct",
-                    ctx
-            );
-        }
-
-        return super.visitSuperstructMemberDeclarationSpecifier(ctx);
-    }
 
     /* ==== DATA ==== */
 
@@ -211,13 +213,26 @@ public class VisitorDispatcher extends FormattingConvertor {
         externalDeclarationsToEmitBefore.add(code);
     }
 
+    public void addBlockListItemToEmitBefore(String code) {
+        blockListItemsToEmitBefore.add(code);
+    }
+
+
     public boolean hasType(String typeName) {
         return data.symbolTable().resolve(typeName) != null;
     }
 
 
+    /// Used only in {@link VisitorDispatcher#pushFunction(String, ParserRuleContext)}
     private final Map<String, ParserRuleContext> _functionDefinitions = new HashMap<>();
 
+    /**
+     * Pushes a new function stack
+     *
+     * @param name        Function name
+     * @param functionCtx Context of the function used in error messages -- thrown if name is duplicate.
+     *                    Context may be null if it is certain that function name is not duplicate (e.g. lambda functions)
+     */
     public void pushFunction(String name, ParserRuleContext functionCtx) {
         Objects.requireNonNull(name, "Function name cannot be null");
 
@@ -365,21 +380,31 @@ public class VisitorDispatcher extends FormattingConvertor {
         logger.printDebug("Debug dump complete");
     }
 
+
+    public void pushReplacementsFrame() {
+        this.replacements.push(new HashMap<>());
+    }
+
+    public void popReplacementsFrame() {
+        this.replacements.pop();
+    }
+
+
     public void addReplacements(Map<String, String> typeArgMap) {
-        this.replacements.putAll(typeArgMap);
+        this.replacements.peek().putAll(typeArgMap);
     }
 
     public void addReplacement(String key, String value) {
-        this.replacements.put(key, value);
+        this.replacements.peek().put(key, value);
     }
 
     public void removeReplacements(Map<String, String> typeArgMap) {
         for (final String key : typeArgMap.keySet()) {
-            this.replacements.remove(key);
+            this.replacements.peek().remove(key);
         }
     }
 
     public void removeReplacement(String key) {
-        this.replacements.remove(key);
+        this.replacements.peek().remove(key);
     }
 }

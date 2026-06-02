@@ -265,6 +265,10 @@ Switch
     : 'switch'
     ;
 
+SwitchExpr
+    : 'swex'
+    ;
+
 // SSC
 Then
     : 'then'
@@ -531,6 +535,10 @@ NotEqual
 
 Arrow
     : '->'
+    ;
+
+EqualsArrow
+    : '=>'
     ;
 
 Dot
