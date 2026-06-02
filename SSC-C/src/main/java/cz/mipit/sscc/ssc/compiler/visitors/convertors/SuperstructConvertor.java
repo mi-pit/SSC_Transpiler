@@ -7,7 +7,6 @@ import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStructSpecifierContext> {
     private final Map<SuperStruct, SSCParser.SuperStructSpecifierContext> superstructContexts = new HashMap<>();
@@ -34,14 +33,14 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
             );
         }
 
-        final SuperStruct superStruct = Objects.requireNonNullElseGet(
-                got,
-                () -> {
-                    final SuperStruct ss = new SuperStruct(thisSSName);
-                    superstructContexts.put(ss, ctx);
-                    return ss;
-                }
-        );
+        final SuperStruct superStruct;
+        if (got != null) {
+            superStruct = got;
+            assert !superstructContexts.containsKey(superStruct);
+        } else {
+            superStruct = new SuperStruct(thisSSName);
+        }
+        superstructContexts.put(superStruct, ctx);
 
         dispatcher.data.superStructs().put(thisSSName, superStruct);
         dispatcher.data.pushSuperstruct(superStruct);

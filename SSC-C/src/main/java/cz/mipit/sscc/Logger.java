@@ -112,6 +112,8 @@ public final class Logger {
     synchronized private void printException(final boolean isUnexpected, Throwable e) {
         System.out.flush();
 
+        System.err.print(Main.SSCC_NAME + ": ");
+
         if (isUnexpected) {
             System.err.print("Unexpected exception caught: ");
         }

@@ -1,6 +1,5 @@
 package cz.mipit.sscc.ssc.exceptions;
 
-import cz.mipit.sscc.Main;
 import cz.mipit.sscc.file.File;
 import cz.mipit.sscc.ssc.exceptions.data.EnumeratedLine;
 import cz.mipit.sscc.ssc.exceptions.data.ErrorMessage;
@@ -39,22 +38,22 @@ public class SSCTranspilerException extends RuntimeException {
     /* Base constructor */
     private SSCTranspilerException(
             Type type,
-            List<ErrorMessage> errorMessages,
-            File currentFile
+            File currentFile,
+            List<ErrorMessage> errorMessages
     ) {
         this.type = requireNonNull(type);
 
-        this.errorMessages = errorMessages;
+        this.errorMessages = requireNonNull(errorMessages);
 
         this.currentFile = requireNonNull(currentFile);
     }
 
     private SSCTranspilerException(
             Type type,
-            ErrorMessage errorMessage,
-            File currentFile
+            File currentFile,
+            ErrorMessage errorMessage
     ) {
-        this(type, List.of(errorMessage), currentFile);
+        this(type, currentFile, List.of(errorMessage));
     }
 
     protected SSCTranspilerException(
@@ -64,6 +63,7 @@ public class SSCTranspilerException extends RuntimeException {
     ) {
         this(
                 type,
+                currentFile,
                 ErrorMessage.fromLines(
                         message,
                         EnumeratedLine.getLines(
@@ -72,8 +72,7 @@ public class SSCTranspilerException extends RuntimeException {
                                 LINES_BEFORE, LINES_AFTER
                         ),
                         new Locator(offendingCtx)
-                ),
-                currentFile
+                )
         );
     }
 
@@ -84,6 +83,7 @@ public class SSCTranspilerException extends RuntimeException {
     ) {
         this(
                 type,
+                currentFile,
                 ErrorMessage.fromLines(
                         message,
                         EnumeratedLine.getLines(
@@ -93,12 +93,8 @@ public class SSCTranspilerException extends RuntimeException {
                                 LINES_AFTER
                         ),
                         new Locator(offendingToken)
-                ),
-                currentFile
+                )
         );
-    }
-
-    private record Rec(ParseTree node, String message) {
     }
 
     protected SSCTranspilerException(
@@ -108,8 +104,8 @@ public class SSCTranspilerException extends RuntimeException {
     ) {
         this(
                 type,
-                getErrorMessages(message, offenders, tokens),
-                currentFile
+                currentFile,
+                getErrorMessages(message, offenders, tokens)
         );
     }
 
@@ -140,8 +136,6 @@ public class SSCTranspilerException extends RuntimeException {
 
         final StringBuilder sBuilder = new StringBuilder(color.toString());
         sBuilder
-                .append(Main.SSCC_NAME)
-                .append(": ")
                 .append(type.humanReadableName())
                 .append(" exception while processing file '")
                 .append(COLOR_DEFAULT)
