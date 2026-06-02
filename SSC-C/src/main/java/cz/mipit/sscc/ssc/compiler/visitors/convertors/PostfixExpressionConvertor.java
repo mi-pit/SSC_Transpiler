@@ -116,18 +116,19 @@ public class PostfixExpressionConvertor
             methodName = dispatcher.visit(t);
         }
 
+        final boolean isAField = superStruct.fields()
+                .stream()
+                .anyMatch(decl -> decl.getName().equals(methodName));
+        if (isAField) {
+            Main.logger.printDebug(() -> "\t\tSeems to be a field. No conversion");
+            return dispatcher.visitSuper(ctx);
+        }
+
+
         final Optional<SuperstructMethod> maybeMethod = superStruct.findMethod(methodName);
 
         if (maybeMethod.isEmpty()) {
             Main.logger.printDebug(() -> "\tVariable does not have such a method");
-
-            final boolean isAField = superStruct.fields()
-                    .stream()
-                    .anyMatch(decl -> decl.getName().equals(methodName));
-            if (isAField) {
-                Main.logger.printDebug(() -> "\t\tSeems to be a field. No conversion");
-                return dispatcher.visitSuper(ctx);
-            }
 
             if (dispatcher.data.currentSuperstruct().isEmpty() ||
                 !dispatcher.data.currentSuperstruct().get().equals(superStruct)) {

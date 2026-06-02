@@ -77,7 +77,7 @@ public class PrimaryExpressionConvertor
         final Optional<SuperstructMethod> maybeMethod = superstruct.findMethod(methodName);
         if (maybeMethod.isEmpty()) {
             throw dispatcher.getSSCLanguageException("Superstruct '" + className
-                                                     + "' has no method called '" + methodName
+                                                     + "' has no meta method called '" + methodName
                                                      + "'", ctx);
         }
         final SuperstructMethod method = maybeMethod.get();

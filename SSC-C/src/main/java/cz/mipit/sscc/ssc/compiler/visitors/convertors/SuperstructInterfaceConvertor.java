@@ -2,7 +2,9 @@ package cz.mipit.sscc.ssc.compiler.visitors.convertors;
 
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.Main;
+import cz.mipit.sscc.ssc.compiler.data.FunctionMetadata;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
+import cz.mipit.sscc.ssc.compiler.data.ss.SuperstructMethod;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import cz.mipit.sscc.util.SSCCUtil;
 import org.antlr.v4.runtime.tree.TerminalNode;
@@ -78,7 +80,25 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
                             null
                     );
 
+                    final SSCParser.DeclarationSpecifiersContext declSpecsCtx = fh.declarationSpecifiers();
+                    if (declSpecsCtx == null) {
+                        throw dispatcher.getSSCLanguageException(
+                                "Function has no declaration specifiers", fh
+                        );
+                    }
+
                     final String s = dispatcher.visit(fh);
+
+                    final SuperstructMethod fn = new SuperstructMethod(
+                            FunctionMetadata.fromDeclarationSpecifiers(
+                                    declSpecsCtx.declarationSpecifier()
+                            ),
+                            unqualifiedName,
+                            s,
+                            fh
+                    );
+
+                    interfaceOf.declareMethod(fn);
 
                     dispatcher.popFunction();
                     return s;

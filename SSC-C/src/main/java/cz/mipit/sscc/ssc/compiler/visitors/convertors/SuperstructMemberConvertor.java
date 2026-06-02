@@ -50,7 +50,7 @@ public class SuperstructMemberConvertor extends AbstractConvertor<SSCParser.Supe
                 functionCtx
         );
 
-        superstruct.addFunction(fn);
+        superstruct.defineMethod(fn);
     }
 
     private void processDeclaration(SSCParser.SuperStructMemberContext ctx,

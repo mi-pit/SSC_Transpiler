@@ -10,6 +10,7 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static cz.mipit.sscc.util.SSCCUtil.Maths.digitsOf;
 import static java.lang.System.lineSeparator;
@@ -22,6 +23,14 @@ public final class SSCCUtil {
         }
 
         return declarator.directDeclarator().Identifier();
+    }
+
+    public static String createNameWithID(
+            final String sscIdentifier,
+            final AtomicLong id,
+            final String surroundingFunctionName
+    ) {
+        return String.format("%s_id%019d_%s", sscIdentifier, id.getAndIncrement(), surroundingFunctionName);
     }
 
     public static class Text {

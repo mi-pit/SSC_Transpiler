@@ -34,7 +34,6 @@ public final class CompilerData {
 
 
     public FunctionMetadata currentFunctionMetadata;
-    public SuperStruct interfaceOf;
 
 
     public CompilerData(SymbolTable symbolTable) {

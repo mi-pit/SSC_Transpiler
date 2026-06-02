@@ -15,8 +15,8 @@ import java.util.stream.Collectors;
 public class SuperStruct {
     private final String name;
 
-    private final List<Field> fields;
-    private final List<SuperstructMethod> methods;
+    private final ArrayList<Field> fields;
+    private final ArrayList<SuperstructMethod> methods;
 
     public SuperStruct(@NotNull final String name) {
         this.name = Objects.requireNonNull(name);
@@ -87,7 +87,25 @@ public class SuperStruct {
         return fields;
     }
 
-    public void addFunction(SuperstructMethod fn) {
+    public void declareMethod(SuperstructMethod fn) {
+        if (fn.definition().isPresent()) {
+            throw new IllegalStateException("Declaring a defined method");
+        }
+        methods.add(fn);
+    }
+
+    public void defineMethod(SuperstructMethod fn) {
+        final String name = fn.name();
+        assert name != null;
+
+        for (int i = 0; i < methods.size(); i++) {
+            final SuperstructMethod m = methods.get(i);
+            if (name.equals(m.name())) {
+                methods.set(i, fn);
+                return;
+            }
+        }
+
         methods.add(fn);
     }
 

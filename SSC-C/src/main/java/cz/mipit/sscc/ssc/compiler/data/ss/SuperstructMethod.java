@@ -18,26 +18,39 @@ public class SuperstructMethod {
     private final ParserRuleContext context;
 
     public SuperstructMethod(
+            FunctionMetadata metadata,
+            String name,
+            String header,
+            ParserRuleContext context
+    ) {
+        if (!(context instanceof SSCParser.FunctionHeaderContext)) {
+            throw new IllegalArgumentException("context must be a SSCParser.FunctionHeaderContext");
+        }
+
+        this.metadata = metadata;
+        this.name = name;
+        this.header = header;
+
+        this.definition = null;
+
+        this.context = context;
+    }
+
+    public SuperstructMethod(
             VisitorDispatcher dispatcher,
             FunctionMetadata metadata,
             String name,
             ParserRuleContext context
     ) {
-        if (!(context instanceof SSCParser.FunctionDefinitionContext) &&
-            !(context instanceof SSCParser.FunctionHeaderContext)) {
+        if (!(context instanceof SSCParser.FunctionDefinitionContext fnDef)) {
             throw new IllegalArgumentException("Context must be of a function definition or header");
         }
 
         this.metadata = metadata;
         this.name = name;
 
-        if (context instanceof SSCParser.FunctionDefinitionContext fnDef) {
-            this.definition = dispatcher.visit(fnDef);
-            this.header = definition.split("\\{")[0];
-        } else {
-            this.definition = null;
-            this.header = dispatcher.visit(context);
-        }
+        this.definition = dispatcher.visit(fnDef);
+        this.header = definition.split("\\{")[0];
 
         this.context = context;
     }

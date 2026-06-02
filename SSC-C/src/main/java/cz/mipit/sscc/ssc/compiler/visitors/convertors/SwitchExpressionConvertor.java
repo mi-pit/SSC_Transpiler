@@ -2,6 +2,7 @@ package cz.mipit.sscc.ssc.compiler.visitors.convertors;
 
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
+import cz.mipit.sscc.util.SSCCUtil;
 import cz.mipit.sscc.util.Util;
 
 import java.util.concurrent.atomic.AtomicLong;
@@ -57,20 +58,12 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
     private static String generateFunctionName(
             final String surroundingFunctionName
     ) {
-        return createNameWithID("__ssc_swex_fn", FUNCTION_IDS, surroundingFunctionName);
+        return SSCCUtil.createNameWithID("__ssc_swex_fn", FUNCTION_IDS, surroundingFunctionName);
     }
 
     private static String generateVariableName(
             final String surroundingFunctionName
     ) {
-        return createNameWithID("__ssc_swex_var", VARIABLE_IDS, surroundingFunctionName);
-    }
-
-    private static String createNameWithID(
-            final String sscIdentifier,
-            final AtomicLong id,
-            final String surroundingFunctionName
-    ) {
-        return String.format("%s_id%019d_%s", sscIdentifier, id.getAndIncrement(), surroundingFunctionName);
+        return SSCCUtil.createNameWithID("__ssc_swex_var", VARIABLE_IDS, surroundingFunctionName);
     }
 }

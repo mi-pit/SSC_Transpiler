@@ -55,7 +55,9 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
         final String structDefinition = superStruct.emitStructDefinition();
         final String methodDeclarations = superStruct.emitMethodDeclarations();
         final String methodDefinitions = superStruct.emitMethodDefinitions(
-                fnDef -> dispatcher.getSSCLanguageException("Method '" + fnDef.name() + "' is not defined.", fnDef.context())
+                fnDef -> dispatcher.getSSCLanguageException(
+                        "Method '" + fnDef.name() + "' in superstruct '" + thisSSName + "' is not defined.", fnDef.context()
+                )
         );
 
         dispatcher.addExternalDeclarationToEmitBefore("""
