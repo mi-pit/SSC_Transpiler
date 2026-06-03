@@ -1,5 +1,7 @@
 package cz.mipit.sscc.ssc.compiler.data.lambda;
 
+import cz.mipit.sscc.util.SSCCUtil;
+
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
@@ -19,7 +21,7 @@ public final class LambdaFunction {
     public static String createName(
             final String surroundingFunctionName
     ) {
-        return String.format("__ssc_lambda_id%019d_%s", nextId.getAndIncrement(), surroundingFunctionName);
+        return SSCCUtil.createNameWithID("__ssc_lambda", nextId, surroundingFunctionName);
     }
 
     public LambdaFunction(

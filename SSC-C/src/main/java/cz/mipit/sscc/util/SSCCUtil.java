@@ -1,11 +1,13 @@
 package cz.mipit.sscc.util;
 
 import antlr.ssc.SSCParser;
+import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import cz.mipit.sscc.ssc.exceptions.data.EnumeratedLine;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.misc.Interval;
+import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.ArrayList;
@@ -24,6 +26,77 @@ public final class SSCCUtil {
 
         return declarator.directDeclarator().Identifier();
     }
+
+    // vcSpecificModifer? pointer
+    // vcSpecificModifer? pointer? directAbstractDeclarator gccDeclaratorExtension*
+    public static String insertIdentifierIntoDeclarator(
+            VisitorDispatcher dispatcher,
+            SSCParser.AbstractDeclaratorContext ctx,
+            String identifier
+    ) {
+        if (ctx == null) {
+            return identifier;
+        }
+
+        // vcSpecificModifer? pointer
+        if (ctx.directAbstractDeclarator() == null) {
+            return dispatcher.visit(ctx) + " " + identifier;
+        }
+
+        final String vcSpecMod = ctx.vcSpecificModifer() != null
+                ? dispatcher.visit(ctx.vcSpecificModifer()) + " "
+                : "";
+        final String pointer = ctx.pointer() != null
+                ? dispatcher.visit(ctx.pointer()) + " "
+                : "";
+
+        return vcSpecMod + pointer + insertIdentifierIntoDeclarator(dispatcher, ctx.directAbstractDeclarator(), identifier);
+    }
+
+    // '(' abstractDeclarator ')' gccDeclaratorExtension*
+    // '[' typeQualifierList? assignmentExpression? ']'
+    // '[' 'static' typeQualifierList? assignmentExpression ']'
+    // '[' typeQualifierList 'static' assignmentExpression ']'
+    // '[' '*' ']'
+    // '(' parameterTypeList ')' gccDeclaratorExtension*
+    // directAbstractDeclarator '[' typeQualifierList? assignmentExpression? ']'
+    // directAbstractDeclarator '[' 'static' typeQualifierList? assignmentExpression ']'
+    // directAbstractDeclarator '[' typeQualifierList 'static' assignmentExpression ']'
+    // directAbstractDeclarator '[' '*' ']'
+    // directAbstractDeclarator '(' parameterTypeList ')' gccDeclaratorExtension*
+    public static String insertIdentifierIntoDeclarator(
+            VisitorDispatcher dispatcher,
+            SSCParser.DirectAbstractDeclaratorContext ctx,
+            String identifier
+    ) {
+        if (ctx.abstractDeclarator() != null) {
+            return "( %s ) %s".formatted(
+                    insertIdentifierIntoDeclarator(dispatcher, ctx.abstractDeclarator(), identifier),
+                    getRestOfChildren(dispatcher, ctx, 3)
+            );
+        }
+
+        if (ctx.directAbstractDeclarator() != null) {
+            final String dirAbsDecl = insertIdentifierIntoDeclarator(dispatcher, ctx.directAbstractDeclarator(), identifier);
+            return dirAbsDecl + getRestOfChildren(dispatcher, ctx, 1);
+        }
+
+        return identifier + " " + getRestOfChildren(dispatcher, ctx, 0);
+    }
+
+
+    private static String getRestOfChildren(
+            final VisitorDispatcher dispatcher, final ParseTree node,
+            final int offset
+    ) {
+        final StringBuilder buf = new StringBuilder();
+        for (int i = offset; i < node.getChildCount(); i++) {
+            final ParseTree child = node.getChild(i);
+            buf.append(dispatcher.visit(child));
+        }
+        return buf.toString();
+    }
+
 
     public static String createNameWithID(
             final String sscIdentifier,
