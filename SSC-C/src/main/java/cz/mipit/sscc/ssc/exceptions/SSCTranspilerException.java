@@ -26,7 +26,10 @@ public class SSCTranspilerException extends RuntimeException {
     public static final int LINES_AFTER = 0;
 
     protected static final ConsoleColor COLOR_FATAL = ConsoleColorFactory.create(Ground.FORE, Color.RED);
-    protected static final ConsoleColor COLOR_ANTLR = ConsoleColorFactory.create(Ground.FORE, Color.RED);
+    protected static final ConsoleColor COLOR_ANTLR = COLOR_FATAL;
+
+    protected static final ConsoleColor COLOR_WARNING = ConsoleColorFactory.create(Ground.FORE, Color.YELLOW);
+
 
     public static final String LINENO_SEPARATOR = " | ";
 
@@ -109,9 +112,10 @@ public class SSCTranspilerException extends RuntimeException {
         );
     }
 
-    private static List<ErrorMessage> getErrorMessages(
+    public static List<ErrorMessage> getErrorMessages(
             final String message,
-            List<ParseTree> offenders, CommonTokenStream tokens
+            List<ParseTree> offenders,
+            CommonTokenStream tokens
     ) {
         final List<ErrorMessage> list = new ArrayList<>();
         for (final Enumerated<ParseTree> offender : new Enumerator<>(offenders)) {
@@ -132,12 +136,21 @@ public class SSCTranspilerException extends RuntimeException {
 
     @Override
     public String getMessage() {
+        return createMessage(type, currentFile, errorMessages);
+    }
+
+
+    public static String createMessage(
+            final Type type,
+            final File currentFile,
+            final List<ErrorMessage> errorMessages
+    ) {
         final ConsoleColor color = type.toColor();
 
         final StringBuilder sBuilder = new StringBuilder(color.toString());
         sBuilder
                 .append(type.humanReadableName())
-                .append(" exception while processing file '")
+                .append(" while processing file '")
                 .append(COLOR_DEFAULT)
                 .append(currentFile.fullName())
                 .append(color)
@@ -154,20 +167,27 @@ public class SSCTranspilerException extends RuntimeException {
     }
 
 
-    protected enum Type {
+    public enum Type {
         Language,
         Antlr_parser,
+        Warning,
         ;
 
         public final ConsoleColor toColor() {
             return switch (this) {
                 case Language -> COLOR_FATAL;
                 case Antlr_parser -> COLOR_ANTLR;
+                case Warning -> COLOR_WARNING;
             };
         }
 
         public final String humanReadableName() {
-            return name().replace('_', ' ');
+            final String replaced = name().replace('_', ' ');
+            if (this == Warning) {
+                return replaced;
+            }
+
+            return replaced + " exception";
         }
     }
 }

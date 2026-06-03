@@ -1,7 +1,7 @@
 package cz.mipit.sscc.ssc.compiler.visitors.convertors;
 
 import antlr.ssc.SSCParser;
-import cz.mipit.sscc.ssc.compiler.data.FunctionMetadata;
+import cz.mipit.sscc.ssc.compiler.data.FunctionSSCData;
 import cz.mipit.sscc.ssc.compiler.data.ss.Field;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperstructMethod;
@@ -43,7 +43,7 @@ public class SuperstructMemberConvertor extends AbstractConvertor<SSCParser.Supe
 
         final SuperstructMethod fn = new SuperstructMethod(
                 dispatcher,
-                FunctionMetadata.fromDeclarationSpecifiers(
+                FunctionSSCData.fromDeclarationSpecifiers(
                         functionCtx.functionHeader().declarationSpecifiers().declarationSpecifier()
                 ),
                 name,
@@ -54,7 +54,8 @@ public class SuperstructMemberConvertor extends AbstractConvertor<SSCParser.Supe
     }
 
     private void processDeclaration(SSCParser.SuperStructMemberContext ctx,
-                                    SSCParser.DeclarationContext declarationCtx, SuperStruct superstruct) {
+                                    SSCParser.DeclarationContext declarationCtx,
+                                    SuperStruct superstruct) {
         if (declarationCtx.attributeDeclaration() != null) {
             throw dispatcher.getSSCLanguageException(
                     "May not declare attributes here", declarationCtx.attributeDeclaration()

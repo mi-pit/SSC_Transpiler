@@ -1,7 +1,7 @@
 package cz.mipit.sscc.ssc.compiler.data.ss;
 
 import antlr.ssc.SSCParser;
-import cz.mipit.sscc.ssc.compiler.data.FunctionMetadata;
+import cz.mipit.sscc.ssc.compiler.data.FunctionSSCData;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import cz.mipit.sscc.util.annotations.Nullable;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -9,7 +9,7 @@ import org.antlr.v4.runtime.ParserRuleContext;
 import java.util.Optional;
 
 public class SuperstructMethod {
-    private final FunctionMetadata metadata;
+    private final FunctionSSCData metadata;
 
     private final String name;
     private final String header;
@@ -18,7 +18,7 @@ public class SuperstructMethod {
     private final ParserRuleContext context;
 
     public SuperstructMethod(
-            FunctionMetadata metadata,
+            FunctionSSCData metadata,
             String name,
             String header,
             ParserRuleContext context
@@ -38,7 +38,7 @@ public class SuperstructMethod {
 
     public SuperstructMethod(
             VisitorDispatcher dispatcher,
-            FunctionMetadata metadata,
+            FunctionSSCData metadata,
             String name,
             ParserRuleContext context
     ) {
@@ -59,7 +59,7 @@ public class SuperstructMethod {
         return header;
     }
 
-    public FunctionMetadata metadata() {
+    public FunctionSSCData metadata() {
         return metadata;
     }
 

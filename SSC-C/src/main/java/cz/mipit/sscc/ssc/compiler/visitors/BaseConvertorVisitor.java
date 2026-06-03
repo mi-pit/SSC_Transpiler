@@ -2,6 +2,7 @@ package cz.mipit.sscc.ssc.compiler.visitors;
 
 import antlr.ssc.SSCParser;
 import antlr.ssc.SSCParserBaseVisitor;
+import cz.mipit.sscc.Logger;
 import cz.mipit.sscc.Main;
 import cz.mipit.sscc.file.File;
 import cz.mipit.sscc.ssc.exceptions.SSCTranspilerException;
@@ -167,6 +168,19 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
         return new SSCCallbackException(message, List.of(curr, old), tokens, currentFile);
     }
 
+
+    public void warn(String message, ParseTree node) {
+        Logger.warn(
+                SSCTranspilerException.createMessage(
+                        SSCTranspilerException.Type.Warning,
+                        currentFile,
+                        SSCTranspilerException.getErrorMessages(
+                                message,
+                                List.of(node),
+                                tokens
+                        ))
+        );
+    }
 
     // ('<<' | '>' '>')
     @Override

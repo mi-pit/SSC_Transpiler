@@ -2,7 +2,7 @@ package cz.mipit.sscc.ssc.compiler.visitors.convertors;
 
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.Main;
-import cz.mipit.sscc.ssc.compiler.data.FunctionMetadata;
+import cz.mipit.sscc.ssc.compiler.data.FunctionSSCData;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperstructMethod;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
@@ -90,7 +90,7 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
                     final String s = dispatcher.visit(fh);
 
                     final SuperstructMethod fn = new SuperstructMethod(
-                            FunctionMetadata.fromDeclarationSpecifiers(
+                            FunctionSSCData.fromDeclarationSpecifiers(
                                     declSpecsCtx.declarationSpecifier()
                             ),
                             unqualifiedName,

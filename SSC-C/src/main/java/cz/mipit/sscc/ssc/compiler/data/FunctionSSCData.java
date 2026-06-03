@@ -5,8 +5,8 @@ import antlr.ssc.SSCParser;
 import java.util.List;
 import java.util.Objects;
 
-public record FunctionMetadata(boolean isMeta, boolean isPure, boolean isPrivate) {
-    public static FunctionMetadata fromDeclarationSpecifiers(List<SSCParser.DeclarationSpecifierContext> declSpecsLs) {
+public record FunctionSSCData(boolean isMeta, boolean isPure, boolean isPrivate) {
+    public static FunctionSSCData fromDeclarationSpecifiers(List<SSCParser.DeclarationSpecifierContext> declSpecsLs) {
         final List<SSCParser.SuperstructMemberDeclarationSpecifierContext> declSpecs =
                 declSpecsLs.stream()
                         .map(SSCParser.DeclarationSpecifierContext::superstructMemberDeclarationSpecifier)
@@ -24,6 +24,6 @@ public record FunctionMetadata(boolean isMeta, boolean isPure, boolean isPrivate
             }
         }
 
-        return new FunctionMetadata(isMeta, isPure, isPrivate);
+        return new FunctionSSCData(isMeta, isPure, isPrivate);
     }
 }

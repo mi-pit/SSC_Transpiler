@@ -21,7 +21,7 @@ public class ParameterTypeListConvertor extends AbstractConvertor<SSCParser.Para
     //    | '...'
     @Override
     public String convert(SSCParser.ParameterTypeListContext ctx) {
-        if (dispatcher.getCurrentFunctionName() == null || dispatcher.data.currentFunctionMetadata == null) {
+        if (dispatcher.getCurrentFunctionName() == null || dispatcher.data.currentFunctionSSCData == null) {
             return dispatcher.visitSuper(ctx);
         }
 
@@ -32,7 +32,7 @@ public class ParameterTypeListConvertor extends AbstractConvertor<SSCParser.Para
 
         final SuperStruct superstruct = maybeCurrentSuperstruct.get();
 
-        if (dispatcher.data.currentFunctionMetadata.isMeta()) {
+        if (dispatcher.data.currentFunctionSSCData.isMeta()) {
             return dispatcher.visitSuper(ctx);
         }
 
@@ -41,7 +41,7 @@ public class ParameterTypeListConvertor extends AbstractConvertor<SSCParser.Para
         registerSelfReferenceVariable(superstruct);
 
         final StringBuilder selfReference = new StringBuilder();
-        if (dispatcher.data.currentFunctionMetadata.isPure()) {
+        if (dispatcher.data.currentFunctionSSCData.isPure()) {
             selfReference.append("const ");
         }
         selfReference
@@ -51,7 +51,7 @@ public class ParameterTypeListConvertor extends AbstractConvertor<SSCParser.Para
 
         parameterListList.add(selfReference.toString());
 
-        dispatcher.data.currentFunctionMetadata = null;
+        dispatcher.data.currentFunctionSSCData = null;
 
 
         // parameterDeclaration (',' parameterDeclaration)*

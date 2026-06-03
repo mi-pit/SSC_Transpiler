@@ -1,7 +1,7 @@
 package cz.mipit.sscc.ssc.compiler.visitors.convertors;
 
 import antlr.ssc.SSCParser;
-import cz.mipit.sscc.ssc.compiler.data.FunctionMetadata;
+import cz.mipit.sscc.ssc.compiler.data.FunctionSSCData;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import cz.mipit.sscc.util.SSCCUtil;
@@ -39,13 +39,13 @@ public class FunctionHeaderConvertor extends AbstractConvertor<SSCParser.Functio
         );
 
         dispatcher.terminalReplacements.put(identifier, qualifiedName);
-        dispatcher.data.currentFunctionMetadata =
-                FunctionMetadata.fromDeclarationSpecifiers(declSpecsCtx.declarationSpecifier());
+        dispatcher.data.currentFunctionSSCData =
+                FunctionSSCData.fromDeclarationSpecifiers(declSpecsCtx.declarationSpecifier());
 
         final String ret = dispatcher.visitChildren(ctx);
 
         dispatcher.terminalReplacements.remove(identifier);
-        dispatcher.data.currentFunctionMetadata = null;
+        dispatcher.data.currentFunctionSSCData = null;
 
         return ret;
     }

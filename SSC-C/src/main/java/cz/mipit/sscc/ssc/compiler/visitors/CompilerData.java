@@ -1,7 +1,7 @@
 package cz.mipit.sscc.ssc.compiler.visitors;
 
 import antlr.ssc.SymbolTable;
-import cz.mipit.sscc.ssc.compiler.data.FunctionMetadata;
+import cz.mipit.sscc.ssc.compiler.data.FunctionSSCData;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.tmpl.Template;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
@@ -33,7 +33,7 @@ public final class CompilerData {
     private final Deque<@NotNull String> functionCallStack;
 
 
-    public FunctionMetadata currentFunctionMetadata;
+    public FunctionSSCData currentFunctionSSCData;
 
 
     public CompilerData(SymbolTable symbolTable) {
