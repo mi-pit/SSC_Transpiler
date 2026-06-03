@@ -17,13 +17,14 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.Stack;
 import java.util.function.Supplier;
 
 public final class CompilerData {
     private final SymbolTable symbolTable;
 
     private final Map<@NotNull String, SuperStruct> superStructs;
-    private final Deque<SuperStruct> superstructStack;
+    public Deque<SuperStruct> superstructStack; // fixme
 
     private final Map<@NotNull String, Typedef<SuperStruct>> superstructTypedefs;
 
@@ -34,6 +35,7 @@ public final class CompilerData {
 
 
     public FunctionSSCData currentFunctionSSCData;
+    public final Stack<Void> templateStack = new Stack<>();
 
 
     public CompilerData(SymbolTable symbolTable) {

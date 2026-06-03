@@ -17,6 +17,11 @@ public class FunctionHeaderConvertor extends AbstractConvertor<SSCParser.Functio
     // attributeSpecifierSequence? declarationSpecifiers? declarator
     @Override
     public String convert(SSCParser.FunctionHeaderContext ctx) {
+        final boolean isInTemplate = !dispatcher.data.templateStack.isEmpty();
+        return (isInTemplate ? "static " : "") + helper(ctx);
+    }
+
+    private String helper(SSCParser.FunctionHeaderContext ctx) {
         final Optional<SuperStruct> optSS = dispatcher.data.currentSuperstruct();
         if (optSS.isEmpty()) {
             return dispatcher.visitSuper(ctx);

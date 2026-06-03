@@ -21,6 +21,10 @@ public class VariableCollector {
 
     public void collect(SSCParser.ParameterDeclarationContext ctx) {
         final SSCParser.DeclarationSpecifiersContext declSpecsCtx = ctx.declarationSpecifiers();
+        if (declSpecsCtx == null) {
+            return; // empty parameter list
+        }
+
         final SSCParser.DeclaratorContext declarator = ctx.declarator();
         if (declarator == null) {
             return;
@@ -130,6 +134,12 @@ public class VariableCollector {
         }
 
         final SSCParser.DeclarationSpecifiersContext declSpecs = ctx.declarationSpecifiers();
+        if (declSpecs == null) {
+            throw dispatcher.getSSCLanguageException(
+                    "No declaration specifiers in declaration", ctx
+            );
+        }
+
         final List<SSCParser.DeclaratorContext> declarators = ctx
                 .initDeclaratorList()
                 .initDeclarator()

@@ -10,11 +10,12 @@ import cz.mipit.sscc.util.collection.Enumerator;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.TemplateDispatchContext> {
@@ -47,7 +48,10 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
         final Template tmpl = dispatcher.data.templates().get(nameRaw);
         if (tmpl == null) {
             Main.logger.printDebug(() -> "\t\tTemplate '" + nameRaw + "' not found");
-            throw dispatcher.getSSCLanguageException("Unknown template '" + nameUnqualifiedMangled + "'", ctx);
+            throw dispatcher.getSSCLanguageException(
+                    "Unknown template '" + nameRaw
+                    + "<" + ctx.templateDispatchTypeArguments().typeArgument().size() + ">'", ctx
+            );
         }
         Main.logger.printDebug(() -> "\t\tTemplate found");
 
@@ -94,27 +98,34 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
             Main.logger.printDebug(() -> "\tAdded identifier replacement: `" + nameRaw
                                          + "` -> `" + nameTypeResolved + "`");
 
+            dispatcher.data.templateStack.push(null);
+
             final String tmplConverted;
             if (tmplContext.functionDefinition() != null) {
-                final Optional<SuperStruct> ss = dispatcher.data.currentSuperstruct();
-                ss.ifPresent(s -> dispatcher.data.popSuperstruct());
+                final Deque<SuperStruct> oldSuperstructStack = dispatcher.data.superstructStack;
+                dispatcher.data.superstructStack = new ArrayDeque<>();
 
                 tmplConverted = dispatcher.visit(tmplContext.functionDefinition());
 
-                ss.ifPresent(dispatcher.data::pushSuperstruct);
+                final Deque<SuperStruct> newSuperstructStack = dispatcher.data.superstructStack;
+
+                dispatcher.data.superstructStack = oldSuperstructStack;
+                for (final SuperStruct newSuperstruct : newSuperstructStack) {
+                    oldSuperstructStack.push(newSuperstruct);
+                }
+
             } else if (tmplContext.superStructInterface() != null) {
                 tmplConverted = dispatcher.visit(tmplContext.superStructInterface());
             } else {
                 tmplConverted = dispatcher.visit(tmplContext.superStructSpecifier());
             }
+            dispatcher.data.templateStack.pop();
 
             dispatcher.addExternalDeclarationToEmitBefore(tmplConverted);
 
             dispatcher.removeReplacements(typeArgMap);
-
             dispatcher.removeReplacement(nameRaw);
             Main.logger.printDebug(() -> "\tRemoved identifier replacement: `" + nameRaw + "`");
-
             dispatcher.popReplacementsFrame();
         }
 

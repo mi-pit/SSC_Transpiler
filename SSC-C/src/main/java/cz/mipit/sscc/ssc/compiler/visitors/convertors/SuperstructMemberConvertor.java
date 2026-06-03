@@ -34,14 +34,22 @@ public class SuperstructMemberConvertor extends AbstractConvertor<SSCParser.Supe
     }
 
 
-    private void processFunction(SSCParser.FunctionDefinitionContext functionCtx, SuperStruct superstruct) {
+    private void processFunction(SSCParser.FunctionDefinitionContext functionCtx,
+                                 SuperStruct superstruct) {
+        if (functionCtx.functionHeader().declarationSpecifiers() == null) {
+            throw dispatcher.getSSCLanguageException(
+                    "Function definition has no declaration specifiers",
+                    functionCtx
+            );
+        }
+
         assert functionCtx != null;
         final TerminalNode identifier = SSCCUtil.getIdentifierFromDeclarator(functionCtx.functionHeader().declarator());
         assert identifier != null;
 
         final String name = dispatcher.visit(identifier);
 
-        final SuperstructMethod fn = new SuperstructMethod(
+        final SuperstructMethod fn = SuperstructMethod.definition(
                 dispatcher,
                 FunctionSSCData.fromDeclarationSpecifiers(
                         functionCtx.functionHeader().declarationSpecifiers().declarationSpecifier()

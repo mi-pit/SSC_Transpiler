@@ -42,7 +42,7 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
         final StringJoiner joiner = new StringJoiner(
                 ";\n",
                 "/* Superstruct Interface `" + ssName + "`; START */\n",
-                ";/* Superstruct Interface `" + ssName + "`; END */\n"
+                ";\n/* Superstruct Interface `" + ssName + "`; END */\n"
         );
 
         if (interfaceContexts.containsKey(ssName)) {
@@ -51,6 +51,13 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
                     ctx.Identifier(), interfaceContexts.get(ssName).Identifier()
             );
         }
+
+//        if (dispatcher.data.superStructs().containsKey(ssName)) {
+//            throw dispatcher.getSSCLanguageException(
+//                    "Superstruct '" + ssName + "' is already defined",
+//                    ctx
+//            );
+//        }
 
         final SuperStruct interfaceOf = dispatcher.data.superStructs()
                 .computeIfAbsent(ssName, name -> {
@@ -89,7 +96,7 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
 
                     final String s = dispatcher.visit(fh);
 
-                    final SuperstructMethod fn = new SuperstructMethod(
+                    final SuperstructMethod fn = SuperstructMethod.header(
                             FunctionSSCData.fromDeclarationSpecifiers(
                                     declSpecsCtx.declarationSpecifier()
                             ),

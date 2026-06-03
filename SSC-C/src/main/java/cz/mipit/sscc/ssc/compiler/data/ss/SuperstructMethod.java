@@ -6,6 +6,7 @@ import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import cz.mipit.sscc.util.annotations.Nullable;
 import org.antlr.v4.runtime.ParserRuleContext;
 
+import java.util.Objects;
 import java.util.Optional;
 
 public class SuperstructMethod {
@@ -17,7 +18,29 @@ public class SuperstructMethod {
 
     private final ParserRuleContext context;
 
-    public SuperstructMethod(
+
+    private SuperstructMethod(
+            FunctionSSCData metadata,
+            String name,
+            String header,
+            String definition,
+            ParserRuleContext context
+    ) {
+        Objects.requireNonNull(metadata);
+        Objects.requireNonNull(name);
+        Objects.requireNonNull(header);
+        Objects.requireNonNull(context);
+
+        this.metadata = metadata;
+        this.name = name;
+
+        this.header = header;
+        this.definition = definition;
+
+        this.context = context;
+    }
+
+    public static SuperstructMethod header(
             FunctionSSCData metadata,
             String name,
             String header,
@@ -27,16 +50,10 @@ public class SuperstructMethod {
             throw new IllegalArgumentException("context must be a SSCParser.FunctionHeaderContext");
         }
 
-        this.metadata = metadata;
-        this.name = name;
-        this.header = header;
-
-        this.definition = null;
-
-        this.context = context;
+        return new SuperstructMethod(metadata, name, header, null, context);
     }
 
-    public SuperstructMethod(
+    public static SuperstructMethod definition(
             VisitorDispatcher dispatcher,
             FunctionSSCData metadata,
             String name,
@@ -45,14 +62,10 @@ public class SuperstructMethod {
         if (!(context instanceof SSCParser.FunctionDefinitionContext fnDef)) {
             throw new IllegalArgumentException("Context must be of a function definition or header");
         }
+        final String definition = dispatcher.visit(fnDef);
+        final String header = definition.split("\\{")[0];
 
-        this.metadata = metadata;
-        this.name = name;
-
-        this.definition = dispatcher.visit(fnDef);
-        this.header = definition.split("\\{")[0];
-
-        this.context = context;
+        return new SuperstructMethod(metadata, name, header, definition, context);
     }
 
     public String header() {
