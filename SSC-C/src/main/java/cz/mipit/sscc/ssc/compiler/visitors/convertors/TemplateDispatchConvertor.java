@@ -99,26 +99,7 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
                                          + "` -> `" + nameTypeResolved + "`");
 
             dispatcher.state.enterTemplate();
-
-            final String tmplConverted;
-            if (tmplContext.functionDefinition() != null) {
-                final Stack<SuperStruct> oldSuperstructStack = dispatcher.state.superstructStack;
-                dispatcher.state.superstructStack = new Stack<>();
-
-                tmplConverted = dispatcher.visit(tmplContext.functionDefinition());
-
-                final Stack<SuperStruct> newSuperstructStack = dispatcher.state.superstructStack;
-
-                dispatcher.state.superstructStack = oldSuperstructStack;
-                for (final SuperStruct newSuperstruct : newSuperstructStack) {
-                    oldSuperstructStack.push(newSuperstruct);
-                }
-
-            } else if (tmplContext.superStructInterface() != null) {
-                tmplConverted = dispatcher.visit(tmplContext.superStructInterface());
-            } else {
-                tmplConverted = dispatcher.visit(tmplContext.superStructSpecifier());
-            }
+            final String tmplConverted = getTemplateConverted(tmplContext);
             dispatcher.state.leaveTemplate();
 
             dispatcher.addExternalDeclarationToEmitBefore(tmplConverted);
@@ -130,6 +111,17 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
         }
 
         return nameTypeResolved;
+    }
+
+    private String getTemplateConverted(SSCParser.TemplateDefinitionContext tmplContext) {
+        if (tmplContext.functionDefinition() != null) {
+            return dispatcher.visit(tmplContext.functionDefinition());
+        } else if (tmplContext.superStructInterface() != null) {
+            return dispatcher.visit(tmplContext.superStructInterface());
+        } else {
+            assert tmplContext.superStructSpecifier() != null;
+            return dispatcher.visit(tmplContext.superStructSpecifier());
+        }
     }
 
     /// Creates a generic (not type specified) template name from an identifier

@@ -24,7 +24,6 @@ import java.util.stream.Collectors;
 
 public final class CompilerData {
     private static final String GLOBAL_SCOPE_NAME = "<global>";
-    private final SymbolTable symbolTable;
 
     private static abstract class WithContext<T> {
         T var;
@@ -86,6 +85,8 @@ public final class CompilerData {
         }
     }
 
+    private final SymbolTable symbolTable;
+
     private final Deque<Scope> scopes;
 
     private final StringBuilder debugScopesStack = new StringBuilder();
@@ -94,7 +95,7 @@ public final class CompilerData {
     private final Map<@NotNull String, Template> templates = new HashMap<>();
     private int templateStack;
 
-    public Stack<SuperStruct> superstructStack; // fixme
+    private Stack<SuperStruct> superstructStack; // fixme
     private final Deque<@NotNull String> functionCallStack;
 
     private FunctionSSCData currentFunctionSSCData;
@@ -156,17 +157,28 @@ public final class CompilerData {
     }
 
 
+    private final Stack<Stack<SuperStruct>> superstructPopStack = new Stack<>();
+
     public void enterTemplate() {
         templateStack++;
+
+        superstructPopStack.push(superstructStack);
+        superstructStack = new Stack<>();
     }
 
     public void leaveTemplate() {
         if (templateStack == 0) {
             throw new UnsupportedOperationException("not in a template");
         }
-
         templateStack--;
         assert templateStack >= 0;
+
+        final Stack<SuperStruct> newSuperstructStack = superstructStack;
+
+        superstructStack = superstructPopStack.pop();
+        for (final SuperStruct newSuperstruct : newSuperstructStack) {
+            superstructStack.push(newSuperstruct);
+        }
     }
 
     public boolean isInATemplate() {
@@ -290,7 +302,8 @@ public final class CompilerData {
 
         if (checkDuplicate && old != null) {
             throw dispatcher.getSSCCallbackException(
-                    old.kind() + " '" + old.identifier() + "' already exists in scope '" + scope.name() + "'",
+                    old.kind() + " '" + old.identifier() + "' already exists in scope"
+                    + (scope.name.map(s -> " '" + s + "'").orElse("")),
                     val.ctx,
                     old.ctx
             );
