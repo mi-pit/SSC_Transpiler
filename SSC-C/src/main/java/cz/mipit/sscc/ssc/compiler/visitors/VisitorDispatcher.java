@@ -357,7 +357,7 @@ public class VisitorDispatcher extends FormattingConvertor {
         }
 
         logger.printDebug("Function superstruct variables:");
-        for (final Map.Entry<@Nullable String, Set<SuperstructVariable>> fnNameToSSVars : state.functionVariables.entrySet()) {
+        for (final Map.Entry<@Nullable String, Set<SuperstructVariable>> fnNameToSSVars : state.functionVariables().entrySet()) {
             final String name = fnNameToSSVars.getKey();
             if (name != null && name.startsWith("<")) {
                 continue;
@@ -367,7 +367,6 @@ public class VisitorDispatcher extends FormattingConvertor {
             final Set<SuperstructVariable> variables = fnNameToSSVars.getValue();
 
             if (variables.isEmpty()) {
-                // logger.printDebug("\tEmpty scope " + funcDisplayName);
                 continue;
             }
 

@@ -29,11 +29,10 @@ public final class CompilerData {
 
     private final Map<@NotNull String, Template> templates;
 
-    final Map<@Nullable String, Set<SuperstructVariable>> functionVariables;
+    private final Map<@Nullable String, Set<SuperstructVariable>> functionVariables;
     private final Deque<@NotNull String> functionCallStack;
 
-
-    public FunctionSSCData currentFunctionSSCData;
+    private FunctionSSCData currentFunctionSSCData;
 
     private int templateStack;
 
@@ -53,6 +52,15 @@ public final class CompilerData {
 
         functionVariables.put(null, new HashSet<>());
     }
+
+    public FunctionSSCData getCurrentFunctionSSCData() {
+        return currentFunctionSSCData;
+    }
+
+    public void setCurrentFunctionSSCData(FunctionSSCData currentFunctionSSCData) {
+        this.currentFunctionSSCData = currentFunctionSSCData;
+    }
+
 
     public void enterTemplate() {
         templateStack++;
@@ -110,6 +118,11 @@ public final class CompilerData {
     public Set<SuperstructVariable> functionVariables(String functionName) {
         return functionVariables.get(functionName);
     }
+
+    Map<@Nullable String, Set<SuperstructVariable>> functionVariables() {
+        return functionVariables;
+    }
+
 
     public Map<String, Template> templates() {
         return templates;

@@ -44,13 +44,15 @@ public class FunctionHeaderConvertor extends AbstractConvertor<SSCParser.Functio
         );
 
         dispatcher.addTerminalReplacement(identifier, qualifiedName);
-        dispatcher.state.currentFunctionSSCData =
-                FunctionSSCData.fromDeclarationSpecifiers(declSpecsCtx.declarationSpecifier());
+        assert dispatcher.state.getCurrentFunctionSSCData() == null;
+        dispatcher.state.setCurrentFunctionSSCData(
+                FunctionSSCData.fromDeclarationSpecifiers(declSpecsCtx.declarationSpecifier())
+        );
 
         final String ret = dispatcher.visitChildren(ctx);
 
         dispatcher.removeTerminalReplacement(identifier);
-        dispatcher.state.currentFunctionSSCData = null;
+        dispatcher.state.setCurrentFunctionSSCData(null);
 
         return ret;
     }
