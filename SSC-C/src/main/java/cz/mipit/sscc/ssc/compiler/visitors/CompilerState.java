@@ -22,7 +22,8 @@ import java.util.Stack;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public final class CompilerData {
+
+public final class CompilerState {
     private static final String GLOBAL_SCOPE_NAME = "<global>";
 
     private static abstract class WithContext<T> {
@@ -41,9 +42,9 @@ public final class CompilerData {
 
     private record Scope(
             Optional<String> name,
-            Map<@NotNull String, WithContext<SuperStruct>> superStructs,
+            Map<@NotNull String, WithContext<SuperStruct>> superstructs,
             Map<@NotNull String, WithContext<Typedef<SuperStruct>>> superstructTypedefs,
-            Map<@NotNull String, WithContext<SuperstructVariable>> functionVariables
+            Map<@NotNull String, WithContext<SuperstructVariable>> superstructVariables
     ) {
         private static <T> String mapToString(Collection<Map.Entry<String, WithContext<T>>> s) {
             return s.stream()
@@ -67,9 +68,9 @@ public final class CompilerData {
             final String deep = SSCCUtil.Text.INDENT.repeat(depth);
             final String deeper = SSCCUtil.Text.INDENT.repeat(depth + 1);
 
-            final String superstructs = mapToString(superStructs.entrySet());
+            final String superstructs_ = mapToString(superstructs.entrySet());
             final String typedefs = mapToString(superstructTypedefs.entrySet());
-            final String vars = mapToString(functionVariables.entrySet());
+            final String vars = mapToString(superstructVariables.entrySet());
 
             return String.format("""
                             %s%s
@@ -77,7 +78,7 @@ public final class CompilerData {
                             %s%s
                             %s}
                             """,
-                    deeper, superstructs,
+                    deeper, superstructs_,
                     deeper, typedefs,
                     deeper, vars,
                     deep
@@ -95,7 +96,7 @@ public final class CompilerData {
     private final Map<@NotNull String, Template> templates = new HashMap<>();
     private int templateStack;
 
-    private Stack<SuperStruct> superstructStack; // fixme
+    private Stack<SuperStruct> superstructStack;
     private final Deque<@NotNull String> functionCallStack;
 
     private FunctionSSCData currentFunctionSSCData;
@@ -103,7 +104,7 @@ public final class CompilerData {
     private final VisitorDispatcher dispatcher;
 
 
-    public CompilerData(SymbolTable symbolTable, VisitorDispatcher dispatcher) {
+    public CompilerState(SymbolTable symbolTable, VisitorDispatcher dispatcher) {
         this.symbolTable = symbolTable;
         this.dispatcher = dispatcher;
 
@@ -187,7 +188,7 @@ public final class CompilerData {
 
 
     public SuperStruct getSuperstruct(String name) {
-        return getAllVisible(Scope::superStructs).get(name);
+        return getAllVisible(Scope::superstructs).get(name);
     }
 
 
@@ -200,7 +201,7 @@ public final class CompilerData {
                 isInATemplate()
                         ? getGlobalScope()
                         : getCurrentScope(),
-                Scope::superStructs,
+                Scope::superstructs,
                 superstruct.name(),
                 new WithContext<>(superstruct, ctx) {
                     @Override
@@ -264,7 +265,7 @@ public final class CompilerData {
             ParseTree ctx
     ) {
         addToScope(
-                Scope::functionVariables,
+                Scope::superstructVariables,
                 var.getIdentifier(),
                 new WithContext<>(var, ctx) {
                     @Override
@@ -325,7 +326,7 @@ public final class CompilerData {
     }
 
     public Map<@Nullable String, SuperstructVariable> currentVariables() {
-        return getAllVisible(Scope::functionVariables);
+        return getAllVisible(Scope::superstructVariables);
     }
 
     private <T> Map<String, T> getAllVisible(
@@ -357,7 +358,7 @@ public final class CompilerData {
 
 
     public Collection<SuperStruct> visibleSuperstructs() {
-        return getAllVisible(Scope::superStructs).values();
+        return getAllVisible(Scope::superstructs).values();
     }
 
     public Collection<Typedef<SuperStruct>> visibleTypedefs() {
@@ -365,7 +366,7 @@ public final class CompilerData {
     }
 
     public Collection<SuperstructVariable> visibleVariables() {
-        return getAllVisible(Scope::functionVariables).values();
+        return getAllVisible(Scope::superstructVariables).values();
     }
 
 

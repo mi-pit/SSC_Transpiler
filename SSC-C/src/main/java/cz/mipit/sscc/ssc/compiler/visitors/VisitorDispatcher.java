@@ -39,7 +39,7 @@ import static cz.mipit.sscc.Main.logger;
 
 
 public class VisitorDispatcher extends FormattingConvertor {
-    public final CompilerData state;
+    public final CompilerState state;
 
     private final List<String> externalDeclarationsToEmitBefore = new ArrayList<>();
     private final List<String> externalDeclarationsToEmitAfter = new ArrayList<>();
@@ -57,7 +57,7 @@ public class VisitorDispatcher extends FormattingConvertor {
     public VisitorDispatcher(VisitorInput input) {
         super(input.tokens(), input.file());
 
-        state = new CompilerData(input.symbolTable(), this);
+        state = new CompilerState(input.symbolTable(), this);
 
         collector = new VariableCollector(this);
 
