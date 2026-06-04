@@ -1,11 +1,8 @@
 package cz.mipit.sscc.ssc.compiler.visitors;
 
 import antlr.ssc.SSCParser;
-import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.tmpl.Template;
-import cz.mipit.sscc.ssc.compiler.data.var.Pointer;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
-import cz.mipit.sscc.ssc.compiler.data.var.Typedef;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.Convertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.CustomDeclSpecConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.FlagsConvertor;
@@ -24,7 +21,6 @@ import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateDispatchConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TernaryOperatorConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.fmt.FormattingConvertor;
 import cz.mipit.sscc.util.VisitorInput;
-import cz.mipit.sscc.util.annotations.Nullable;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -36,7 +32,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.Stack;
 import java.util.StringJoiner;
 
@@ -62,7 +57,7 @@ public class VisitorDispatcher extends FormattingConvertor {
     public VisitorDispatcher(VisitorInput input) {
         super(input.tokens(), input.file());
 
-        state = new CompilerData(input.symbolTable());
+        state = new CompilerData(input.symbolTable(), this);
 
         collector = new VariableCollector(this);
 
@@ -172,6 +167,21 @@ public class VisitorDispatcher extends FormattingConvertor {
     }
 
     @Override
+    public String visitCompoundStatement(SSCParser.CompoundStatementContext ctx) {
+
+        state.pushScope();
+        final String s = super.visitCompoundStatement(ctx);
+        state.popScope();
+
+        return s;
+    }
+
+    @Override
+    public String visitBlockItemList(SSCParser.BlockItemListContext ctx) {
+        return super.visitBlockItemList(ctx);
+    }
+
+    @Override
     public String visitBlockItem(SSCParser.BlockItemContext ctx) {
         final String item = super.visitBlockItem(ctx);
 
@@ -243,12 +253,13 @@ public class VisitorDispatcher extends FormattingConvertor {
             );
         }
 
-        state.initializeFunctionVariables(name);
         state.functionStack().push(name);
+        state.pushScope(name);
         _functionDefinitions.put(name, functionCtx);
     }
 
     public void popFunction() {
+        state.popScope();
         state.functionStack().poll();
     }
 
@@ -259,80 +270,15 @@ public class VisitorDispatcher extends FormattingConvertor {
 
     /* ==== GETTERS ==== */
 
-    public List<Pointer> getPointersFromDeclarator(SSCParser.DeclaratorContext declarator) {
-        return declarator
-                .pointer()
-                .stream()
-                .map(pointerCtx -> pointerCtx
-                        .typeQualifierList()
-                        .stream()
-                        .flatMap(tqLs -> tqLs.typeQualifier().stream())
-                        .map(this::visitTypeQualifier)
-                        .toList()
-                )
-                .map(Pointer::qualified)
-                .toList();
-    }
-
-
-    public Optional<SuperstructVariable> tryCreateSuperstructVariableFromDeclarator(
-            final String ssName,
-            final SSCParser.DeclaratorContext declarator
-    ) {
-        return tryCreateSuperstructVariableFromDeclarator(ssName, Pointer.none(), declarator);
-    }
-
-    public Optional<SuperstructVariable> tryCreateSuperstructVariableFromDeclarator(
-            final Typedef<SuperStruct> typedef,
-            final SSCParser.DeclaratorContext declarator
-    ) {
-        final SuperStruct ss = typedef.getRepresentedType();
-        return tryCreateSuperstructVariableFromDeclarator(
-                ss.name(),
-                typedef.getPointers(),
-                declarator
-        );
-    }
-
-    public Optional<SuperstructVariable> tryCreateSuperstructVariableFromDeclarator(
-            final String ssName,
-            final List<Pointer> pointerBase,
-            final SSCParser.DeclaratorContext declarator
-    ) {
-        if (declarator == null) {
-            return Optional.empty();
-        }
-        final SSCParser.DirectDeclaratorContext directDecl = declarator.directDeclarator();
-        if (directDecl.Identifier() == null) {
-            return Optional.empty();
-        }
-
-        final List<Pointer> declaratorPointers = getPointersFromDeclarator(declarator);
-        final String varName = this.visitTerminal(directDecl.Identifier());
-
-        final SuperstructVariable ssVar = new SuperstructVariable(
-                ssName,
-                Pointer.combine(pointerBase, declaratorPointers),
-                varName
-        );
-        return Optional.of(ssVar);
-    }
 
     /// Searches current function & global variables
     public Optional<SuperstructVariable> findSuperstructVariable(String objectName) {
-        final String functionName = getCurrentFunctionName();
-
-        for (SuperstructVariable var : state.functionVariables(functionName)) {
-            if (var.getIdentifier().equals(objectName)) {
-                return Optional.of(var);
+        for (Map.Entry<String, SuperstructVariable> entry : state.currentVariables().entrySet()) {
+            if (entry.getKey().equals(objectName)) {
+                return Optional.of(entry.getValue());
             }
         }
 
-        for (SuperstructVariable var : state.functionVariables(null)) {
-            if (var.getIdentifier().equals(objectName)) {
-                return Optional.of(var);
-            }
-        }
         return Optional.empty();
     }
 
@@ -342,39 +288,18 @@ public class VisitorDispatcher extends FormattingConvertor {
         logger.printDebug("Dumping debug info...");
 
         logger.printDebug("Superstructs:");
-        for (final SuperStruct ss : state.superStructs().values()) {
-            logger.printDebug(() -> "\t" + ss);
-        }
+        // TODO
+//        for (final SuperStruct ss : state.superStructs.values()) {
+//            logger.printDebug("\t" + ss);
+//        }
 
         logger.printDebug("Templates:");
         for (final Map.Entry<String, Template> entry : state.templates().entrySet()) {
-            logger.printDebug(() -> "\t" + entry.getValue());
+            logger.printDebug("\t" + entry.getValue());
         }
 
-        logger.printDebug("Typedefs:");
-        for (final Map.Entry<String, Typedef<SuperStruct>> entry : state.superstructTypedefs().entrySet()) {
-            logger.printDebug(() -> "\t" + entry.getKey() + " -> " + entry.getValue());
-        }
-
-        logger.printDebug("Function superstruct variables:");
-        for (final Map.Entry<@Nullable String, Set<SuperstructVariable>> fnNameToSSVars : state.functionVariables().entrySet()) {
-            final String name = fnNameToSSVars.getKey();
-            if (name != null && name.startsWith("<")) {
-                continue;
-            }
-
-            final String funcDisplayName = name == null ? "<global>" : "'" + name + "'";
-            final Set<SuperstructVariable> variables = fnNameToSSVars.getValue();
-
-            if (variables.isEmpty()) {
-                continue;
-            }
-
-            logger.printDebug(() -> "\tFor scope " + funcDisplayName + ":");
-            for (final SuperstructVariable variable : variables) {
-                logger.printDebug(() -> "        " + variable);
-            }
-        }
+        logger.printDebug("Scopes:");
+        logger.printDebug(state.debugInfo());
 
         logger.printDebug("Debug dump complete");
     }

@@ -7,6 +7,7 @@ import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStructSpecifierContext> {
     private final Map<SuperStruct, SSCParser.SuperStructSpecifierContext> superstructContexts = new HashMap<>();
@@ -24,7 +25,7 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
         }
         Main.logger.printDebug("Entering Superstruct Body");
 
-        final SuperStruct got = dispatcher.state.superStructs().get(thisSSName);
+        final SuperStruct got = dispatcher.state.getSuperstruct(thisSSName);
         // superstructs only have fields if they are defined
         if (got != null && !got.fields().isEmpty()) {
             throw dispatcher.getSSCCallbackException(
@@ -33,17 +34,13 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
             );
         }
 
-        final SuperStruct superStruct;
-        if (got != null) {
-            superStruct = got;
-            assert !superstructContexts.containsKey(superStruct);
-        } else {
-            superStruct = new SuperStruct(thisSSName);
-        }
+        final SuperStruct superStruct = Objects.requireNonNullElseGet(
+                got,
+                () -> new SuperStruct(thisSSName)
+        );
         superstructContexts.put(superStruct, ctx);
 
-        dispatcher.state.superStructs().put(thisSSName, superStruct);
-        dispatcher.state.pushSuperstruct(superStruct);
+        dispatcher.state.pushSuperstruct(superStruct, ctx);
 
         for (SSCParser.SuperStructMemberContext memberCtx : ctx.superStructBody().superStructMember()) {
             dispatcher.visit(memberCtx);

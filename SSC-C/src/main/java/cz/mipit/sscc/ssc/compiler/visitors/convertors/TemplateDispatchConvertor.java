@@ -5,18 +5,18 @@ import cz.mipit.sscc.Main;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.tmpl.Template;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
+import cz.mipit.sscc.util.SSCCUtil;
 import cz.mipit.sscc.util.collection.Enumerated;
 import cz.mipit.sscc.util.collection.Enumerator;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Stack;
 
 public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.TemplateDispatchContext> {
     private final Set<String> alreadyEmitted;
@@ -102,12 +102,12 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
 
             final String tmplConverted;
             if (tmplContext.functionDefinition() != null) {
-                final Deque<SuperStruct> oldSuperstructStack = dispatcher.state.superstructStack;
-                dispatcher.state.superstructStack = new ArrayDeque<>();
+                final Stack<SuperStruct> oldSuperstructStack = dispatcher.state.superstructStack;
+                dispatcher.state.superstructStack = new Stack<>();
 
                 tmplConverted = dispatcher.visit(tmplContext.functionDefinition());
 
-                final Deque<SuperStruct> newSuperstructStack = dispatcher.state.superstructStack;
+                final Stack<SuperStruct> newSuperstructStack = dispatcher.state.superstructStack;
 
                 dispatcher.state.superstructStack = oldSuperstructStack;
                 for (final SuperStruct newSuperstruct : newSuperstructStack) {
@@ -194,8 +194,11 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
             String type
     ) {
         final StringBuilder builder = new StringBuilder();
-        for (final char ch : type.toCharArray()) {
-            if (Character.isAlphabetic(ch) || ch == '_') {
+
+        final char[] charArray = type.toCharArray();
+        for (int i = 0; i < charArray.length; i++) {
+            final char ch = charArray[i];
+            if (SSCCUtil.Text.charMayBePartOfIdentifier(i, ch)) {
                 builder.append(ch);
             } else if (ch == '*') {
                 builder.append('p');
@@ -205,12 +208,11 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
             }
         }
 
+        // Verify
         for (int i = 0; i < builder.length(); i++) {
             final char c = builder.charAt(i);
 
-            if (Character.isAlphabetic(c) || c == '_')
-                continue;
-            if (i != 0 && Character.isDigit(c))
+            if (SSCCUtil.Text.charMayBePartOfIdentifier(i, c))
                 continue;
 
             throw new IllegalStateException(

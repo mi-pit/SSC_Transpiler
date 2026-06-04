@@ -131,7 +131,8 @@ public class SuperStruct {
         return String.format("""
                         SuperStruct: '%s'
                             fields:  %s
-                            methods: %s""",
+                            methods: %s
+                        """,
                 name, fields, methods
         );
     }

@@ -17,9 +17,6 @@ public class SuperstructVariable extends Variable {
 
     @Override
     public String toString() {
-        return "SuperstructVariable[" +
-                "ssName=" + ssName + ", " +
-                "pointer=" + pointers + ", " +
-                "name=" + identifier + ']';
+        return String.format("[SuperStruct %s %s]", ssName, super.createAbstractDeclarator());
     }
 }

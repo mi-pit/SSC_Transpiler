@@ -89,14 +89,14 @@ public class PostfixExpressionConvertor
 
         final Optional<SuperstructVariable> maybeSSVar = dispatcher.findSuperstructVariable(objectName);
         if (maybeSSVar.isEmpty()) {
-            Main.logger.printDebug(() -> "\tVariable is not superstruct; local vars (" + currentFn + "): "
-                                         + dispatcher.state.functionVariables(currentFn));
+            Main.logger.printDebug(() -> "\tVariable is not superstruct; vars (" + currentFn + "): "
+                                         + dispatcher.state.currentVariables());
             return dispatcher.visitSuper(ctx);
         }
         final SuperstructVariable ssVar = maybeSSVar.get();
 
         final String superstructName = ssVar.getSuperstructName();
-        final SuperStruct superStruct = dispatcher.state.superStructs().get(superstructName);
+        final SuperStruct superStruct = dispatcher.state.getSuperstruct(superstructName);
         if (superStruct == null) {
             throw dispatcher.getSSCLanguageException(
                     "Could not find superstruct named '" + superstructName + "'",

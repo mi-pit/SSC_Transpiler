@@ -109,6 +109,17 @@ public final class SSCCUtil {
     public static class Text {
         public static final String INDENT = "    ";
 
+        public static boolean charMayBePartOfIdentifier(char c) {
+            return charMayBePartOfIdentifier(0, c);
+        }
+
+        public static boolean charMayBePartOfIdentifier(int indexWithinIdentifier, char c) {
+            return (c >= 'a' && c <= 'z') ||
+                   (c >= 'A' && c <= 'Z') ||
+                   (c >= '0' && c <= '9') ||
+                   c == '_';
+        }
+
         /**
          * Returns the exact text corresponding to a ParserRuleContext.
          * Works for any context.

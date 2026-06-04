@@ -12,9 +12,11 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.StringJoiner;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.SuperStructInterfaceContext> {
-    private int counter = 0;
+    private static final AtomicInteger counter = new AtomicInteger();
     private final Map<String, SSCParser.SuperStructInterfaceContext> interfaceContexts = new HashMap<>();
 
     public SuperstructInterfaceConvertor(VisitorDispatcher dispatcher) {
@@ -48,65 +50,70 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
         if (interfaceContexts.containsKey(ssName)) {
             throw dispatcher.getSSCCallbackException(
                     "Interface of superstruct '" + ssName + "' is already defined",
-                    ctx.Identifier(), interfaceContexts.get(ssName).Identifier()
+                    ctx.Identifier(),
+                    interfaceContexts.get(ssName).Identifier()
             );
         }
 
-        final SuperStruct interfaceOf = dispatcher.state.superStructs()
-                .computeIfAbsent(ssName, name -> {
-                    final SuperStruct ss = new SuperStruct(name);
-                    interfaceContexts.put(name, ctx);
-                    return ss;
-                });
+        final SuperStruct interfaceOf = getOrDefineSuperstruct(ssName, ctx);
 
         joiner.add(
                 /* declare the struct to be able to use it in the function declarations */
                 interfaceOf.emitStructDeclaration()
         );
 
-        dispatcher.state.pushSuperstruct(interfaceOf);
         Main.logger.printDebug("Added a new superstruct from interface: " + ssName);
+
+        dispatcher.state.pushSuperstruct(interfaceOf, ctx);
 
         // attributeSpecifierSequence? cDeclarationSpecifiers? declarator ';'
         ctx.functionHeader()
                 .stream()
-                .map(fh -> {
-                    final TerminalNode identifier = SSCCUtil.getIdentifierFromDeclarator(fh.declarator());
-                    final String unqualifiedName = dispatcher.visit(identifier);
-
-                    dispatcher.pushFunction(
-                            "<function interface>: '" + unqualifiedName
-                            + "' (" + counter++ + ")",
-                            null
-                    );
-
-                    final SSCParser.DeclarationSpecifiersContext declSpecsCtx = fh.declarationSpecifiers();
-                    if (declSpecsCtx == null) {
-                        throw dispatcher.getSSCLanguageException(
-                                "Function has no declaration specifiers", fh
-                        );
-                    }
-
-                    final String s = dispatcher.visit(fh);
-
-                    final SuperstructMethod fn = SuperstructMethod.header(
-                            FunctionSSCData.fromDeclarationSpecifiers(
-                                    declSpecsCtx.declarationSpecifier()
-                            ),
-                            unqualifiedName,
-                            s,
-                            fh
-                    );
-
-                    interfaceOf.declareMethod(fn);
-
-                    dispatcher.popFunction();
-                    return s;
-                })
+                .map(getHeaderVisitor(interfaceOf))
                 .forEach(joiner::add);
 
         dispatcher.state.popSuperstruct();
 
         return joiner.toString();
+    }
+
+    private Function<SSCParser.FunctionHeaderContext, String> getHeaderVisitor(
+            final SuperStruct interfaceOf
+    ) {
+        return fh -> {
+            final TerminalNode identifier = SSCCUtil.getIdentifierFromDeclarator(fh.declarator());
+            final String unqualifiedName = dispatcher.visit(identifier);
+
+            dispatcher.pushFunction(
+                    "<function interface (" + counter.getAndIncrement() + ")>: '" + unqualifiedName + "'",
+                    null
+            );
+            final String s = dispatcher.visit(fh);
+            dispatcher.popFunction();
+
+            final SuperstructMethod fn = SuperstructMethod.header(
+                    FunctionSSCData.fromDeclarationSpecifiers(
+                            fh.declarationSpecifiers().declarationSpecifier()
+                    ),
+                    unqualifiedName,
+                    s,
+                    fh
+            );
+
+            interfaceOf.declareMethod(fn);
+
+            return s;
+        };
+    }
+
+    private SuperStruct getOrDefineSuperstruct(String ssName, SSCParser.SuperStructInterfaceContext ctx) {
+        final SuperStruct interfaceOf = dispatcher.state.getSuperstruct(ssName);
+        if (interfaceOf != null) {
+            return interfaceOf;
+        }
+
+        final SuperStruct newSS = new SuperStruct(ssName);
+        interfaceContexts.put(ssName, ctx);
+        return newSS;
     }
 }

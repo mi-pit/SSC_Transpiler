@@ -9,6 +9,7 @@ import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class PrimaryExpressionConvertor
         extends AbstractConvertor<SSCParser.PrimaryExpressionContext> {
@@ -49,8 +50,15 @@ public class PrimaryExpressionConvertor
         }
         final String superstructMethodName = dispatcher.visit(ctx.Identifier().getLast());
 
-        final SuperStruct superstruct = dispatcher.state.superStructs().get(superstructName);
+        final SuperStruct superstruct = dispatcher.state.getSuperstruct(superstructName);
         if (superstruct == null) {
+            Main.logger.printDebug(
+                    () -> "Superstruct '" + superstructName + "' not found. " +
+                          "Available superstructs: " + dispatcher.state.visibleSuperstructs()
+                                  .stream()
+                                  .map(SuperStruct::name)
+                                  .collect(Collectors.joining(", "))
+            );
             throw dispatcher.getSSCLanguageException(
                     "Could not find superstruct '" + superstructName + "'",
                     firstChildCtx

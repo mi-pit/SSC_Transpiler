@@ -26,6 +26,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static cz.mipit.sscc.Logger.errReturn;
 import static cz.mipit.sscc.Main.logger;
@@ -96,6 +97,14 @@ public final class SSCCompiler implements Compiler {
         ccProcessArgBase = cc.build();
     }
 
+    private static Stream<File> getSimpleFileStream(Set<File> files) {
+        return files.stream();
+    }
+
+    private static Stream<File> getParallelFileStream(Set<File> files) {
+        return files.parallelStream();
+    }
+
     public ExitValue run() throws IOException, InterruptedException, SSCTranspilerException {
         if (options.filesToProcess().isEmpty()) {
             return errReturn(ExitValue.INVALID_ARGUMENTS, "No files given to process");
@@ -126,6 +135,13 @@ public final class SSCCompiler implements Compiler {
         return ExitValue.SUCCESS;
     }
 
+    private static Stream<File> getFileStream(SSCCOptions options) {
+        if (options.debug())
+            return getSimpleFileStream(options.filesToProcess());
+
+        return getParallelFileStream(options.filesToProcess());
+    }
+
     /**
      * Input sets must support concurrency
      *
@@ -135,7 +151,7 @@ public final class SSCCompiler implements Compiler {
                                   final Set<Path> outputtedFiles) {
         final AtomicInteger totalFailed = new AtomicInteger();
 
-        options.filesToProcess().parallelStream().forEach(fileArg -> {
+        getFileStream(options).forEach(fileArg -> {
             if (fileArg.getFileType() != FileType.SSC) {
                 logger.printVerboseFilename("Skipping processing of file", fileArg.fullName());
                 filesToCompile.add(fileArg.toAbsolutePath());

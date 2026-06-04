@@ -169,18 +169,27 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
     }
 
 
-    public void warn(String message, ParseTree node) {
+    private void warn(String message, List<ParseTree> ctxs) {
         Logger.warn(
                 SSCTranspilerException.createMessage(
                         SSCTranspilerException.Type.Warning,
                         currentFile,
                         SSCTranspilerException.getErrorMessages(
                                 message,
-                                List.of(node),
+                                ctxs,
                                 tokens
                         ))
         );
     }
+
+    public void warn(String message, ParseTree current, ParseTree old) {
+        warn(message, List.of(current, old));
+    }
+
+    public void warn(String message, ParseTree node) {
+        warn(message, List.of(node));
+    }
+
 
     // ('<<' | '>' '>')
     @Override

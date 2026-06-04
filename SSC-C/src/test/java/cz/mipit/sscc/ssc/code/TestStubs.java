@@ -55,14 +55,19 @@ public class TestStubs {
         for (final File fileName : files) {
             final SSCCompiler compiler = getCompilerOfFile(fileName);
 
+            final String debugFilename = "'%s'".formatted(fileName);
+
             final Box<ExitValue> exitValue = new Box<>();
-            Assertions.assertDoesNotThrow(() -> {
-                exitValue.item = compiler.run();
-            });
+            Assertions.assertDoesNotThrow(
+                    () -> exitValue.item = compiler.run(),
+                    debugFilename
+            );
+
+            final String debugMsg = "ex=%s: %s".formatted(exitValue, debugFilename);
             Assertions.assertTrue(
                     exitValue.item == ExitValue.C_COMPILATION_FAIL
                     || exitValue.item == ExitValue.TRANSPILATION_FAIL,
-                    "ex=%s: `%s`".formatted(exitValue, fileName)
+                    debugMsg
             );
         }
     }

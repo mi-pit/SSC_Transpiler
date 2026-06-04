@@ -3,6 +3,7 @@ package cz.mipit.sscc.ssc.compiler.visitors;
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.Main;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
+import cz.mipit.sscc.ssc.compiler.data.var.Pointer;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.data.var.Typedef;
 import cz.mipit.sscc.util.Either;
@@ -98,7 +99,7 @@ public class VariableCollector {
         }
 
         final String ssName = ssSpecs.getFirst();
-        final SuperStruct ss = dispatcher.state.superStructs().get(ssName);
+        final SuperStruct ss = dispatcher.state.getSuperstruct(ssName);
         if (ss == null) {
             throw dispatcher.getSSCLanguageException(
                     "Unknown superstruct type 'object " + ssName + "'",
@@ -116,11 +117,11 @@ public class VariableCollector {
 
             final Typedef<SuperStruct> typedef = new Typedef<>(
                     typedeffedName,
-                    dispatcher.getPointersFromDeclarator(typedefDeclarator),
+                    Pointer.fromDeclarator(dispatcher::visit, typedefDeclarator),
                     ss
             );
 
-            dispatcher.state.superstructTypedefs().put(typedeffedName, typedef);
+            dispatcher.state.addSuperstructTypedef(typedef, typedefDeclarator);
             Main.logger.printDebug("Added typedef '" + typedeffedName + "' for superstruct '" + ssName + "'");
         }
     }
@@ -173,22 +174,57 @@ public class VariableCollector {
             }
 
             final Optional<SuperstructVariable> mapped = ssNameOrTypedef.map(
-                    str -> dispatcher.tryCreateSuperstructVariableFromDeclarator(str, declarator),
-                    typedef -> dispatcher.tryCreateSuperstructVariableFromDeclarator(typedef, declarator)
+                    str -> tryCreateSuperstructVariableFromDeclarator(str, declarator),
+                    typedef -> tryCreateSuperstructVariableFromDeclarator(typedef, declarator)
             );
-            mapped.ifPresent(v -> {
-                final String currentFunctionName = dispatcher.getCurrentFunctionName();
-                dispatcher.state.addFunctionVariable(
-                        currentFunctionName, v,
-                        () -> dispatcher.getSSCLanguageException(
-                                "Variable with name '" + v.getIdentifier() + "' already exists in "
-                                + (currentFunctionName != null ? "'" + currentFunctionName + "'" : "global scope"),
-                                declarator
-                        )
-                );
-                Main.logger.printDebug(() -> "Adding variable '" + v + "' for to function '" + currentFunctionName + "'");
-            });
+
+            mapped.ifPresent(v ->
+                    dispatcher.state.addFunctionVariable(v, declarator)
+            );
         }
+    }
+
+    public Optional<SuperstructVariable> tryCreateSuperstructVariableFromDeclarator(
+            final String ssName,
+            final SSCParser.DeclaratorContext declarator
+    ) {
+        return tryCreateSuperstructVariableFromDeclarator(ssName, Pointer.none(), declarator);
+    }
+
+    public Optional<SuperstructVariable> tryCreateSuperstructVariableFromDeclarator(
+            final Typedef<SuperStruct> typedef,
+            final SSCParser.DeclaratorContext declarator
+    ) {
+        final SuperStruct ss = typedef.getRepresentedType();
+        return tryCreateSuperstructVariableFromDeclarator(
+                ss.name(),
+                typedef.getPointers(),
+                declarator
+        );
+    }
+
+    private Optional<SuperstructVariable> tryCreateSuperstructVariableFromDeclarator(
+            final String ssName,
+            final List<Pointer> pointerBase,
+            final SSCParser.DeclaratorContext declarator
+    ) {
+        if (declarator == null) {
+            return Optional.empty();
+        }
+        final SSCParser.DirectDeclaratorContext directDecl = declarator.directDeclarator();
+        if (directDecl.Identifier() == null) {
+            return Optional.empty();
+        }
+
+        final List<Pointer> declaratorPointers = Pointer.fromDeclarator(dispatcher::visit, declarator);
+        final String varName = dispatcher.visit(directDecl.Identifier());
+
+        final SuperstructVariable ssVar = new SuperstructVariable(
+                ssName,
+                Pointer.combine(pointerBase, declaratorPointers),
+                varName
+        );
+        return Optional.of(ssVar);
     }
 
     private Optional<Either<String, Typedef<SuperStruct>>> findSSNameInDeclSpecs(
@@ -210,7 +246,7 @@ public class VariableCollector {
                 return Optional.of(Either.left(ssName));
             }
 
-            final Typedef<SuperStruct> typedef = dispatcher.state.superstructTypedefs().get(
+            final Typedef<SuperStruct> typedef = dispatcher.state.getSuperstructTypedef(
                     dispatcher.visit(typeSpec)
             );
             if (typedef != null) {

@@ -1,11 +1,11 @@
 package cz.mipit.sscc.ssc.compiler.visitors.convertors;
 
 import antlr.ssc.SSCParser;
-import cz.mipit.sscc.Main;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.var.Pointer;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
+import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,7 +21,8 @@ public class ParameterTypeListConvertor extends AbstractConvertor<SSCParser.Para
     //    | '...'
     @Override
     public String convert(SSCParser.ParameterTypeListContext ctx) {
-        if (dispatcher.getCurrentFunctionName() == null || dispatcher.state.getCurrentFunctionSSCData() == null) {
+        if (dispatcher.getCurrentFunctionName() == null || dispatcher.state.getCurrentFunctionSSCData() == null
+        ) {
             return dispatcher.visitSuper(ctx);
         }
 
@@ -38,7 +39,7 @@ public class ParameterTypeListConvertor extends AbstractConvertor<SSCParser.Para
 
         final List<String> parameterListList = new ArrayList<>();
 
-        registerSelfReferenceVariable(superstruct);
+        registerSelfReferenceVariable(superstruct, ctx);
 
         final StringBuilder selfReference = new StringBuilder();
         if (dispatcher.state.getCurrentFunctionSSCData().isPure()) {
@@ -86,17 +87,12 @@ public class ParameterTypeListConvertor extends AbstractConvertor<SSCParser.Para
     }
 
 
-    private void registerSelfReferenceVariable(SuperStruct superstruct) {
+    private void registerSelfReferenceVariable(
+            SuperStruct superstruct, ParseTree ctx
+    ) {
         final SuperstructVariable selfReferenceVariable =
                 new SuperstructVariable(superstruct.name(), Pointer.oneConst(), "this");
 
-        Main.logger.printDebug(() -> "Adding self reference variable '"
-                                     + selfReferenceVariable
-                                     + "' to function '"
-                                     + dispatcher.getCurrentFunctionName()
-                                     + "'");
-        dispatcher.state
-                .functionVariables(dispatcher.getCurrentFunctionName())
-                .add(selfReferenceVariable);
+        dispatcher.state.addFunctionVariable(selfReferenceVariable, ctx);
     }
 }

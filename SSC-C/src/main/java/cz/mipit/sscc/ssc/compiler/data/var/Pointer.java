@@ -1,8 +1,11 @@
 package cz.mipit.sscc.ssc.compiler.data.var;
 
+import antlr.ssc.SSCParser;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
 
 public class Pointer {
     private static final Pointer CONST = new Pointer(List.of("const"));
@@ -56,6 +59,24 @@ public class Pointer {
         result.addAll(others);
 
         return result;
+    }
+
+    public static List<Pointer> fromDeclarator(
+            Function<SSCParser.TypeQualifierContext, String> qualifierStringizer,
+            SSCParser.DeclaratorContext declarator
+    ) {
+        return declarator
+                .pointer()
+                .stream()
+                .map(pointerCtx -> pointerCtx
+                        .typeQualifierList()
+                        .stream()
+                        .flatMap(tqLs -> tqLs.typeQualifier().stream())
+                        .map(qualifierStringizer)
+                        .toList()
+                )
+                .map(Pointer::qualified)
+                .toList();
     }
 
 

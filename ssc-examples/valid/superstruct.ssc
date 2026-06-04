@@ -29,6 +29,8 @@ object String
     }
 };
 
+object String global_string = {};
+
 int main()
 {
     object String s = String::given( "s t r i n g" );
