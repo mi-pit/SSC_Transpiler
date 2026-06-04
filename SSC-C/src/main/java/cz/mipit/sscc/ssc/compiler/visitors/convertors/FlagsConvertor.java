@@ -98,7 +98,7 @@ public class FlagsConvertor extends AbstractConvertor<SSCParser.FlagsSpecifierCo
                 "#include <ssclib/headers/core/types.h>"
         );
 
-        final Symbol globalScope = dispatcher.data.symbolTable().getGlobalScope();
+        final Symbol globalScope = dispatcher.state.symbolTable().getGlobalScope();
 
         final String finalType = FROM_SSCLIB_TYPES.toCType(bitsNeeded);
 
@@ -111,7 +111,7 @@ public class FlagsConvertor extends AbstractConvertor<SSCParser.FlagsSpecifierCo
 
             uInt.setName(FROM_SSCLIB_TYPES.toCType(bits));
 
-            dispatcher.data.symbolTable().defineInScope(globalScope, uInt);
+            dispatcher.state.symbolTable().defineInScope(globalScope, uInt);
         }
 
         return finalType;

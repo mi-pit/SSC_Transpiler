@@ -45,7 +45,7 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
         );
         Main.logger.printDebug(() -> "\tResolved template call name: " + nameTypeResolved);
 
-        final Template tmpl = dispatcher.data.templates().get(nameRaw);
+        final Template tmpl = dispatcher.state.templates().get(nameRaw);
         if (tmpl == null) {
             Main.logger.printDebug(() -> "\t\tTemplate '" + nameRaw + "' not found");
             throw dispatcher.getSSCLanguageException(
@@ -98,18 +98,18 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
             Main.logger.printDebug(() -> "\tAdded identifier replacement: `" + nameRaw
                                          + "` -> `" + nameTypeResolved + "`");
 
-            dispatcher.data.templateStack.push(null);
+            dispatcher.state.enterTemplate();
 
             final String tmplConverted;
             if (tmplContext.functionDefinition() != null) {
-                final Deque<SuperStruct> oldSuperstructStack = dispatcher.data.superstructStack;
-                dispatcher.data.superstructStack = new ArrayDeque<>();
+                final Deque<SuperStruct> oldSuperstructStack = dispatcher.state.superstructStack;
+                dispatcher.state.superstructStack = new ArrayDeque<>();
 
                 tmplConverted = dispatcher.visit(tmplContext.functionDefinition());
 
-                final Deque<SuperStruct> newSuperstructStack = dispatcher.data.superstructStack;
+                final Deque<SuperStruct> newSuperstructStack = dispatcher.state.superstructStack;
 
-                dispatcher.data.superstructStack = oldSuperstructStack;
+                dispatcher.state.superstructStack = oldSuperstructStack;
                 for (final SuperStruct newSuperstruct : newSuperstructStack) {
                     oldSuperstructStack.push(newSuperstruct);
                 }
@@ -119,7 +119,7 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
             } else {
                 tmplConverted = dispatcher.visit(tmplContext.superStructSpecifier());
             }
-            dispatcher.data.templateStack.pop();
+            dispatcher.state.leaveTemplate();
 
             dispatcher.addExternalDeclarationToEmitBefore(tmplConverted);
 

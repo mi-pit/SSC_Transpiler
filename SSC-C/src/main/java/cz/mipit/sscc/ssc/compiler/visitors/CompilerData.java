@@ -17,7 +17,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.Stack;
 import java.util.function.Supplier;
 
 public final class CompilerData {
@@ -35,7 +34,8 @@ public final class CompilerData {
 
 
     public FunctionSSCData currentFunctionSSCData;
-    public final Stack<Void> templateStack = new Stack<>();
+
+    private int templateStack;
 
 
     public CompilerData(SymbolTable symbolTable) {
@@ -49,8 +49,28 @@ public final class CompilerData {
         superstructStack = new ArrayDeque<>();
         functionCallStack = new ArrayDeque<>();
 
+        templateStack = 0;
+
         functionVariables.put(null, new HashSet<>());
     }
+
+    public void enterTemplate() {
+        templateStack++;
+    }
+
+    public void leaveTemplate() {
+        if (templateStack == 0) {
+            throw new UnsupportedOperationException("not in a template");
+        }
+
+        templateStack--;
+        assert templateStack >= 0;
+    }
+
+    public boolean isInATemplate() {
+        return templateStack > 0;
+    }
+
 
     public Map<String, SuperStruct> superStructs() {
         return superStructs;

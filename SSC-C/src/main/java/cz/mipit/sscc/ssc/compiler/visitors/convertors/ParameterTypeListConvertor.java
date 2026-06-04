@@ -21,18 +21,18 @@ public class ParameterTypeListConvertor extends AbstractConvertor<SSCParser.Para
     //    | '...'
     @Override
     public String convert(SSCParser.ParameterTypeListContext ctx) {
-        if (dispatcher.getCurrentFunctionName() == null || dispatcher.data.currentFunctionSSCData == null) {
+        if (dispatcher.getCurrentFunctionName() == null || dispatcher.state.currentFunctionSSCData == null) {
             return dispatcher.visitSuper(ctx);
         }
 
-        final Optional<SuperStruct> maybeCurrentSuperstruct = dispatcher.data.currentSuperstruct();
+        final Optional<SuperStruct> maybeCurrentSuperstruct = dispatcher.state.currentSuperstruct();
         if (maybeCurrentSuperstruct.isEmpty()) {
             return dispatcher.visitSuper(ctx);
         }
 
         final SuperStruct superstruct = maybeCurrentSuperstruct.get();
 
-        if (dispatcher.data.currentFunctionSSCData.isMeta()) {
+        if (dispatcher.state.currentFunctionSSCData.isMeta()) {
             return dispatcher.visitSuper(ctx);
         }
 
@@ -41,7 +41,7 @@ public class ParameterTypeListConvertor extends AbstractConvertor<SSCParser.Para
         registerSelfReferenceVariable(superstruct);
 
         final StringBuilder selfReference = new StringBuilder();
-        if (dispatcher.data.currentFunctionSSCData.isPure()) {
+        if (dispatcher.state.currentFunctionSSCData.isPure()) {
             selfReference.append("const ");
         }
         selfReference
@@ -51,7 +51,7 @@ public class ParameterTypeListConvertor extends AbstractConvertor<SSCParser.Para
 
         parameterListList.add(selfReference.toString());
 
-        dispatcher.data.currentFunctionSSCData = null;
+        dispatcher.state.currentFunctionSSCData = null;
 
 
         // parameterDeclaration (',' parameterDeclaration)*
@@ -95,7 +95,7 @@ public class ParameterTypeListConvertor extends AbstractConvertor<SSCParser.Para
                                      + "' to function '"
                                      + dispatcher.getCurrentFunctionName()
                                      + "'");
-        dispatcher.data
+        dispatcher.state
                 .functionVariables(dispatcher.getCurrentFunctionName())
                 .add(selfReferenceVariable);
     }

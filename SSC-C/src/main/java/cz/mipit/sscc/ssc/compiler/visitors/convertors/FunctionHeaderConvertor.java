@@ -17,12 +17,12 @@ public class FunctionHeaderConvertor extends AbstractConvertor<SSCParser.Functio
     // attributeSpecifierSequence? declarationSpecifiers? declarator
     @Override
     public String convert(SSCParser.FunctionHeaderContext ctx) {
-        final boolean isInTemplate = !dispatcher.data.templateStack.isEmpty();
-        return (isInTemplate ? "static " : "") + helper(ctx);
+        return (dispatcher.state.isInATemplate() ? "static " : "")
+               + helper(ctx);
     }
 
     private String helper(SSCParser.FunctionHeaderContext ctx) {
-        final Optional<SuperStruct> optSS = dispatcher.data.currentSuperstruct();
+        final Optional<SuperStruct> optSS = dispatcher.state.currentSuperstruct();
         if (optSS.isEmpty()) {
             return dispatcher.visitSuper(ctx);
         }
@@ -43,14 +43,14 @@ public class FunctionHeaderConvertor extends AbstractConvertor<SSCParser.Functio
                 unqualifiedName
         );
 
-        dispatcher.terminalReplacements.put(identifier, qualifiedName);
-        dispatcher.data.currentFunctionSSCData =
+        dispatcher.addTerminalReplacement(identifier, qualifiedName);
+        dispatcher.state.currentFunctionSSCData =
                 FunctionSSCData.fromDeclarationSpecifiers(declSpecsCtx.declarationSpecifier());
 
         final String ret = dispatcher.visitChildren(ctx);
 
-        dispatcher.terminalReplacements.remove(identifier);
-        dispatcher.data.currentFunctionSSCData = null;
+        dispatcher.removeTerminalReplacement(identifier);
+        dispatcher.state.currentFunctionSSCData = null;
 
         return ret;
     }

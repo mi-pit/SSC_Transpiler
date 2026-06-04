@@ -17,9 +17,9 @@ public class SuperstructMemberConvertor extends AbstractConvertor<SSCParser.Supe
     // declaration | functionDefinition
     @Override
     public String convert(SSCParser.SuperStructMemberContext ctx) {
-        assert dispatcher.data.currentSuperstruct().isPresent();
+        assert dispatcher.state.currentSuperstruct().isPresent();
 
-        final SuperStruct superstruct = dispatcher.data.currentSuperstruct().get();
+        final SuperStruct superstruct = dispatcher.state.currentSuperstruct().get();
 
         final SSCParser.DeclarationContext declarationCtx = ctx.declaration();
         final SSCParser.FunctionDefinitionContext functionCtx = ctx.functionDefinition();

@@ -52,14 +52,7 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
             );
         }
 
-//        if (dispatcher.data.superStructs().containsKey(ssName)) {
-//            throw dispatcher.getSSCLanguageException(
-//                    "Superstruct '" + ssName + "' is already defined",
-//                    ctx
-//            );
-//        }
-
-        final SuperStruct interfaceOf = dispatcher.data.superStructs()
+        final SuperStruct interfaceOf = dispatcher.state.superStructs()
                 .computeIfAbsent(ssName, name -> {
                     final SuperStruct ss = new SuperStruct(name);
                     interfaceContexts.put(name, ctx);
@@ -71,7 +64,7 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
                 interfaceOf.emitStructDeclaration()
         );
 
-        dispatcher.data.pushSuperstruct(interfaceOf);
+        dispatcher.state.pushSuperstruct(interfaceOf);
         Main.logger.printDebug("Added a new superstruct from interface: " + ssName);
 
         // attributeSpecifierSequence? cDeclarationSpecifiers? declarator ';'
@@ -112,7 +105,7 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
                 })
                 .forEach(joiner::add);
 
-        dispatcher.data.popSuperstruct();
+        dispatcher.state.popSuperstruct();
 
         return joiner.toString();
     }

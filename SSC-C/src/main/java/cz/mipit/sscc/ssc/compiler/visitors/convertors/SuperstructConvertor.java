@@ -24,7 +24,7 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
         }
         Main.logger.printDebug("Entering Superstruct Body");
 
-        final SuperStruct got = dispatcher.data.superStructs().get(thisSSName);
+        final SuperStruct got = dispatcher.state.superStructs().get(thisSSName);
         // superstructs only have fields if they are defined
         if (got != null && !got.fields().isEmpty()) {
             throw dispatcher.getSSCCallbackException(
@@ -42,14 +42,14 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
         }
         superstructContexts.put(superStruct, ctx);
 
-        dispatcher.data.superStructs().put(thisSSName, superStruct);
-        dispatcher.data.pushSuperstruct(superStruct);
+        dispatcher.state.superStructs().put(thisSSName, superStruct);
+        dispatcher.state.pushSuperstruct(superStruct);
 
         for (SSCParser.SuperStructMemberContext memberCtx : ctx.superStructBody().superStructMember()) {
             dispatcher.visit(memberCtx);
         }
 
-        dispatcher.data.popSuperstruct();
+        dispatcher.state.popSuperstruct();
 
         final String structDeclaration = superStruct.emitStructDeclaration();
         final String structDefinition = superStruct.emitStructDefinition();

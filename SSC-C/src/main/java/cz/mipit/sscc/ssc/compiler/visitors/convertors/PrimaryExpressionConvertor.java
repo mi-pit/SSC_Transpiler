@@ -49,7 +49,7 @@ public class PrimaryExpressionConvertor
         }
         final String superstructMethodName = dispatcher.visit(ctx.Identifier().getLast());
 
-        final SuperStruct superstruct = dispatcher.data.superStructs().get(superstructName);
+        final SuperStruct superstruct = dispatcher.state.superStructs().get(superstructName);
         if (superstruct == null) {
             throw dispatcher.getSSCLanguageException(
                     "Could not find superstruct '" + superstructName + "'",
@@ -69,7 +69,7 @@ public class PrimaryExpressionConvertor
         if (!className.equals(superstruct.name()))
             throw new AssertionError();
 
-        final Optional<SuperStruct> maybeCurrentSS = dispatcher.data.currentSuperstruct();
+        final Optional<SuperStruct> maybeCurrentSS = dispatcher.state.currentSuperstruct();
         if (maybeCurrentSS.isPresent() && maybeCurrentSS.get().name().equals(className)) {
             return;
         }

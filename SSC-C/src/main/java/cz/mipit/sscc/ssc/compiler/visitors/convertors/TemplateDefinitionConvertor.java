@@ -25,18 +25,18 @@ public class TemplateDefinitionConvertor extends AbstractConvertor<SSCParser.Tem
         final String name = parseRawName(ctx);
         Main.logger.printDebug("\tName: " + name);
 
-        if (!dispatcher.data.templates().containsKey(name)) {
+        if (!dispatcher.state.templates().containsKey(name)) {
             Main.logger.printDebug("\tTemplate '" + name + "' does not exist yet; creating new template.");
             final Template thisTmpl = new Template(name, ctx);
 
             Main.logger.printDebug(() -> "\t" + thisTmpl);
             final String tmplName = thisTmpl.name();
 
-            dispatcher.data.templates().put(tmplName, thisTmpl);
+            dispatcher.state.templates().put(tmplName, thisTmpl);
             return;
         }
 
-        final Template definedBefore = dispatcher.data.templates().get(name);
+        final Template definedBefore = dispatcher.state.templates().get(name);
         if (definedBefore.contexts().isEmpty()) {
             throw new IllegalStateException("Template '" + name + "' has no contexts, yet it exists");
         }

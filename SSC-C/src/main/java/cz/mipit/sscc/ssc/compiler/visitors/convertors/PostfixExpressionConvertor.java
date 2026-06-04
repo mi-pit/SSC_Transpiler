@@ -90,13 +90,13 @@ public class PostfixExpressionConvertor
         final Optional<SuperstructVariable> maybeSSVar = dispatcher.findSuperstructVariable(objectName);
         if (maybeSSVar.isEmpty()) {
             Main.logger.printDebug(() -> "\tVariable is not superstruct; local vars (" + currentFn + "): "
-                                         + dispatcher.data.functionVariables(currentFn));
+                                         + dispatcher.state.functionVariables(currentFn));
             return dispatcher.visitSuper(ctx);
         }
         final SuperstructVariable ssVar = maybeSSVar.get();
 
         final String superstructName = ssVar.getSuperstructName();
-        final SuperStruct superStruct = dispatcher.data.superStructs().get(superstructName);
+        final SuperStruct superStruct = dispatcher.state.superStructs().get(superstructName);
         if (superStruct == null) {
             throw dispatcher.getSSCLanguageException(
                     "Could not find superstruct named '" + superstructName + "'",
@@ -130,8 +130,8 @@ public class PostfixExpressionConvertor
         if (maybeMethod.isEmpty()) {
             Main.logger.printDebug(() -> "\tVariable does not have such a method");
 
-            if (dispatcher.data.currentSuperstruct().isEmpty() ||
-                !dispatcher.data.currentSuperstruct().get().equals(superStruct)) {
+            if (dispatcher.state.currentSuperstruct().isEmpty() ||
+                !dispatcher.state.currentSuperstruct().get().equals(superStruct)) {
                 throw dispatcher.getSSCLanguageException(
                         "Superstruct '" + superStruct.name() + "' has no method called '" + methodName + "'",
                         ctx
@@ -145,8 +145,8 @@ public class PostfixExpressionConvertor
             );
         } else if (maybeMethod.get().metadata().isPrivate()) {
             Main.logger.printDebug(() -> "Method '" + methodName + "' is private. Going to check if it may be used here...");
-            if (dispatcher.data.currentSuperstruct().isEmpty()
-                || !dispatcher.data.currentSuperstruct().get().name().equals(superStruct.name())) {
+            if (dispatcher.state.currentSuperstruct().isEmpty()
+                || !dispatcher.state.currentSuperstruct().get().name().equals(superStruct.name())) {
                 throw dispatcher.getSSCLanguageException(
                         "Cannot access private method `" + methodName + "` from outside the superstruct", ctx);
             }

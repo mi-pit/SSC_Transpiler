@@ -98,7 +98,7 @@ public class VariableCollector {
         }
 
         final String ssName = ssSpecs.getFirst();
-        final SuperStruct ss = dispatcher.data.superStructs().get(ssName);
+        final SuperStruct ss = dispatcher.state.superStructs().get(ssName);
         if (ss == null) {
             throw dispatcher.getSSCLanguageException(
                     "Unknown superstruct type 'object " + ssName + "'",
@@ -120,7 +120,7 @@ public class VariableCollector {
                     ss
             );
 
-            dispatcher.data.superstructTypedefs().put(typedeffedName, typedef);
+            dispatcher.state.superstructTypedefs().put(typedeffedName, typedef);
             Main.logger.printDebug("Added typedef '" + typedeffedName + "' for superstruct '" + ssName + "'");
         }
     }
@@ -178,7 +178,7 @@ public class VariableCollector {
             );
             mapped.ifPresent(v -> {
                 final String currentFunctionName = dispatcher.getCurrentFunctionName();
-                dispatcher.data.addFunctionVariable(
+                dispatcher.state.addFunctionVariable(
                         currentFunctionName, v,
                         () -> dispatcher.getSSCLanguageException(
                                 "Variable with name '" + v.getIdentifier() + "' already exists in "
@@ -210,7 +210,7 @@ public class VariableCollector {
                 return Optional.of(Either.left(ssName));
             }
 
-            final Typedef<SuperStruct> typedef = dispatcher.data.superstructTypedefs().get(
+            final Typedef<SuperStruct> typedef = dispatcher.state.superstructTypedefs().get(
                     dispatcher.visit(typeSpec)
             );
             if (typedef != null) {

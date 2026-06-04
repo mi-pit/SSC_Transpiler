@@ -44,7 +44,7 @@ import static cz.mipit.sscc.Main.logger;
 
 
 public class VisitorDispatcher extends FormattingConvertor {
-    public final CompilerData data;
+    public final CompilerData state;
 
     private final List<String> externalDeclarationsToEmitBefore = new ArrayList<>();
     private final List<String> externalDeclarationsToEmitAfter = new ArrayList<>();
@@ -52,7 +52,7 @@ public class VisitorDispatcher extends FormattingConvertor {
     private final List<String> blockListItemsToEmitBefore = new ArrayList<>();
 
     private final Stack<Map<String, String>> replacements = new Stack<>();
-    public final Map<TerminalNode, String> terminalReplacements = new HashMap<>();
+    private final Map<TerminalNode, String> terminalReplacements = new HashMap<>();
 
     private final VariableCollector collector;
 
@@ -62,7 +62,7 @@ public class VisitorDispatcher extends FormattingConvertor {
     public VisitorDispatcher(VisitorInput input) {
         super(input.tokens(), input.file());
 
-        data = new CompilerData(input.symbolTable());
+        state = new CompilerData(input.symbolTable());
 
         collector = new VariableCollector(this);
 
@@ -219,7 +219,7 @@ public class VisitorDispatcher extends FormattingConvertor {
 
 
     public boolean hasType(String typeName) {
-        return data.symbolTable().resolve(typeName) != null;
+        return state.symbolTable().resolve(typeName) != null;
     }
 
 
@@ -243,17 +243,17 @@ public class VisitorDispatcher extends FormattingConvertor {
             );
         }
 
-        data.initializeFunctionVariables(name);
-        data.functionStack().push(name);
+        state.initializeFunctionVariables(name);
+        state.functionStack().push(name);
         _functionDefinitions.put(name, functionCtx);
     }
 
     public void popFunction() {
-        data.functionStack().poll();
+        state.functionStack().poll();
     }
 
     public String getCurrentFunctionName() {
-        return data.functionStack().peek();
+        return state.functionStack().peek();
     }
 
 
@@ -322,13 +322,13 @@ public class VisitorDispatcher extends FormattingConvertor {
     public Optional<SuperstructVariable> findSuperstructVariable(String objectName) {
         final String functionName = getCurrentFunctionName();
 
-        for (SuperstructVariable var : data.functionVariables(functionName)) {
+        for (SuperstructVariable var : state.functionVariables(functionName)) {
             if (var.getIdentifier().equals(objectName)) {
                 return Optional.of(var);
             }
         }
 
-        for (SuperstructVariable var : data.functionVariables(null)) {
+        for (SuperstructVariable var : state.functionVariables(null)) {
             if (var.getIdentifier().equals(objectName)) {
                 return Optional.of(var);
             }
@@ -342,22 +342,22 @@ public class VisitorDispatcher extends FormattingConvertor {
         logger.printDebug("Dumping debug info...");
 
         logger.printDebug("Superstructs:");
-        for (final SuperStruct ss : data.superStructs().values()) {
+        for (final SuperStruct ss : state.superStructs().values()) {
             logger.printDebug(() -> "\t" + ss);
         }
 
         logger.printDebug("Templates:");
-        for (final Map.Entry<String, Template> entry : data.templates().entrySet()) {
+        for (final Map.Entry<String, Template> entry : state.templates().entrySet()) {
             logger.printDebug(() -> "\t" + entry.getValue());
         }
 
         logger.printDebug("Typedefs:");
-        for (final Map.Entry<String, Typedef<SuperStruct>> entry : data.superstructTypedefs().entrySet()) {
+        for (final Map.Entry<String, Typedef<SuperStruct>> entry : state.superstructTypedefs().entrySet()) {
             logger.printDebug(() -> "\t" + entry.getKey() + " -> " + entry.getValue());
         }
 
         logger.printDebug("Function superstruct variables:");
-        for (final Map.Entry<@Nullable String, Set<SuperstructVariable>> fnNameToSSVars : data.functionVariables.entrySet()) {
+        for (final Map.Entry<@Nullable String, Set<SuperstructVariable>> fnNameToSSVars : state.functionVariables.entrySet()) {
             final String name = fnNameToSSVars.getKey();
             if (name != null && name.startsWith("<")) {
                 continue;
@@ -389,7 +389,6 @@ public class VisitorDispatcher extends FormattingConvertor {
         this.replacements.pop();
     }
 
-
     public void addReplacements(Map<String, String> typeArgMap) {
         this.replacements.peek().putAll(typeArgMap);
     }
@@ -406,5 +405,15 @@ public class VisitorDispatcher extends FormattingConvertor {
 
     public void removeReplacement(String key) {
         this.replacements.peek().remove(key);
+    }
+
+
+    /// Replaces that specific node with the other argument when visiting next
+    public void addTerminalReplacement(TerminalNode node, String replacement) {
+        terminalReplacements.put(node, replacement);
+    }
+
+    public void removeTerminalReplacement(TerminalNode node) {
+        terminalReplacements.remove(node);
     }
 }

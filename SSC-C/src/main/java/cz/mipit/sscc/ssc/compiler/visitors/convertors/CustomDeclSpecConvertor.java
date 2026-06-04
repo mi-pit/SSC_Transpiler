@@ -10,7 +10,7 @@ public class CustomDeclSpecConvertor extends AbstractConvertor<SSCParser.Superst
 
     @Override
     public String convert(SSCParser.SuperstructMemberDeclarationSpecifierContext ctx) {
-        if (dispatcher.data.currentSuperstruct().isEmpty()) {
+        if (dispatcher.state.currentSuperstruct().isEmpty()) {
             throw dispatcher.getSSCLanguageException(
                     "Cannot use '" + dispatcher.getLiteral(ctx) + "' declaration specifier outside of a superstruct", ctx
             );

@@ -25,7 +25,7 @@ public class FunctionDefinitionConvertor extends AbstractConvertor<SSCParser.Fun
         final TerminalNode identifier = SSCCUtil.getIdentifierFromDeclarator(ctx.functionHeader().declarator());
         assert identifier != null;
 
-        final Optional<SuperStruct> currentSuperstruct = dispatcher.data.currentSuperstruct();
+        final Optional<SuperStruct> currentSuperstruct = dispatcher.state.currentSuperstruct();
 
         final String unqualifiedName = dispatcher.visit(identifier);
         final String qualifiedName = currentSuperstruct
