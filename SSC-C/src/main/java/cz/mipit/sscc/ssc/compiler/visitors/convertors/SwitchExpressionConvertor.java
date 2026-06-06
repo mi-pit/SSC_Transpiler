@@ -1,13 +1,20 @@
 package cz.mipit.sscc.ssc.compiler.visitors.convertors;
 
 import antlr.ssc.SSCParser;
+import cz.mipit.sscc.ssc.compiler.data.lambda.LambdaFunction;
+import cz.mipit.sscc.ssc.compiler.data.var.LiteralVariable;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import cz.mipit.sscc.util.SSCCUtil;
-import cz.mipit.sscc.util.Util;
+import cz.mipit.sscc.util.collection.Box;
+import org.antlr.v4.runtime.misc.Pair;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
+import java.util.List;
+import java.util.StringJoiner;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
-import static java.util.Objects.requireNonNullElse;
+import static cz.mipit.sscc.ssc.compiler.data.lambda.LambdaFunction.padIfNotBlank;
 
 public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.SwitchExpressionContext> {
     private static final AtomicLong FUNCTION_IDS = new AtomicLong();
@@ -17,54 +24,225 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
         super(dispatcher, SSCParser.SwitchExpressionContext.class);
     }
 
-    //     : 'swex' '(' expression ')' '->' typeName '{'
-    //          ('case'    (constant | StringLiteral) '=>' statement)+
-    //          ('default'                            '=>' statement)?
-    //      '}'
+    //  'swex' '(' expression ')' '->' typeName '{'
+    //      branch+
+    //  '}'
     @Override
     public String convert(SSCParser.SwitchExpressionContext ctx) {
-        // TODO
-        final String surroundingFunctionName = requireNonNullElse(dispatcher.getCurrentFunctionName(), "Global");
-        final String functionName = generateFunctionName(surroundingFunctionName);
+        if (dispatcher.getCurrentFunctionName() == null) {
+            throw dispatcher.getSSCLanguageException(
+                    "Switch expressions may not be used outside of functions", ctx
+            );
+        }
 
-        dispatcher.pushFunction(functionName, null);
+        final SSCParser.TypeNameContext typeName = ctx.typeName();
+
+        final String surroundingFunctionName = dispatcher.getCurrentFunctionName();
+        final String swexFunctionName = SSCCUtil.createNameWithID("__ssc_swex_fn", surroundingFunctionName);
+
+        //dispatcher.pushFunction(swexFunctionName, null);
+
+        final String typedefIdentifier = SSCCUtil.createTypedef(
+                dispatcher,
+                "__ssc_swex_typedef",
+                surroundingFunctionName,
+                typeName
+        );
+
+        final List<LiteralVariable> captures = dispatcher.state.nonGlobalVariables();
+        final String capturesAsParams = captures.stream()
+                .map(LiteralVariable::getIdentifier)
+                .collect(Collectors.joining(", "));
+
+        final Pair<String, String> paramAndBody = getBody(
+                ctx, surroundingFunctionName, typedefIdentifier, captures, capturesAsParams
+        );
+
+        final LambdaFunction lambda = new LambdaFunction(
+                swexFunctionName,
+                typedefIdentifier,
+                paramAndBody.a,
+                paramAndBody.b,
+                "",
+                dispatcher,
+                captures
+        );
+
+        //dispatcher.popFunction();
+
+        dispatcher.addExternalDeclarationToEmitBefore(lambda.getDefinition());
 
         final String expression = dispatcher.visit(ctx.expression());
 
-        final String variableHolderIdentifier = generateVariableName(surroundingFunctionName);
+        return String.format("%s( %s, %s )", swexFunctionName, expression, capturesAsParams);
+    }
 
-        final String auxVariableDeclarationAndAssignment =
-                "const typeof_unqual( %s ) %s = %s;".formatted(expression, variableHolderIdentifier, expression);
-        dispatcher.addBlockListItemToEmitBefore(auxVariableDeclarationAndAssignment);
+    // switchExpressionBranch
+    //    : ('case' (constant | StringLiteral) '=>' switchExpressionResult)
+    //    | ('default'                         '=>' switchExpressionResult)
+    private Pair<String, String> getBody(
+            final SSCParser.SwitchExpressionContext ctx,
+            final String surroundingFunctionName,
+            final String returnType,
+            final List<LiteralVariable> captures,
+            final String capturesAsParams
+    ) {
+        final StringJoiner body = new StringJoiner("\n", "{\n    switch ( hash ) {\n", "\n    }\n}");
 
-        final String swexFunctionCall =
-                "%s( &%s, sizeof %s )".formatted(functionName, variableHolderIdentifier, variableHolderIdentifier);
+        final Box<SSCParser.SwitchExpressionBranchContext> defaultBranchCtx = new Box<>();
+        final Box<ExpressionType> switchedType = new Box<>();
 
-        final String returnType = Util.requireNonBlank(dispatcher.visit(ctx.typeName()));
+        for (final SSCParser.SwitchExpressionBranchContext branchCtx : ctx.switchExpressionBranch()) {
+            if (branchCtx.Default() != null) {
+                if (defaultBranchCtx.item != null) {
+                    throw dispatcher.getSSCCallbackException(
+                            "Duplicate default branch in switch expression",
+                            branchCtx,
+                            defaultBranchCtx.item
+                    );
+                }
 
-        if (!dispatcher.hasType("size_t")) {
-            dispatcher.addExternalDeclarationToEmitBefore(
-                    "\n#include <stddef.h> /* generated in SwitchExpressionConvertor */\n"
+                body.add(String.format("""
+                                        default:
+                                            return %s
+                                """,
+                        convertExpression(
+                                branchCtx.switchExpressionResult(),
+                                surroundingFunctionName,
+                                returnType,
+                                captures,
+                                capturesAsParams
+                        )));
+                defaultBranchCtx.item = branchCtx;
+                continue;
+            }
+
+            final ExpressionType typeOfExpressionInCurrentCase;
+            if (branchCtx.constant() != null) {
+                typeOfExpressionInCurrentCase = fromConstant(branchCtx.constant());
+            } else {
+                typeOfExpressionInCurrentCase = fromConstant(branchCtx.StringLiteral());
+            }
+            if (switchedType.item == null) {
+                switchedType.item = typeOfExpressionInCurrentCase;
+            } else if (switchedType.item != typeOfExpressionInCurrentCase) {
+                throw dispatcher.getSSCLanguageException(
+                        "Invalid value in switch expression case", // provide better message
+                        branchCtx.Case()
+                );
+            }
+
+            final String case_ = dispatcher.visit(branchCtx.Case());
+            final String constant = dispatcher.visit(branchCtx.constant());
+            final String result = convertExpression(
+                    branchCtx.switchExpressionResult(),
+                    surroundingFunctionName,
+                    returnType,
+                    captures,
+                    capturesAsParams
             );
-        }
-        final String function = "%s %s( const void *__restrict data, size_t nbytes )%n".formatted(returnType, functionName);
 
-        dispatcher.addExternalDeclarationToEmitBefore(
-                function + ";\n/* TODO: define function body */\n"
+            final String branch = String.format("""
+                                    %s %s:
+                                        return %s
+                            """,
+                    case_,
+                    constant,
+                    result
+            );
+            body.add(branch);
+        }
+        assert switchedType.item != null;
+        final String cType = switchedType.item.toCType();
+        final String param = cType + " hash";
+
+        return new Pair<>(param, body.toString());
+    }
+
+    //    : expression ';'
+    //    | compoundStatement
+    private String convertExpression(
+            SSCParser.SwitchExpressionResultContext ctx,
+            String surroundingFunctionName,
+            String returnType,
+            List<LiteralVariable> captures,
+            String capturesAsParams
+    ) {
+        if (ctx.expression() != null) {
+            return dispatcher.visit(ctx.expression()) + dispatcher.visit(ctx.Semi());
+        }
+
+        final String params = ""; // TODO
+
+        final LambdaFunction subLambda = new LambdaFunction(
+                SSCCUtil.createNameWithID("__ssc_swex_branch", surroundingFunctionName),
+                returnType,
+                params,
+                dispatcher.visit(ctx.compoundStatement()),
+                "",
+                dispatcher,
+                captures
         );
 
-        return swexFunctionCall;
+        dispatcher.addExternalDeclarationToEmitBefore(subLambda.getDefinition());
+
+        return subLambda.getName() + "(" + padIfNotBlank(params, s -> " " + s + ", ") + capturesAsParams + ");";
     }
 
-    private static String generateFunctionName(
-            final String surroundingFunctionName
-    ) {
-        return SSCCUtil.createNameWithID("__ssc_swex_fn", FUNCTION_IDS, surroundingFunctionName);
+
+    // constant
+    //    : IntegerConstant
+    //    | FloatingConstant
+    //    //|   EnumerationConstant
+    //    | CharacterConstant
+    //    | predefinedConstant
+    enum ExpressionType {
+        INTEGRAL,
+        FLOATING,
+        CHARACTER,
+        BOOL,
+        STRING,
+        ;
+
+        public String toCType() {
+            return switch (this) {
+                case BOOL -> "bool";
+                case FLOATING -> "double";
+                case CHARACTER -> "char";
+                case INTEGRAL -> "int";
+                case STRING -> "const char *";
+            };
+        }
     }
 
-    private static String generateVariableName(
-            final String surroundingFunctionName
-    ) {
-        return SSCCUtil.createNameWithID("__ssc_swex_var", VARIABLE_IDS, surroundingFunctionName);
+    private ExpressionType fromConstant(TerminalNode node) {
+        if (node.getSymbol().getType() == SSCParser.StringLiteral) {
+            return ExpressionType.STRING;
+        }
+        throw new IllegalArgumentException("Unknown constant type: " + node.getSymbol());
+    }
+
+    private ExpressionType fromConstant(SSCParser.ConstantContext ctx) {
+        if (ctx.IntegerConstant() != null) {
+            return ExpressionType.INTEGRAL;
+        }
+        if (ctx.FloatingConstant() != null) {
+            return ExpressionType.FLOATING;
+        }
+        if (ctx.CharacterConstant() != null) {
+            return ExpressionType.CHARACTER;
+        }
+        final SSCParser.PredefinedConstantContext predefCtx = ctx.predefinedConstant();
+        assert predefCtx != null;
+        if (predefCtx.Nulptr() != null) {
+            throw dispatcher.getSSCLanguageException(
+                    "nullptr is not a valid case expression", predefCtx.Nulptr()
+            );
+        }
+        if (predefCtx.False_() != null || predefCtx.True_() != null) {
+            return ExpressionType.BOOL;
+        }
+
+        throw new IllegalStateException("Unknown constant type: " + dispatcher.visit(ctx));
     }
 }

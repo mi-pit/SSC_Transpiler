@@ -44,8 +44,6 @@ public class VisitorDispatcher extends FormattingConvertor {
     private final List<String> externalDeclarationsToEmitBefore = new ArrayList<>();
     private final List<String> externalDeclarationsToEmitAfter = new ArrayList<>();
 
-    private final List<String> blockListItemsToEmitBefore = new ArrayList<>();
-
     private final Stack<Map<String, String>> replacements = new Stack<>();
     private final Map<TerminalNode, String> terminalReplacements = new HashMap<>();
 
@@ -176,23 +174,6 @@ public class VisitorDispatcher extends FormattingConvertor {
         return s;
     }
 
-    @Override
-    public String visitBlockItemList(SSCParser.BlockItemListContext ctx) {
-        return super.visitBlockItemList(ctx);
-    }
-
-    @Override
-    public String visitBlockItem(SSCParser.BlockItemContext ctx) {
-        final String item = super.visitBlockItem(ctx);
-
-        final StringJoiner joiner = new StringJoiner(System.lineSeparator());
-
-        dumpListToJoiner(blockListItemsToEmitBefore, joiner, getIndent());
-        joiner.add(item);
-
-        return joiner.toString();
-    }
-
     private static void dumpListToJoiner(List<String> ls, StringJoiner joiner, String indent) {
         for (final String item : ls) {
             joiner.add(indent + item);
@@ -221,10 +202,6 @@ public class VisitorDispatcher extends FormattingConvertor {
 
     public void addExternalDeclarationToEmitBefore(String code) {
         externalDeclarationsToEmitBefore.add(code);
-    }
-
-    public void addBlockListItemToEmitBefore(String code) {
-        blockListItemsToEmitBefore.add(code);
     }
 
 
@@ -269,7 +246,6 @@ public class VisitorDispatcher extends FormattingConvertor {
 
 
     /* ==== GETTERS ==== */
-
 
     /// Searches current function & global variables
     public Optional<SuperstructVariable> findSuperstructVariable(String objectName) {

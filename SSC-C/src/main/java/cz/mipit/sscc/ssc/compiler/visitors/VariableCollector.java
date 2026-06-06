@@ -3,12 +3,17 @@ package cz.mipit.sscc.ssc.compiler.visitors;
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.Main;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
+import cz.mipit.sscc.ssc.compiler.data.var.LiteralVariable;
 import cz.mipit.sscc.ssc.compiler.data.var.Pointer;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.data.var.Typedef;
 import cz.mipit.sscc.util.Either;
+import cz.mipit.sscc.util.SSCCUtil;
 import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -21,6 +26,10 @@ public class VariableCollector {
     }
 
     public void collect(SSCParser.ParameterDeclarationContext ctx) {
+        if (dispatcher.getCurrentFunctionName() == null) {
+            return;
+        }
+
         final SSCParser.DeclarationSpecifiersContext declSpecsCtx = ctx.declarationSpecifiers();
         if (declSpecsCtx == null) {
             return; // empty parameter list
@@ -31,7 +40,7 @@ public class VariableCollector {
             return;
         }
 
-        collectSuperstructVariables(declSpecsCtx, List.of(declarator));
+        collectVariables(declSpecsCtx, List.of(declarator));
     }
 
     public void collect(SSCParser.DeclarationContext ctx) {
@@ -50,13 +59,13 @@ public class VariableCollector {
                 );
 
         if (isTypedef) {
-            collectSuperstructTypedefs(ctx, declSpecsLs);
+            collectTypedefs(ctx, declSpecsLs);
         } else {
-            collectSuperstructVariablesFromDeclaration(ctx);
+            collectVariablesFromDeclaration(ctx);
         }
     }
 
-    private void collectSuperstructTypedefs(
+    private void collectTypedefs(
             final SSCParser.DeclarationContext ctx,
             final List<SSCParser.DeclarationSpecifierContext> declSpecsLs
     ) {
@@ -91,9 +100,12 @@ public class VariableCollector {
                 })
                 .filter(Objects::nonNull)
                 .toList();
+
         if (ssSpecs.isEmpty()) {
+            collectNonSuperstructVariable(declaratorsList, declSpecsLs);
             return;
         }
+
         if (ssSpecs.size() > 1) {
             throw dispatcher.getSSCLanguageException("Multiple superstruct types found in typedef", ctx);
         }
@@ -126,7 +138,7 @@ public class VariableCollector {
         }
     }
 
-    private void collectSuperstructVariablesFromDeclaration(
+    private void collectVariablesFromDeclaration(
             final SSCParser.DeclarationContext ctx
     ) {
         if (ctx.initDeclaratorList() == null) {
@@ -141,17 +153,55 @@ public class VariableCollector {
             );
         }
 
+        // initDeclarator
+        //      : declarator ('=' initializer)?
+        // initializer
+        //      : assignmentExpression
+        //      | '{' initializerList ','? '}'
+        //      | '{' '}'
+
         final List<SSCParser.DeclaratorContext> declarators = ctx
                 .initDeclaratorList()
                 .initDeclarator()
                 .stream()
+                .filter(initDecl -> {
+                    if (initDecl.initializer() == null) {
+                        return true;
+                    }
+                    final SSCParser.InitializerContext initializer = initDecl.initializer();
+                    if (initializer.assignmentExpression() == null) {
+                        return true;
+                    }
+
+                    final List<SSCParser.PrimaryExpressionContext> primaryExpressions =
+                            getPrimaryExpression(initializer.assignmentExpression());
+                    for (final SSCParser.PrimaryExpressionContext primary : primaryExpressions) {
+                        if (primary.switchExpression() != null || primary.lambdaFunction() != null) {
+                            return false;
+                        }
+                    }
+                    return true;
+                })
                 .map(SSCParser.InitDeclaratorContext::declarator)
                 .toList();
 
-        collectSuperstructVariables(declSpecs, declarators);
+        collectVariables(declSpecs, declarators);
     }
 
-    private void collectSuperstructVariables(
+    private List<SSCParser.PrimaryExpressionContext> getPrimaryExpression(
+            final ParseTree node
+    ) {
+        if (node instanceof SSCParser.PrimaryExpressionContext p) {
+            return List.of(p);
+        }
+        final List<SSCParser.PrimaryExpressionContext> primaryExpressions = new ArrayList<>();
+        for (int i = 0; i < node.getChildCount(); i++) {
+            primaryExpressions.addAll(getPrimaryExpression(node.getChild(i)));
+        }
+        return primaryExpressions;
+    }
+
+    private void collectVariables(
             SSCParser.DeclarationSpecifiersContext declSpecsCtx,
             List<SSCParser.DeclaratorContext> declarators
     ) {
@@ -162,6 +212,7 @@ public class VariableCollector {
         final List<SSCParser.DeclarationSpecifierContext> declSpecs = declSpecsCtx.declarationSpecifier();
         final Optional<Either<String, Typedef<SuperStruct>>> maybeEither = findSSNameInDeclSpecs(declSpecs);
         if (maybeEither.isEmpty()) {
+            collectNonSuperstructVariable(declarators, declSpecs);
             return;
         }
 
@@ -179,8 +230,47 @@ public class VariableCollector {
             );
 
             mapped.ifPresent(v ->
-                    dispatcher.state.addFunctionVariable(v, declarator)
+                    dispatcher.state.addSuperstructVariable(v, declarator)
             );
+        }
+    }
+
+    private void collectNonSuperstructVariable(
+            List<SSCParser.DeclaratorContext> declarators,
+            List<SSCParser.DeclarationSpecifierContext> declSpecs
+    ) {
+        if (
+                declSpecs
+                        .stream()
+                        .map(SSCParser.DeclarationSpecifierContext::storageClassSpecifier)
+                        .filter(Objects::nonNull)
+                        .map(SSCParser.StorageClassSpecifierContext::Typedef)
+                        .anyMatch(Objects::nonNull)
+        ) {
+            // typedef
+            return;
+        }
+
+        for (SSCParser.DeclaratorContext declarator : declarators) {
+            final SSCParser.DirectDeclaratorContext directDeclarator = declarator.directDeclarator();
+            if (!directDeclarator.parameterTypeList().isEmpty()) {
+                // function
+                continue;
+            }
+
+            final TerminalNode ident = SSCCUtil.getIdentifierFromDeclarator(declarator);
+            final String identifier = dispatcher.visit(ident);
+
+            final List<Pointer> pointers = Pointer.fromDeclarator(dispatcher::visit, declarator);
+
+            final LiteralVariable var = new LiteralVariable(
+                    identifier,
+                    pointers,
+                    declSpecs.stream().filter(s -> s.storageClassSpecifier() == null).toList(),
+                    declarator
+            );
+
+            dispatcher.state.addVariable(var, declarator);
         }
     }
 

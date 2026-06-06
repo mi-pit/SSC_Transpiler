@@ -98,12 +98,27 @@ public final class SSCCUtil {
     }
 
 
+    private static final AtomicLong IDS = new AtomicLong();
+
     public static String createNameWithID(
             final String sscIdentifier,
-            final AtomicLong id,
             final String surroundingFunctionName
     ) {
-        return String.format("%s_id%019d_%s", sscIdentifier, id.getAndIncrement(), surroundingFunctionName);
+        return String.format("%s_id%019d_%s", sscIdentifier, IDS.getAndIncrement(), surroundingFunctionName);
+    }
+
+    public static String createTypedef(
+            final VisitorDispatcher dispatcher,
+            final String prefix,
+            final String surroundingFunctionName,
+            final SSCParser.TypeNameContext typeName
+    ) {
+        final String typedefIdentifier = createNameWithID(prefix, surroundingFunctionName);
+        final String typedefDeclarator = insertIdentifierIntoDeclarator(dispatcher, typeName.abstractDeclarator(), typedefIdentifier);
+        final String typedefSpecifiersQualifiers = dispatcher.visit(typeName.specifierQualifierList());
+        final String typedef = "typedef " + typedefSpecifiersQualifiers + " " + typedefDeclarator + ";";
+        dispatcher.addExternalDeclarationToEmitBefore(typedef);
+        return typedefIdentifier;
     }
 
     public static class Text {

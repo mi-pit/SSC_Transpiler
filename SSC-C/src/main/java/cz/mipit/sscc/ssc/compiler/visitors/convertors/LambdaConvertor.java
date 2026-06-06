@@ -5,13 +5,11 @@ import cz.mipit.sscc.ssc.compiler.data.lambda.LambdaFunction;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import cz.mipit.sscc.util.SSCCUtil;
 
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.Collections;
 
-import static cz.mipit.sscc.util.SSCCUtil.insertIdentifierIntoDeclarator;
+import static cz.mipit.sscc.util.SSCCUtil.createTypedef;
 
 public class LambdaConvertor extends AbstractConvertor<SSCParser.LambdaFunctionContext> {
-    public static final AtomicLong ids = new AtomicLong();
-
     public LambdaConvertor(VisitorDispatcher dispatcher) {
         super(dispatcher, SSCParser.LambdaFunctionContext.class);
     }
@@ -19,17 +17,18 @@ public class LambdaConvertor extends AbstractConvertor<SSCParser.LambdaFunctionC
     @Override
     public String convert(SSCParser.LambdaFunctionContext ctx) {
         final String surroundingFunctionName = dispatcher.getCurrentFunctionName();
-        final String lambdaName = LambdaFunction.createName(surroundingFunctionName);
+        final String lambdaName = SSCCUtil.createNameWithID("__ssc_lambda", surroundingFunctionName);
 
         dispatcher.pushFunction(lambdaName, null);
 
         final SSCParser.TypeNameContext typeName = ctx.typeName();
 
-        final String typedefIdentifier = SSCCUtil.createNameWithID("__ssc_lambda_typedef", ids, surroundingFunctionName);
-        final String typedefDeclarator = insertIdentifierIntoDeclarator(dispatcher, typeName.abstractDeclarator(), typedefIdentifier);
-        final String typedefSpecifiersQualifiers = dispatcher.visit(typeName.specifierQualifierList());
-        final String typedef = "typedef " + typedefSpecifiersQualifiers + " " + typedefDeclarator + ";";
-        dispatcher.addExternalDeclarationToEmitBefore(typedef);
+        final String typedefIdentifier = createTypedef(
+                dispatcher,
+                "__ssc_lambda_type",
+                surroundingFunctionName,
+                typeName
+        );
 
         final String parameters = dispatcher.visit(ctx.parameterTypeList());
         final String body = dispatcher.visit(ctx.functionBody());
@@ -42,7 +41,9 @@ public class LambdaConvertor extends AbstractConvertor<SSCParser.LambdaFunctionC
                 typedefIdentifier,
                 parameters,
                 body,
-                lambdaAttributes
+                lambdaAttributes,
+                dispatcher,
+                Collections.emptyList()
         );
 
         dispatcher.popFunction();

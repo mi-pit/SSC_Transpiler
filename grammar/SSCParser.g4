@@ -165,9 +165,18 @@ lambdaAttributes
 // SSC
 switchExpression
     : 'swex' '(' expression ')' '->' typeName '{'
-          ('case'    (constant | StringLiteral) '=>' statement)+
-          ('default'                            '=>' statement)?
+          switchExpressionBranch+
       '}'
+    ;
+
+switchExpressionBranch
+    : ('case'    (constant | StringLiteral) '=>' switchExpressionResult)
+    | ('default'                            '=>' switchExpressionResult)
+    ;
+
+switchExpressionResult
+    : expression ';'
+    | compoundStatement
     ;
 
 // GNU exprList

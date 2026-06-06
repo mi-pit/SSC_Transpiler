@@ -4,17 +4,18 @@ import antlr.ssc.SymbolTable;
 import cz.mipit.sscc.ssc.compiler.data.FunctionSSCData;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.tmpl.Template;
+import cz.mipit.sscc.ssc.compiler.data.var.LiteralVariable;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.data.var.Typedef;
 import cz.mipit.sscc.util.SSCCUtil;
-import cz.mipit.sscc.util.annotations.NotNull;
-import cz.mipit.sscc.util.annotations.Nullable;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -42,9 +43,11 @@ public final class CompilerState {
 
     private record Scope(
             Optional<String> name,
-            Map<@NotNull String, WithContext<SuperStruct>> superstructs,
-            Map<@NotNull String, WithContext<Typedef<SuperStruct>>> superstructTypedefs,
-            Map<@NotNull String, WithContext<SuperstructVariable>> superstructVariables
+            Map<String, WithContext<SuperStruct>> superstructs,
+            Map<String, WithContext<Typedef<SuperStruct>>> superstructTypedefs,
+            Map<String, WithContext<SuperstructVariable>> superstructVariables,
+
+            Map<String, WithContext<LiteralVariable>> literalVariables
     ) {
         private static <T> String mapToString(Collection<Map.Entry<String, WithContext<T>>> s) {
             return s.stream()
@@ -93,11 +96,11 @@ public final class CompilerState {
     private final StringBuilder debugScopesStack = new StringBuilder();
     private int debugScopesStack_currentDepth = 0;
 
-    private final Map<@NotNull String, Template> templates = new HashMap<>();
+    private final Map<String, Template> templates = new HashMap<>();
     private int templateStack;
 
     private Stack<SuperStruct> superstructStack;
-    private final Deque<@NotNull String> functionCallStack;
+    private final Deque<String> functionCallStack;
 
     private FunctionSSCData currentFunctionSSCData;
 
@@ -120,6 +123,7 @@ public final class CompilerState {
     public void pushScope(String name) {
         final Scope scope = new Scope(
                 Optional.ofNullable(name),
+                new HashMap<>(),
                 new HashMap<>(),
                 new HashMap<>(),
                 new HashMap<>()
@@ -256,11 +260,47 @@ public final class CompilerState {
     }
 
 
+    public void addVariable(LiteralVariable var, ParseTree ctx) {
+        addToScope(
+                Scope::literalVariables,
+                var.getIdentifier(),
+                new WithContext<>(var, ctx) {
+                    @Override
+                    String identifier() {
+                        return var.getIdentifier();
+                    }
+
+                    @Override
+                    String kind() {
+                        return "variable";
+                    }
+                }
+        );
+    }
+
+    public LiteralVariable getLiteralVariable(String name) {
+        return getAllVisible(Scope::literalVariables).get(name);
+    }
+
+    public Collection<LiteralVariable> visibleVariables() {
+        return getAllVisible(Scope::literalVariables).values();
+    }
+
+    public List<LiteralVariable> nonGlobalVariables() {
+        final List<LiteralVariable> nonGlobalVariables =
+                new ArrayList<>(getAllVisible(Scope::literalVariables).values());
+        nonGlobalVariables.removeAll(
+                getGlobalScope().literalVariables.values().stream().map(wc -> wc.var).toList()
+        );
+        return nonGlobalVariables;
+    }
+
+
     /**
      * @param var variable to be added to current scope
      * @param ctx for exception message creation
      */
-    public void addFunctionVariable(
+    public void addSuperstructVariable(
             final SuperstructVariable var,
             ParseTree ctx
     ) {
@@ -325,7 +365,7 @@ public final class CompilerState {
         return scopes.peek();
     }
 
-    public Map<@Nullable String, SuperstructVariable> currentVariables() {
+    public Map<String, SuperstructVariable> currentVariables() {
         return getAllVisible(Scope::superstructVariables);
     }
 
@@ -359,14 +399,6 @@ public final class CompilerState {
 
     public Collection<SuperStruct> visibleSuperstructs() {
         return getAllVisible(Scope::superstructs).values();
-    }
-
-    public Collection<Typedef<SuperStruct>> visibleTypedefs() {
-        return getAllVisible(Scope::superstructTypedefs).values();
-    }
-
-    public Collection<SuperstructVariable> visibleVariables() {
-        return getAllVisible(Scope::superstructVariables).values();
     }
 
 
