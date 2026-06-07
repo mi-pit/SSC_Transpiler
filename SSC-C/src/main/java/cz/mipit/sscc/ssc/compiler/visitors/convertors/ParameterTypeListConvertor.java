@@ -5,6 +5,8 @@ import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.var.Pointer;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
+import cz.mipit.sscc.util.collection.Enumerated;
+import cz.mipit.sscc.util.collection.Enumerator;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.util.ArrayList;
@@ -57,16 +59,26 @@ public class ParameterTypeListConvertor extends AbstractConvertor<SSCParser.Para
 
         // parameterDeclaration (',' parameterDeclaration)*
         final List<SSCParser.ParameterDeclarationContext> parameterDeclaration = ctx.parameterList().parameterDeclaration();
-        for (final SSCParser.ParameterDeclarationContext param : parameterDeclaration) {
-            final String s = dispatcher.visit(param);
+        for (final Enumerated<SSCParser.ParameterDeclarationContext> iParam : Enumerator.of(parameterDeclaration)) {
+            if ("void".equals(dispatcher.getLiteral(iParam.item()))) {
+                if (iParam.index() != 0) {
+                    throw dispatcher.getSSCLanguageException(
+                            "Void parameter", iParam.item()
+                    );
+                }
+                continue;
+            }
+
+            final String s = dispatcher.visit(iParam.item());
 
             // parameterDeclaration may be empty for the first context if there are no parameters
             if (s.isBlank()) {
+                if (iParam.index() != 0) {
+                    throw dispatcher.getSSCLanguageException(
+                            "Blank parameter", iParam.item()
+                    );
+                }
                 break;
-            }
-
-            if ("void".equals(dispatcher.getLiteral(param))) {
-                continue;
             }
 
             parameterListList.add(s);
@@ -76,8 +88,7 @@ public class ParameterTypeListConvertor extends AbstractConvertor<SSCParser.Para
             parameterListList.add(dispatcher.visit(ctx.Ellipsis()));
         }
 
-        if (parameterListList.stream().anyMatch(String::isBlank))
-            throw new AssertionError();
+        assert parameterListList.stream().noneMatch(String::isBlank);
 
         if (parameterListList.isEmpty()) {
             parameterListList.add("void");

@@ -101,6 +101,6 @@ public abstract class CollectionAdapter<ITEM, COLL extends java.util.Collection<
     }
 
     public Enumerator<ITEM> enumerator() {
-        return new Enumerator<>(iterator());
+        return Enumerator.from(iterator());
     }
 }

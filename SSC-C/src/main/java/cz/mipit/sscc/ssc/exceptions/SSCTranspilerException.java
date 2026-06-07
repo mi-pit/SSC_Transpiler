@@ -118,7 +118,7 @@ public class SSCTranspilerException extends RuntimeException {
             CommonTokenStream tokens
     ) {
         final List<ErrorMessage> list = new ArrayList<>();
-        for (final Enumerated<ParseTree> offender : new Enumerator<>(offenders)) {
+        for (final Enumerated<ParseTree> offender : Enumerator.of(offenders)) {
             final int linesBefore = offender.index() == 0 ? LINES_BEFORE : 0;
             final int linesAfter = offender.index() == 0 ? LINES_AFTER : 0;
             final String actualMessage = offender.index() == 0 ? message : "Previous definition here:";

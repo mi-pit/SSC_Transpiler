@@ -104,7 +104,7 @@ public final class SSCCUtil {
             final String sscIdentifier,
             final String surroundingFunctionName
     ) {
-        return String.format("%s_id%019d_%s", sscIdentifier, IDS.getAndIncrement(), surroundingFunctionName);
+        return String.format("%s_id%d_%s", sscIdentifier, IDS.getAndIncrement(), surroundingFunctionName);
     }
 
     public static String createTypedef(

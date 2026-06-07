@@ -2,7 +2,6 @@ package cz.mipit.sscc.ssc.compiler.visitors.convertors;
 
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.Main;
-import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.tmpl.Template;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import cz.mipit.sscc.util.SSCCUtil;
@@ -16,7 +15,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Stack;
 
 public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.TemplateDispatchContext> {
     private final Set<String> alreadyEmitted;
@@ -135,9 +133,9 @@ public class TemplateDispatchConvertor extends AbstractConvertor<SSCParser.Templ
                 functionName
         );
 
-        for (Enumerated<String> s : new Enumerator<>(typeArgumentsConverted)) {
+        for (Enumerated<String> s : Enumerator.offset(typeArgumentsConverted, 1)) {
             sBuilder.append("_")
-                    .append(s.index() + 1)
+                    .append(s.index())
                     .append(s.item());
         }
 

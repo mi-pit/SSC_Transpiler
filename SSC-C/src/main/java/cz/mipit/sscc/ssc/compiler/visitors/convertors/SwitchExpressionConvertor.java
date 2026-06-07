@@ -40,8 +40,6 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
         final String surroundingFunctionName = dispatcher.getCurrentFunctionName();
         final String swexFunctionName = SSCCUtil.createNameWithID("__ssc_swex_fn", surroundingFunctionName);
 
-        //dispatcher.pushFunction(swexFunctionName, null);
-
         final String typedefIdentifier = SSCCUtil.createTypedef(
                 dispatcher,
                 "__ssc_swex_typedef",
@@ -49,7 +47,7 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
                 typeName
         );
 
-        final List<LiteralVariable> captures = dispatcher.state.nonGlobalVariables();
+        final List<LiteralVariable> captures = dispatcher.state.nonGlobalVariables(); // TODO: only pass the used ones
         final String capturesAsParams = captures.stream()
                 .map(LiteralVariable::getIdentifier)
                 .collect(Collectors.joining(", "));
@@ -67,8 +65,6 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
                 dispatcher,
                 captures
         );
-
-        //dispatcher.popFunction();
 
         dispatcher.addExternalDeclarationToEmitBefore(lambda.getDefinition());
 
