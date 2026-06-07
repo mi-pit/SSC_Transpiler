@@ -140,16 +140,18 @@ Run `run.sh` or execute the `sscc.jar` with java directly.
 
 #### Options
 
-| Name | Long name            | Description                                         |
-|------|----------------------|-----------------------------------------------------|
-| `-h` | `--help`             | print help and exit                                 |
-| `-v` | `--verbose`          | verbose -- print all stages                         |
-| `-s` | `--no-stop-on-error` | stop if transpilation of any file fails             |
-| `-d` | `--dir     ‹dir›`    | process all files in the given directory            |
-| `-c` | `--compile ‹bin›`    | compile the output of all given files into a binary |
-|      | `--debug`            | print debug info                                    |
-|      | `--debug!`           | print debug info about antlr parsing                |
-| `--` |                      | treat all following arguments as file names         |
+Table might not be accurate. Run `--help` to see all canonical options
+
+| Short | Long                 | Description                                         |
+|-------|----------------------|-----------------------------------------------------|
+| `-h`  | `--help`             | print help and exit                                 |
+| `-v`  | `--verbose`          | verbose -- print all stages                         |
+| `-s`  | `--no-stop-on-error` | stop if transpilation of any file fails             |
+| `-d`  | `--dir     ‹dir›`    | process all files in the given directory            |
+| `-c`  | `--compile ‹bin›`    | compile the output of all given files into a binary |
+|       | `--debug`            | print debug info                                    |
+|       | `--debug!`           | print debug info about antlr parsing                |
+| `--`  |                      | treat all following arguments as file names         |
 
 #### Example
 
