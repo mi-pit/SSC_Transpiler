@@ -30,7 +30,7 @@ public final class LambdaFunction {
     ) {
         final String capturesJoined = (!captures.isEmpty() && !params.isBlank() ? ", " : "")
                                       + captures.stream()
-                                              .map(v -> "__attribute__((unused)) " + v.getDeclaration(dispatcher))
+                                              .map(v -> "/* capture */ __attribute__((unused)) " + v.getDeclaration(dispatcher))
                                               .collect(Collectors.joining(", "));
 
         this.returnType = " " + requireNonBlank(requireNonNull(returnType)) + " ";

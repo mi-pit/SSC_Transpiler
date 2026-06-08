@@ -3,6 +3,7 @@ package cz.mipit.sscc.ssc.compiler.visitors.convertors;
 import antlr.ssc.SSCParser;
 import antlr.ssc.Symbol;
 import antlr.ssc.TypeClassification;
+import cz.mipit.sscc.Main;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import cz.mipit.sscc.util.SSCCUtil;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -89,11 +90,12 @@ public class FlagsConvertor extends AbstractConvertor<SSCParser.FlagsSpecifierCo
     private String getDesiredType(int bitsNeeded) {
         for (final PossibleEnumType possibleEnumType : POSSIBLE_ENUM_TYPES) {
             final String desiredType = possibleEnumType.toCType(bitsNeeded);
-            if (dispatcher.hasType(desiredType)) {
+            if (dispatcher.hasSymbol(desiredType)) {
                 return desiredType;
             }
         }
 
+        Main.logger.printDebug("Adding ssclib types.h include");
         dispatcher.addExternalDeclarationToEmitBefore(
                 "#include <ssclib/headers/core/types.h>"
         );
@@ -168,7 +170,7 @@ public class FlagsConvertor extends AbstractConvertor<SSCParser.FlagsSpecifierCo
 
         throw dispatcher.getSSCLanguageException(
                 "Value of a flags initializer must be one of "
-                        + Arrays.toString(POSSIBLE_INTEGER_INITIALIZERS),
+                + Arrays.toString(POSSIBLE_INTEGER_INITIALIZERS),
                 initializer
         );
     }

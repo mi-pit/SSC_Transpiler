@@ -205,7 +205,7 @@ public class VisitorDispatcher extends FormattingConvertor {
     }
 
 
-    public boolean hasType(String typeName) {
+    public boolean hasSymbol(String typeName) {
         return state.symbolTable().resolve(typeName) != null;
     }
 

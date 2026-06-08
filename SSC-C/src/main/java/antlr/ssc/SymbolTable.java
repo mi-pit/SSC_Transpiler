@@ -177,19 +177,20 @@ public class SymbolTable {
     }
 
     public Symbol resolve(String name, Symbol startScope) {
-        if (startScope == null) {
-            // Iterate from innermost (top of stack) to outermost (bottom of stack)
-            for (int i = scopeStack.size() - 1; i >= 0; i--) {
-                Symbol scope = scopeStack.get(i);
-                Symbol symbol = scope.getMembers().get(name);
-                if (symbol != null) {
-                    return symbol;
-                }
-            }
-            return null; // Symbol not found
-        } else {
+        if (startScope != null) {
             return startScope.getMembers().get(name);
         }
+
+        // Iterate from innermost (top of stack) to outermost (bottom of stack)
+        for (int i = scopeStack.size() - 1; i >= 0; i--) {
+            Symbol scope = scopeStack.get(i);
+            Symbol symbol = scope.getMembers().get(name);
+            if (symbol != null) {
+                return symbol;
+            }
+        }
+
+        return null; // Symbol not found
     }
 
     public Symbol pushBlockScope() {

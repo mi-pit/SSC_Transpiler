@@ -34,7 +34,8 @@ import static cz.mipit.sscc.Main.logger;
 public final class SSCCompiler implements Compiler {
     // TODO? define this to be the date value of the last commit
     private static final String SSC_DEF_MACRO_STRING_NAME = "__SSC_SOURCE__";
-    private static final Path SSCLIB_HOME;
+
+    public static final Path SSCLIB_HOME;
 
     static {
         final String sscLibHomeEnv = System.getenv("SSCLIB_HOME");
@@ -309,7 +310,7 @@ public final class SSCCompiler implements Compiler {
         return doProcess(args);
     }
 
-    synchronized private static int doProcess(final List<String> args)
+    public synchronized static int doProcess(final List<String> args)
             throws IOException, InterruptedException {
         logger.printDebug(() -> "Creating a new process: " + String.join(" ", args));
         return new ProcessBuilder(args)
