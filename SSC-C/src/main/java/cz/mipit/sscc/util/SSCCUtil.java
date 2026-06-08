@@ -11,8 +11,10 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Predicate;
 
 import static cz.mipit.sscc.util.SSCCUtil.Maths.digitsOf;
 import static java.lang.System.lineSeparator;
@@ -25,6 +27,28 @@ public final class SSCCUtil {
         }
 
         return declarator.directDeclarator().Identifier();
+    }
+
+    public static List<ParseTree> allMatching(ParseTree node, Predicate<ParseTree> matcher) {
+        if (node == null) {
+            return Collections.emptyList();
+        }
+
+        if (matcher.test(node)) {
+            return List.of(node);
+        }
+
+        if (node instanceof TerminalNode) {
+            return List.of();
+        }
+
+        final List<ParseTree> result = new ArrayList<>();
+        for (int i = 0; i < node.getChildCount(); i++) {
+            result.addAll(
+                    allMatching(node.getChild(i), matcher)
+            );
+        }
+        return result;
     }
 
     // vcSpecificModifer? pointer
@@ -70,7 +94,8 @@ public final class SSCCUtil {
             String identifier
     ) {
         if (ctx.abstractDeclarator() != null) {
-            return "( %s ) %s".formatted(
+            return String.format(
+                    "( %s ) %s",
                     insertIdentifierIntoDeclarator(dispatcher, ctx.abstractDeclarator(), identifier),
                     getRestOfChildren(dispatcher, ctx, 3)
             );
@@ -119,6 +144,16 @@ public final class SSCCUtil {
             return "void";
         }
 
+        final List<ParseTree> identifier = allMatching(
+                typeName.abstractDeclarator(),
+                node -> node instanceof TerminalNode t && t.getSymbol().getType() == SSCParser.Identifier
+        );
+        identifier.forEach(node -> {
+            throw dispatcher.getSSCLanguageException(
+                    "Identifiers not allowed in lambda return types", node
+            );
+        });
+
         final String typedefIdentifier = createNameWithID(prefix, surroundingFunctionName);
         final String typedefDeclarator = insertIdentifierIntoDeclarator(dispatcher, typeName.abstractDeclarator(), typedefIdentifier);
         final String typedefSpecifiersQualifiers = dispatcher.visit(typeName.specifierQualifierList());
@@ -137,8 +172,8 @@ public final class SSCCUtil {
         public static boolean charMayBePartOfIdentifier(int indexWithinIdentifier, char c) {
             return (c >= 'a' && c <= 'z') ||
                    (c >= 'A' && c <= 'Z') ||
-                   (c >= '0' && c <= '9') ||
-                   c == '_';
+                   (indexWithinIdentifier > 0 && (c >= '0' && c <= '9')) ||
+                   (c == '_');
         }
 
         /**
