@@ -162,6 +162,42 @@ public final class SSCCUtil {
         return typedefIdentifier;
     }
 
+    /**
+     * Returns the exact text corresponding to a ParserRuleContext.
+     * Works for any context.
+     */
+    public static String getLiteral(ParserRuleContext ctx, CommonTokenStream tokens) {
+        final int start = ctx.getStart().getTokenIndex();
+        final int stop = ctx.getStop().getTokenIndex();
+        return tokens.getText(Interval.of(start, stop));
+    }
+
+    /**
+     * Retrieves lines before and after the given token.
+     *
+     * @return {@link ArrayList} of {@code before + 1 + after}-many {@link EnumeratedLine}s
+     */
+    public static List<EnumeratedLine> getLinesAroundToken(
+            final Token token,
+            final CommonTokenStream tokens,
+            final int before,
+            final int after
+    ) {
+        final String fullText = tokens.getTokenSource().getInputStream().toString();
+        final String[] lines = fullText.split(lineSeparator(), -1);
+
+        final int lineIndex = token.getLine() - 1;
+        final int start = Math.max(0, lineIndex - before);
+        final int end = Math.min(lines.length - 1, lineIndex + after);
+
+        final List<EnumeratedLine> ls = new ArrayList<>();
+        for (int i = start; i <= end; i++) {
+            ls.add(new EnumeratedLine(i + 1, lines[i]));
+        }
+
+        return ls;
+    }
+
     public static class Text {
         public static final String INDENT = "    ";
 
@@ -174,42 +210,6 @@ public final class SSCCUtil {
                    (c >= 'A' && c <= 'Z') ||
                    (indexWithinIdentifier > 0 && (c >= '0' && c <= '9')) ||
                    (c == '_');
-        }
-
-        /**
-         * Returns the exact text corresponding to a ParserRuleContext.
-         * Works for any context.
-         */
-        public static String getLiteral(ParserRuleContext ctx, CommonTokenStream tokens) {
-            final int start = ctx.getStart().getTokenIndex();
-            final int stop = ctx.getStop().getTokenIndex();
-            return tokens.getText(Interval.of(start, stop));
-        }
-
-        /**
-         * Retrieves lines before and after the given token.
-         *
-         * @return {@link ArrayList} of {@code before + 1 + after}-many {@link EnumeratedLine}s
-         */
-        public static List<EnumeratedLine> getLinesAroundToken(
-                final Token token,
-                final CommonTokenStream tokens,
-                final int before,
-                final int after
-        ) {
-            final String fullText = tokens.getTokenSource().getInputStream().toString();
-            final String[] lines = fullText.split(lineSeparator(), -1);
-
-            final int lineIndex = token.getLine() - 1;
-            final int start = Math.max(0, lineIndex - before);
-            final int end = Math.min(lines.length - 1, lineIndex + after);
-
-            final List<EnumeratedLine> ls = new ArrayList<>();
-            for (int i = start; i <= end; i++) {
-                ls.add(new EnumeratedLine(i + 1, lines[i]));
-            }
-
-            return ls;
         }
 
         public static int getLineNumberLength(final int min, final int max) {

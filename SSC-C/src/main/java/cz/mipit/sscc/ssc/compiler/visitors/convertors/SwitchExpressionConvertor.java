@@ -5,6 +5,7 @@ import cz.mipit.sscc.ssc.compiler.data.lambda.LambdaFunction;
 import cz.mipit.sscc.ssc.compiler.data.var.LiteralVariable;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import cz.mipit.sscc.util.SSCCUtil;
+import cz.mipit.sscc.util.Util;
 import cz.mipit.sscc.util.collection.Box;
 import org.antlr.v4.runtime.misc.Pair;
 import org.antlr.v4.runtime.tree.TerminalNode;
@@ -298,9 +299,13 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
                 }
                 final String literal;
                 {
-                    final String tmp = dispatcher.visit(ctx.StringLiteral());
+                    String tmp = dispatcher.visit(ctx.StringLiteral());
+
                     assert tmp.charAt(0) == '"' && tmp.charAt(tmp.length() - 1) == '"';
-                    literal = tmp.substring(1, tmp.length() - 1);
+                    tmp = tmp.substring(1, tmp.length() - 1);
+
+                    tmp = Util.unescapeString(tmp);
+                    literal = tmp;
                 }
                 if (alreadyParsedStrings.contains(literal)) {
                     throw dispatcher.getSSCLanguageException(
@@ -318,7 +323,7 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
     private long hashString(String s) {
         final byte[] bytes = s.getBytes(StandardCharsets.US_ASCII);
 
-        long hash = 23L * bytes.length;
+        long hash = 23L * (bytes.length + 1); // + 1 so that empty strings and nulls have different values
         for (final byte b : bytes) {
             hash = (hash << 4) + b;
         }

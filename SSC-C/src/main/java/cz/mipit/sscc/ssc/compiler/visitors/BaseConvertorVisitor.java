@@ -148,7 +148,7 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
         if (node instanceof TerminalNode t)
             return t.getText();
         if (node instanceof ParserRuleContext p)
-            return SSCCUtil.Text.getLiteral(p, tokens);
+            return SSCCUtil.getLiteral(p, tokens);
 
         return "";
     }

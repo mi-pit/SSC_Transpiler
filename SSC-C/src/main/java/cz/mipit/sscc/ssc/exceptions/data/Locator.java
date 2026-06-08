@@ -53,7 +53,7 @@ public class Locator {
 
         final int start = ctx.getStart().getCharPositionInLine();
 
-        final String literal = SSCCUtil.Text.getLiteral(ctx, tokens);
+        final String literal = SSCCUtil.getLiteral(ctx, tokens);
 
         final int nSpaces = offset + start;
         final int nCarets = Math.max(

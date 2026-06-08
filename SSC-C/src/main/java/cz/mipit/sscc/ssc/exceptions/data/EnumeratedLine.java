@@ -27,7 +27,7 @@ public record EnumeratedLine(int lineNumber, String line) {
             Token token, CommonTokenStream tokens,
             int linesBefore, int linesAfter
     ) {
-        return SSCCUtil.Text.getLinesAroundToken(token, tokens, linesBefore, linesAfter);
+        return SSCCUtil.getLinesAroundToken(token, tokens, linesBefore, linesAfter);
     }
 
     public static List<EnumeratedLine> getLines(
