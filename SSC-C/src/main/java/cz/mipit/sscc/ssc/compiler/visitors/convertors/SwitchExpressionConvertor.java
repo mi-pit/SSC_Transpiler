@@ -41,7 +41,7 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
         final String surroundingFunctionName = dispatcher.getCurrentFunctionName();
         final String swexFunctionName = SSCCUtil.createNameWithID("__ssc_swex_fn", surroundingFunctionName);
 
-        final String typedefIdentifier = SSCCUtil.createTypedef(
+        final String returnTypeIdentifier = SSCCUtil.createTypedef(
                 dispatcher,
                 "__ssc_swex_type",
                 surroundingFunctionName,
@@ -57,7 +57,7 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
         final String body;
         {
             final Pair<ExpressionType, String> typeAndBody = getParameterAndBody(
-                    ctx, surroundingFunctionName, typedefIdentifier, captures, capturesAsParams
+                    ctx, surroundingFunctionName, returnTypeIdentifier, captures, capturesAsParams
             );
             type = typeAndBody.a;
             body = typeAndBody.b;
@@ -68,7 +68,7 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
 
         final LambdaFunction lambda = new LambdaFunction(
                 swexFunctionName,
-                typedefIdentifier,
+                returnTypeIdentifier,
                 param,
                 body,
                 "",
@@ -83,11 +83,7 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
         // assignmentExpression (',' assignmentExpression)*
 
         final String expression = dispatcher.visit(ctx.expression());
-        final String hashedExpression = switch (type) {
-            case INTEGRAL, UNSIGNED, BOOL, CHARACTER -> "( " + paramType + " ) ( " + expression + " )";
-
-            case STRING -> "__ssc_hash_string( " + expression + " )";
-        };
+        final String hashedExpression = type.getPassedValue(expression);
 
         final String sep = capturesAsParams.isBlank() ? "" : ", ";
         return String.format("%s( %s%s %s )", lambda.getName(), hashedExpression, sep, capturesAsParams);
@@ -140,15 +136,15 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
         }
 
         final String un = "__builtin_unreachable";
-        final String unreachable = dispatcher.hasSymbol(un) ? un : "";
+        final String unreachable = dispatcher.hasSymbol(un) ? un : "(void) 0";
+        final String returnStmt = "void".equals(returnType) ? "return" : "return 0";
         body.add("""
                     }
                 
                     {
-                        %s
-                        return 0;
-                """.formatted(unreachable)
-        );
+                        %s;
+                \s       %s;"""
+                .formatted(unreachable, returnStmt));
 
         return new Pair<>(switchedType.item, body.toString());
     }
@@ -175,8 +171,9 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
             switchedType.item = typeOfExpressionInCurrentCase;
         } else if (switchedType.item != typeOfExpressionInCurrentCase) {
             throw dispatcher.getSSCLanguageException(
-                    "Invalid value in switch expression case", // todo: provide better message
-                    branchCtx.Case()
+                    "Value in branch does not match other branches. Expected '" + switchedType.item + "'" +
+                    ", got '" + typeOfExpressionInCurrentCase + "'",
+                    branchCtx.constant() != null ? branchCtx.constant() : branchCtx.StringLiteral()
             );
         }
 
@@ -190,15 +187,29 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
                 capturesAsParams
         );
 
-        final String branch = String.format("""
+        final String caseLabel = String.format("""
                                 %s %s:
-                                    return %s
                         """,
-                case_,
-                constant,
-                result
+                case_, constant
         );
-        body.add(branch);
+
+        final String branch;
+        if ("void".equals(returnType)) {
+            branch = String.format("""
+                                        %s;
+                                        return;
+                            """,
+                    result
+            );
+        } else {
+            branch = String.format("""
+                                        return %s
+                            """,
+                    result
+            );
+        }
+
+        body.add(caseLabel + branch);
     }
 
     private void processDefaultBranch(String surroundingFunctionName,
@@ -216,17 +227,20 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
             );
         }
 
+        final String returnExpression = convertExpression(
+                branchCtx.switchExpressionResult(),
+                surroundingFunctionName,
+                returnType,
+                captures,
+                capturesAsParams
+        );
+        final String returnStmt = ("void".equals(returnType) ? "%s; return" : "return %s").formatted(returnExpression);
+
         body.add(String.format("""
                                 default:
-                                    return %s
-                        """,
-                convertExpression(
-                        branchCtx.switchExpressionResult(),
-                        surroundingFunctionName,
-                        returnType,
-                        captures,
-                        capturesAsParams
-                )));
+                        \s           %s;""",
+                returnStmt
+        ));
         defaultBranchCtx.item = branchCtx;
     }
 
@@ -238,9 +252,33 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
             final boolean[] boolBranches
     ) {
         return switch (switchedType.item) {
-            case INTEGRAL, UNSIGNED, CHARACTER -> dispatcher.visit(ctx.constant());
+            case INTEGRAL, UNSIGNED, CHARACTER -> {
+                if (ctx.constant() == null) {
+                    throw dispatcher.getSSCLanguageException(
+                            "Invalid case constant: expected '" + switchedType.item + "'" +
+                            ", got '" + ExpressionType.fromConstant(ctx.StringLiteral()) + "'",
+                            ctx
+                    );
+                }
+                yield dispatcher.visit(ctx.constant());
+            }
 
             case BOOL -> {
+                if (ctx.constant() == null
+                    || ctx.constant().predefinedConstant() == null
+                    || ctx.constant().predefinedConstant().Nulptr() != null
+                ) {
+                    throw dispatcher.getSSCLanguageException(
+                            "Invalid case constant: expected '" + switchedType.item + "'" +
+                            ", got '" +
+                            (ctx.constant() == null
+                                    ? ExpressionType.fromConstant(ctx.StringLiteral())
+                                    : ExpressionType.fromConstant(dispatcher, ctx.constant()))
+                            + "'",
+                            ctx
+                    );
+                }
+
                 final boolean parsed = ctx.constant().predefinedConstant().True_() != null;
                 final int idx = parsed ? 1 : 0;
                 if (boolBranches[idx]) {
@@ -253,6 +291,11 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
             }
 
             case STRING -> {
+                if (ctx.constant() != null
+                    && ctx.constant().predefinedConstant() != null
+                    && ctx.constant().predefinedConstant().Nulptr() != null) {
+                    yield "0"; // "hash" of nullptr
+                }
                 final String literal;
                 {
                     final String tmp = dispatcher.visit(ctx.StringLiteral());
@@ -363,15 +406,22 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
             final SSCParser.PredefinedConstantContext predefCtx = ctx.predefinedConstant();
             assert predefCtx != null;
             if (predefCtx.Nulptr() != null) {
-                throw dispatcher.getSSCLanguageException(
-                        "nullptr is not a valid case expression", predefCtx.Nulptr()
-                );
+                return ExpressionType.STRING;
             }
             if (predefCtx.False_() != null || predefCtx.True_() != null) {
                 return ExpressionType.BOOL;
             }
 
             throw new IllegalStateException("Unknown constant type: " + dispatcher.getLiteral(ctx));
+        }
+
+        public String getPassedValue(String expression) {
+            return switch (this) {
+                case INTEGRAL, UNSIGNED, BOOL, CHARACTER ->
+                        "( " + this.getParameterType() + " ) ( " + expression + " )";
+
+                case STRING -> "__ssc_hash_string( " + expression + " )";
+            };
         }
     }
 }

@@ -107,12 +107,18 @@ public final class SSCCUtil {
         return String.format("%s_id%d_%s", sscIdentifier, IDS.getAndIncrement(), surroundingFunctionName);
     }
 
+    // specifierQualifierList abstractDeclarator?
     public static String createTypedef(
             final VisitorDispatcher dispatcher,
             final String prefix,
             final String surroundingFunctionName,
             final SSCParser.TypeNameContext typeName
     ) {
+        // typeSpecifierQualifier+
+        if (dispatcher.getLiteral(typeName).equals("void")) {
+            return "void";
+        }
+
         final String typedefIdentifier = createNameWithID(prefix, surroundingFunctionName);
         final String typedefDeclarator = insertIdentifierIntoDeclarator(dispatcher, typeName.abstractDeclarator(), typedefIdentifier);
         final String typedefSpecifiersQualifiers = dispatcher.visit(typeName.specifierQualifierList());
