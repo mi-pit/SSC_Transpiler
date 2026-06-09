@@ -25,12 +25,12 @@ int main()
     {
         .t = 1,
     };
-    object Thing<object Thing<int, bool>, struct Other> tt;
+    object Thing<struct Other, object Thing<int, bool>> tt; // `>>` does NOT get parsed as the shift operator
 
     while (it.t < 9'999) {
         it.t >>= 1;
-        it.b = 1'000'000 << it.t >> 1;
+        it.b = 1'000'000 << it.t >> 1; // `>>` DOES get parsed as the shift operator
     }
 
-    return tt.t.t > 9999;
+    return tt.b.t > 9999;
 }
