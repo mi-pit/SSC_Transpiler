@@ -1,6 +1,6 @@
 package cz.mipit.sscc.args;
 
-import cz.mipit.sscc.file.InputFile;
+import cz.mipit.sscc.file.File;
 
 import java.nio.file.Path;
 import java.util.Collections;
@@ -11,13 +11,14 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
+//TODO
 public final class SSCCOptions implements Iterable<Option<?>> {
     public static final String OPTSTR_HELP_SHORT = "-h";
     public static final String OPTSTR_HELP_LONG = "--help";
     static final Option<Void> OPTION_HELP = new Option<>(
             new OptionString(OPTSTR_HELP_SHORT, OPTSTR_HELP_LONG),
             "Help", "Display this message",
-            null, Void.class, null, null
+            List.of(), Void.class, null, null
     );
 
     public static final String OPTSTR_VERBOSE_SHORT = "-v";
@@ -25,29 +26,21 @@ public final class SSCCOptions implements Iterable<Option<?>> {
     private final Option<Boolean> OPTION_VERBOSE = new Option<>(
             new OptionString(OPTSTR_VERBOSE_SHORT, OPTSTR_VERBOSE_LONG),
             "Verbose", "Print information about current stage",
-            null, Boolean.class, false, NextOperation.None
+            List.of(), Boolean.class, false, NextOperation.None
     );
 
-    public static final String OPTSTR_STOP_ON_ERROR_SHORT = "-s";
-    public static final String OPTSTR_STOP_ON_ERROR_LONG = "--no-stop-on-error";
-    private final Option<Boolean> OPTION_STOP_ON_ERROR = new Option<>(
-            new OptionString(OPTSTR_STOP_ON_ERROR_SHORT, OPTSTR_STOP_ON_ERROR_LONG),
-            "Don't stop on error", "By default, sscc stops processing after encountering an error (this powers through)",
-            null, Boolean.class, true, NextOperation.None
-    );
-
-    public static final String OPTSTR_NORMAL_DEBUG = "--debug!";
+    public static final String OPTSTR_NORMAL_DEBUG = "--debug";
     private final Option<Boolean> OPTION_DEBUG = new Option<>(
             new OptionString(OPTSTR_NORMAL_DEBUG),
             "Debug mode", "Print debug information (unstable)",
-            null, Boolean.class, false, NextOperation.None
+            List.of(), Boolean.class, false, NextOperation.None
     );
 
-    public static final String OPTSTR_ANTLR_DEBUG = "--debug";
+    public static final String OPTSTR_ANTLR_DEBUG = "--debug!";
     private final Option<Boolean> OPTION_ANTLR_DEBUG = new Option<>(
             new OptionString(OPTSTR_ANTLR_DEBUG),
             "Token debug mode", "Print antlr debug information (unstable)",
-            null, Boolean.class, false, NextOperation.None
+            List.of(), Boolean.class, false, NextOperation.None
     );
 
     public static final String OPTSTR_COMPILE_SHORT = "-c";
@@ -55,41 +48,59 @@ public final class SSCCOptions implements Iterable<Option<?>> {
     private final Option<String> OPTION_COMPILE = new Option<>(
             new OptionString(OPTSTR_COMPILE_SHORT, OPTSTR_COMPILE_LONG),
             "Compile", "Compiles the resulting C code into a binary",
-            "name of the resulting binary", String.class, null, NextOperation.CompileTarget
+            List.of("name of the resulting binary"), String.class, null, NextOperation.CompileTarget
     );
 
-    public static final String OPTSTR_LIB_SHORT = "-d";
-    public static final String OPTSTR_LIB_LONG = "--dir";
-    private final Option<Path> OPTION_LIB = new Option<>(
-            new OptionString(OPTSTR_LIB_SHORT, OPTSTR_LIB_LONG),
+    public static final String OPTSTR_DIR_SHORT = "-d";
+    public static final String OPTSTR_DIR_LONG = "--dir";
+    private final Option<Path> OPTION_DIR = new Option<>(
+            new OptionString(OPTSTR_DIR_SHORT, OPTSTR_DIR_LONG),
             "Directory", "Process all `.c` & `.ssc` files in a directory",
-            "path to root of a directory to be processed", Path.class, null, NextOperation.LibPath
+            List.of("path to root of a directory to be processed"), Path.class, null, NextOperation.LibPath
     );
 
-    public static final String OPTSTR_STOP_OPTS_LONG = "--";
+    public static final String OPTSTR_FILETYPE_SHORT = "-x";
+    public static final String OPTSTR_FILETYPE_LONG = "--filetype";
+    private final Option<Path> OPTION_FILETYPE = new Option<>(
+            new OptionString(OPTSTR_FILETYPE_SHORT, OPTSTR_FILETYPE_LONG),
+            "Filetype",
+            "Treat the following file as if it had the extension given as the first argument to this option (`-x c file.ssc` treats it as a c file)",
+            List.of("('c' | 'ssc')", "filename"), Path.class, null, NextOperation.FileType
+    );
+
+    public static final String OPTSTR_STOP_OPTS = "--";
     private final Option<Boolean> OPTION_STOP_OPTS = new Option<>(
-            new OptionString(OPTSTR_STOP_OPTS_LONG),
+            new OptionString(OPTSTR_STOP_OPTS),
             "Terminate options parsing", "Treats all following strings as file names",
-            null, Boolean.class, false, NextOperation.FilesOnly
+            List.of(), Boolean.class, false, NextOperation.FilesOnly
+    );
+
+    public static final String OPTSTR_FORMAT_ONLY_SHORT = "-f";
+    public static final String OPTSTR_FORMAT_ONLY_LONG = "--format";
+    private final Option<File> OPTION_FORMAT = new Option<>(
+            new OptionString(OPTSTR_FORMAT_ONLY_SHORT, OPTSTR_FORMAT_ONLY_LONG),
+            "Format the code", "Preprocesses and formats the code and outputs to the output file",
+            List.of("output-file"), File.class, null, NextOperation.OutputFile
     );
 
     private final List<Option<?>> OPTIONS = List.of(
             OPTION_HELP,
             OPTION_VERBOSE,
-            OPTION_STOP_ON_ERROR,
             OPTION_DEBUG,
             OPTION_ANTLR_DEBUG,
             OPTION_COMPILE,
-            OPTION_LIB,
-            OPTION_STOP_OPTS
+            OPTION_DIR,
+            OPTION_FILETYPE,
+            OPTION_STOP_OPTS,
+            OPTION_FORMAT
     );
 
-    private final Set<InputFile> filesToProcess = new HashSet<>();
+    private final Set<File> filesToProcess = new HashSet<>();
 
     private SSCCOptions() {
     }
 
-    public static SSCCOptions withDefaults() {
+    public static SSCCOptions newWithDefaults() {
         return new SSCCOptions();
     }
 
@@ -101,8 +112,8 @@ public final class SSCCOptions implements Iterable<Option<?>> {
         return OPTION_DEBUG.value();
     }
 
-    public boolean stopOnError() {
-        return OPTION_STOP_ON_ERROR.value();
+    public boolean formatOnly() {
+        return OPTION_FORMAT.value() != null;
     }
 
     public Optional<String> compileTarget() {
@@ -113,15 +124,25 @@ public final class SSCCOptions implements Iterable<Option<?>> {
         OPTION_COMPILE.setValue(Objects.requireNonNull(filename));
     }
 
-    public void addFile(InputFile file) {
+    public void addFile(File file) {
         filesToProcess.add(Objects.requireNonNull(file));
     }
 
-    public void addFiles(Set<InputFile> inputFiles) {
-        filesToProcess.addAll(inputFiles);
+    public void addFiles(Set<File> files) {
+        filesToProcess.addAll(files);
     }
 
-    public Set<InputFile> filesToProcess() {
+    public void setFormatOutputFile(String filename) {
+        OPTION_FORMAT.setValue(
+                File.fromPath(Path.of(filename))
+        );
+    }
+
+    public File formatOutputFile() {
+        return OPTION_FORMAT.value();
+    }
+
+    public Set<File> filesToProcess() {
         return Collections.unmodifiableSet(filesToProcess);
     }
 

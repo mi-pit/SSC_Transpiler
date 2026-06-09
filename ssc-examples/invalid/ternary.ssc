@@ -1,0 +1,18 @@
+int main()
+{
+    int a = 0;
+    int b = 9, c = 10, d = 11;
+
+    if a > 1 then 0 else -1;    // valid: SSC
+    if a > 1 ? 0 else -1;       // invalid
+    if a > 1 then 0 : -1;       // invalid
+    if a > 1 ? 0 : -1;          // invalid
+
+    a > 1 then 0 else -1;       // invalid
+    a > 1 then 0 : -1;          // invalid
+    a > 1 ? 0 else -1;          // invalid
+    a > 1 ? 0 : -1;             // valid: plain C
+
+    a || (if b then c else d);  // valid
+    a || if b then c else d;    // invalid
+}

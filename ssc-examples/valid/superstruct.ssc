@@ -1,0 +1,39 @@
+typedef unsigned long ul;
+
+ul strlen( const char * );
+int printf( const char *, ... );
+
+object String
+{
+    private const char *string;
+    private ul len;
+
+    meta object String given( const char *s )
+    {
+        object String o = {
+            .string = s,
+            .len    = strlen( s ),
+        };
+
+        return o;
+    }
+
+    pure ul length()
+    {
+        return this->len;
+    }
+
+    pure void print()
+    {
+        printf( "%.*s", ( int ) this->len, this->string );
+    }
+};
+
+object String global_string = {};
+
+int main()
+{
+    object String s = String::given( "s t r i n g" );
+
+    s.print();
+}

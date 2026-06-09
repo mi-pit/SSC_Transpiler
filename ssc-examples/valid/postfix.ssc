@@ -1,0 +1,71 @@
+// objects with fn pointers
+#include <printf.h>
+#include <assert.h>
+
+object WithFunctionFields;
+
+typedef void ( * LongPrinter )( long );
+typedef LongPrinter ( *LongPrinterGetter )( object WithFunctionFields * );
+typedef LongPrinterGetter *LongPrinterGetterArray;
+
+
+object WithFunctionFields
+{
+    private long item;
+    private void ( *printer )( long );
+
+    long get_item() {
+        return this->item;
+    }
+
+    void print()
+    {
+        this->printer( this->item );
+    }
+
+    LongPrinter get_printer() {
+        return this->printer;
+    }
+
+    LongPrinterGetter get_printer_getter() {
+        ( void ) this;
+        return WithFunctionFields::get_printer;
+    }
+
+    LongPrinterGetterArray get_printer_getter_array() {
+        static LongPrinterGetter array[ 16 ] = {};
+
+        for (size_t i = 0; i < 16; ++i) {
+            array[ i ] = this->get_printer_getter();
+        }
+        assert( WithFunctionFields::get_printer_getter( this ) == this->get_printer_getter() );
+
+        return array;
+    }
+};
+
+int main( void )
+{
+    object WithFunctionFields o = {
+        .item    = 123,
+        .printer = |[ long l ]| -> void {
+            printf( "%li\n", l );
+        },
+    },
+        *p = &o;
+
+    o.print();
+
+    const object WithFunctionFields *p2 = |[ object WithFunctionFields *o ]| -> const object WithFunctionFields *
+    {
+        return o;
+    }
+    ( &o );
+    assert( p2 == p );
+
+    o.get_printer()( -1 );
+    o.get_printer_getter()( &o )( -100 );
+    ( o.get_printer_getter_array() + 1 )[ 1 ]( &o )( 9001 );
+
+    p->get_printer_getter_array()[ p->item - 123 ]( p )( p->item + 123 ); // 246
+}

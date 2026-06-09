@@ -1,0 +1,31 @@
+#define Hello "Hello,"
+#define world " world!"
+
+
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L
+#endif
+
+
+#if !A && _POSIX_C_SOURCE
+#define A( ARG ) printf( #ARG )
+#endif
+
+#include <stdio.h>
+
+
+int func();
+
+int main( void )
+{
+    A( "" Hello world \n );
+    printf( "This is the start of a string. \
+            And this is the continuation" );
+
+    printf( Hello world );
+}
+
+int func()
+{
+    return 0;
+}

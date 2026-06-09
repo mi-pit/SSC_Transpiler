@@ -1,0 +1,6 @@
+#include <ssclib.ssch>
+
+int main( void )
+{
+    return 0;
+}

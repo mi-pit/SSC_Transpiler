@@ -1,18 +1,33 @@
 package cz.mipit.sscc.util.color;
 
-import java.io.PrintStream;
 import java.util.Locale;
 import java.util.function.BiFunction;
 
 public abstract class ConsoleColorFactory {
-    private static final ConsoleColorFactory UNIX = new ConsoleColorFactory() {
+    public enum Ground {
+        FORE,
+        BACK,
+    }
+
+    public enum Color {
+        BLACK,
+        RED,
+        GREEN,
+        YELLOW,
+        BLUE,
+        MAGENTA,
+        CYAN,
+        WHITE,
+    }
+
+    public static final ConsoleColorFactory UNIX = new ConsoleColorFactory() {
         @Override
         protected BiFunction<Ground, Color, ConsoleColor> getFactory() {
             return UnixTerminalColor::new;
         }
 
         @Override
-        protected ConsoleColor defaultColor() {
+        public ConsoleColor defaultColor() {
             return UnixTerminalColor.DEFAULT;
         }
     };
@@ -24,21 +39,21 @@ public abstract class ConsoleColorFactory {
         }
 
         @Override
-        protected ConsoleColor defaultColor() {
+        public ConsoleColor defaultColor() {
             return UnsupportedConsoleColor.DEFAULT;
         }
     };
 
-    /// TODO?
-    private static final ConsoleColorFactory WINDOWS = OTHER;
+    /// TODO ?
+    public static final ConsoleColorFactory WINDOWS = OTHER;
 
 
     abstract protected BiFunction<Ground, Color, ConsoleColor> getFactory();
 
-    abstract protected ConsoleColor defaultColor();
+    abstract public ConsoleColor defaultColor();
 
 
-    private static final ConsoleColorFactory FROM_OS;
+    public static final ConsoleColorFactory FROM_OS;
 
     static {
         final String lowercase = System.getProperty("os.name").toLowerCase(Locale.ENGLISH);
@@ -62,45 +77,5 @@ public abstract class ConsoleColorFactory {
 
     public static ConsoleColor create(final Ground ground, final Color color) {
         return create(FROM_OS, ground, color);
-    }
-
-    public enum Ground {
-        FORE,
-        BACK,
-    }
-
-    public enum Color {
-        BLACK,
-        RED,
-        GREEN,
-        YELLOW,
-        BLUE,
-        MAGENTA,
-        CYAN,
-        WHITE,
-    }
-
-
-    /**
-     * Does jack
-     */
-    private static final class UnsupportedConsoleColor extends ConsoleColor {
-        private static final UnsupportedConsoleColor DEFAULT = new UnsupportedConsoleColor();
-
-        private UnsupportedConsoleColor() {
-        }
-
-        @Override
-        public void setConsoleColor(PrintStream stream) {
-        }
-
-        @Override
-        public String toString() {
-            return "";
-        }
-
-        private static UnsupportedConsoleColor create(Ground ignoredG, Color ignoredC) {
-            return DEFAULT;
-        }
     }
 }

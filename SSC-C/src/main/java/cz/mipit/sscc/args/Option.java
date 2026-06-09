@@ -2,31 +2,37 @@ package cz.mipit.sscc.args;
 
 import cz.mipit.sscc.util.annotations.Nullable;
 
+import java.util.List;
 import java.util.Objects;
 
 import static cz.mipit.sscc.util.SSCCUtil.Text.INDENT;
 
-public final class Option<T> {
-    final OptionString strings;
+final class Option<T> {
+    private final OptionString strings;
     private final String name, description;
     private final @Nullable String argumentDescription;
 
-    public final Class<T> type;
-    public final T defaultValue;
+    private final Class<T> type;
+    private final T defaultValue;
     private T value;
 
-    final NextOperation nextOperation;
+    private final NextOperation nextOperation;
 
-    Option(OptionString optstr, String name,
-           String description, String argument,
-           Class<T> type, T defaultValue,
-           NextOperation nextOperation) {
-        this.strings = Objects.requireNonNull(optstr);
-        this.name = Objects.requireNonNull(name);
-        this.description = Objects.requireNonNull(description);
-        this.argumentDescription = argument;
+    public Option(
+            final OptionString optstr,
+            final String name,
+            final String description,
+            final List<String> arguments,
+            final Class<T> type,
+            final @Nullable T defaultValue,
+            final NextOperation nextOperation
+    ) {
+        this.strings = Objects.requireNonNull(optstr, "option string");
+        this.name = Objects.requireNonNull(name, "name");
+        this.description = Objects.requireNonNull(description, "description");
+        this.argumentDescription = String.join(" ", arguments);
 
-        this.type = type;
+        this.type = Objects.requireNonNull(type, "type class");
         this.defaultValue = defaultValue;
         value = defaultValue;
 
@@ -34,13 +40,15 @@ public final class Option<T> {
     }
 
     public String formatted() {
+        boolean hasArgument = !argumentDescription.isEmpty();
+
         final StringBuilder sBuilder = new StringBuilder()
                 .append(INDENT)
                 .append(name)
                 .append(System.lineSeparator())
 
                 .append(INDENT)
-                .append(strings.formatted(argumentDescription != null))
+                .append(strings.formatted(hasArgument))
                 .append(System.lineSeparator())
 
                 .append(INDENT)
@@ -49,7 +57,7 @@ public final class Option<T> {
                 .append(description)
                 .append(System.lineSeparator());
 
-        if (argumentDescription != null) {
+        if (hasArgument) {
             sBuilder
                     .append(INDENT)
                     .append(INDENT)
@@ -69,13 +77,24 @@ public final class Option<T> {
         return value;
     }
 
-    @SuppressWarnings("unchecked")
     public void setValue(Object value) {
-        if (value != null && value.getClass() != type) {
+        if (!type.isInstance(value)) {
             throw new IllegalArgumentException(
                     "Cannot assign value of type '%s' to a field of type '%s'".formatted(value.getClass(), type)
             );
         }
-        this.value = (T) value;
+        this.value = type.cast(value);
+    }
+
+    public T defaultValue() {
+        return defaultValue;
+    }
+
+    public boolean matches(String value) {
+        return strings.matches(value);
+    }
+
+    public NextOperation nextOperation() {
+        return nextOperation;
     }
 }

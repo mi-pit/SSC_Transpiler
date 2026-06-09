@@ -1,54 +1,219 @@
 package cz.mipit.sscc.util;
 
+import antlr.ssc.SSCParser;
+import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
+import cz.mipit.sscc.ssc.exceptions.data.EnumeratedLine;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.misc.Interval;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Predicate;
 
+import static cz.mipit.sscc.util.SSCCUtil.Maths.digitsOf;
 import static java.lang.System.lineSeparator;
 
 public final class SSCCUtil {
-    private SSCCUtil() {
+    public static TerminalNode getIdentifierFromDeclarator(SSCParser.DeclaratorContext declarator) {
+        // declarator: (pointer declarationSpecifiers?)* directDeclarator
+        while (declarator.directDeclarator().declarator() != null) {
+            declarator = declarator.directDeclarator().declarator();
+        }
+
+        return declarator.directDeclarator().Identifier();
+    }
+
+    public static List<ParseTree> allMatching(ParseTree node, Predicate<ParseTree> matcher) {
+        if (node == null) {
+            return Collections.emptyList();
+        }
+
+        if (matcher.test(node)) {
+            return List.of(node);
+        }
+
+        if (node instanceof TerminalNode) {
+            return List.of();
+        }
+
+        final List<ParseTree> result = new ArrayList<>();
+        for (int i = 0; i < node.getChildCount(); i++) {
+            result.addAll(
+                    allMatching(node.getChild(i), matcher)
+            );
+        }
+        return result;
+    }
+
+    // vcSpecificModifer? pointer
+    // vcSpecificModifer? pointer? directAbstractDeclarator gccDeclaratorExtension*
+    public static String insertIdentifierIntoDeclarator(
+            VisitorDispatcher dispatcher,
+            SSCParser.AbstractDeclaratorContext ctx,
+            String identifier
+    ) {
+        if (ctx == null) {
+            return identifier;
+        }
+
+        // vcSpecificModifer? pointer
+        if (ctx.directAbstractDeclarator() == null) {
+            return dispatcher.visit(ctx) + " " + identifier;
+        }
+
+        final String vcSpecMod = ctx.vcSpecificModifer() != null
+                ? dispatcher.visit(ctx.vcSpecificModifer()) + " "
+                : "";
+        final String pointer = ctx.pointer() != null
+                ? dispatcher.visit(ctx.pointer()) + " "
+                : "";
+
+        return vcSpecMod + pointer + insertIdentifierIntoDeclarator(dispatcher, ctx.directAbstractDeclarator(), identifier);
+    }
+
+    // '(' abstractDeclarator ')' gccDeclaratorExtension*
+    // '[' typeQualifierList? assignmentExpression? ']'
+    // '[' 'static' typeQualifierList? assignmentExpression ']'
+    // '[' typeQualifierList 'static' assignmentExpression ']'
+    // '[' '*' ']'
+    // '(' parameterTypeList ')' gccDeclaratorExtension*
+    // directAbstractDeclarator '[' typeQualifierList? assignmentExpression? ']'
+    // directAbstractDeclarator '[' 'static' typeQualifierList? assignmentExpression ']'
+    // directAbstractDeclarator '[' typeQualifierList 'static' assignmentExpression ']'
+    // directAbstractDeclarator '[' '*' ']'
+    // directAbstractDeclarator '(' parameterTypeList ')' gccDeclaratorExtension*
+    public static String insertIdentifierIntoDeclarator(
+            VisitorDispatcher dispatcher,
+            SSCParser.DirectAbstractDeclaratorContext ctx,
+            String identifier
+    ) {
+        if (ctx.abstractDeclarator() != null) {
+            return String.format(
+                    "( %s ) %s",
+                    insertIdentifierIntoDeclarator(dispatcher, ctx.abstractDeclarator(), identifier),
+                    getRestOfChildren(dispatcher, ctx, 3)
+            );
+        }
+
+        if (ctx.directAbstractDeclarator() != null) {
+            final String dirAbsDecl = insertIdentifierIntoDeclarator(dispatcher, ctx.directAbstractDeclarator(), identifier);
+            return dirAbsDecl + getRestOfChildren(dispatcher, ctx, 1);
+        }
+
+        return identifier + " " + getRestOfChildren(dispatcher, ctx, 0);
+    }
+
+
+    private static String getRestOfChildren(
+            final VisitorDispatcher dispatcher, final ParseTree node,
+            final int offset
+    ) {
+        final StringBuilder buf = new StringBuilder();
+        for (int i = offset; i < node.getChildCount(); i++) {
+            final ParseTree child = node.getChild(i);
+            buf.append(dispatcher.visit(child));
+        }
+        return buf.toString();
+    }
+
+
+    private static final AtomicLong IDS = new AtomicLong();
+
+    public static String createNameWithID(
+            final String sscIdentifier,
+            final String surroundingFunctionName
+    ) {
+        return String.format("%s_id%d_%s", sscIdentifier, IDS.getAndIncrement(), surroundingFunctionName);
+    }
+
+    // specifierQualifierList abstractDeclarator?
+    public static String createTypedef(
+            final VisitorDispatcher dispatcher,
+            final String prefix,
+            final String surroundingFunctionName,
+            final SSCParser.TypeNameContext typeName
+    ) {
+        // typeSpecifierQualifier+
+        if (dispatcher.getLiteral(typeName).equals("void")) {
+            return "void";
+        }
+
+        final List<ParseTree> identifier = allMatching(
+                typeName.abstractDeclarator(),
+                node -> node instanceof TerminalNode t && t.getSymbol().getType() == SSCParser.Identifier
+        );
+        identifier.forEach(node -> {
+            throw dispatcher.getSSCLanguageException(
+                    "Identifiers not allowed in lambda return types", node
+            );
+        });
+
+        final String typedefIdentifier = createNameWithID(prefix, surroundingFunctionName);
+        final String typedefDeclarator = insertIdentifierIntoDeclarator(dispatcher, typeName.abstractDeclarator(), typedefIdentifier);
+        final String typedefSpecifiersQualifiers = dispatcher.visit(typeName.specifierQualifierList());
+        final String typedef = "typedef " + typedefSpecifiersQualifiers + " " + typedefDeclarator + ";";
+        dispatcher.addExternalDeclarationToEmitBefore(typedef);
+        return typedefIdentifier;
+    }
+
+    /**
+     * Returns the exact text corresponding to a ParserRuleContext.
+     * Works for any context.
+     */
+    public static String getLiteral(ParserRuleContext ctx, CommonTokenStream tokens) {
+        final int start = ctx.getStart().getTokenIndex();
+        final int stop = ctx.getStop().getTokenIndex();
+        return tokens.getText(Interval.of(start, stop));
+    }
+
+    /**
+     * Retrieves lines before and after the given token.
+     *
+     * @return {@link ArrayList} of {@code before + 1 + after}-many {@link EnumeratedLine}s
+     */
+    public static List<EnumeratedLine> getLinesAroundToken(
+            final Token token,
+            final CommonTokenStream tokens,
+            final int before,
+            final int after
+    ) {
+        final String fullText = tokens.getTokenSource().getInputStream().toString();
+        final String[] lines = fullText.split(lineSeparator(), -1);
+
+        final int lineIndex = token.getLine() - 1;
+        final int start = Math.max(0, lineIndex - before);
+        final int end = Math.min(lines.length - 1, lineIndex + after);
+
+        final List<EnumeratedLine> ls = new ArrayList<>();
+        for (int i = start; i <= end; i++) {
+            ls.add(new EnumeratedLine(i + 1, lines[i]));
+        }
+
+        return ls;
     }
 
     public static class Text {
         public static final String INDENT = "    ";
 
-        /**
-         * Returns the exact text corresponding to a ParserRuleContext.
-         * Works for any context.
-         */
-        public static String getLiteral(ParserRuleContext ctx, CommonTokenStream tokens) {
-            final int start = ctx.getStart().getTokenIndex();
-            final int stop = ctx.getStop().getTokenIndex();
-            return tokens.getText(Interval.of(start, stop));
+        public static boolean charMayBePartOfIdentifier(char c) {
+            return charMayBePartOfIdentifier(0, c);
         }
 
-        /**
-         * Retrieves lines before and after the given token.
-         *
-         * @return {@link ArrayList} of {@code before + 1 + after}-many {@link EnumeratedLine}s
-         */
-        public static List<EnumeratedLine> getLinesAroundToken(final Token token,
-                                                               final CommonTokenStream tokens,
-                                                               final int before,
-                                                               final int after) {
-            final String fullText = tokens.getTokenSource().getInputStream().toString();
-            final String[] lines = fullText.split(lineSeparator(), -1);
+        public static boolean charMayBePartOfIdentifier(int indexWithinIdentifier, char c) {
+            return (c >= 'a' && c <= 'z') ||
+                   (c >= 'A' && c <= 'Z') ||
+                   (indexWithinIdentifier > 0 && (c >= '0' && c <= '9')) ||
+                   (c == '_');
+        }
 
-            final int lineIndex = token.getLine() - 1;
-            final int start = Math.max(0, lineIndex - before);
-            final int end = Math.min(lines.length - 1, lineIndex + after);
-
-            final List<EnumeratedLine> ls = new ArrayList<>();
-            for (int i = start; i <= end; i++) {
-                ls.add(new EnumeratedLine(i + 1, lines[i]));
-            }
-
-            return ls;
+        public static int getLineNumberLength(final int min, final int max) {
+            return Math.max(1, Math.max(digitsOf(min), digitsOf(max)));
         }
     }
 
@@ -62,5 +227,13 @@ public final class SSCCUtil {
 
             return ndigs;
         }
+
+        public static boolean isPowerOfTwo(long l) {
+            return (l & (l - 1)) == 0;
+        }
+    }
+
+
+    private SSCCUtil() {
     }
 }
