@@ -156,6 +156,7 @@ False_
     : 'false'
     ;
 
+// SSC
 FlagsSet
     : 'flagset'
     ;
@@ -184,6 +185,11 @@ Inline
 
 Int
     : 'int'
+    ;
+
+// SSC
+Interface
+    : 'interface'
     ;
 
 Label
@@ -238,6 +244,10 @@ Static
     : 'static'
     ;
 
+StaticFunction
+    : 'meta'
+    ;
+
 Static_assert
     : 'static_assert'
     ;
@@ -255,9 +265,18 @@ Switch
     : 'switch'
     ;
 
+SwitchExpr
+    : 'swex'
+    ;
+
 // SSC
 Then
     : 'then'
+    ;
+
+// SSC
+Template
+    : 'tmpl'
     ;
 
 True_
@@ -389,10 +408,6 @@ LeftShift
     : '<<'
     ;
 
-RightShift
-    : '>>'
-    ;
-
 Plus
     : '+'
     ;
@@ -522,6 +537,10 @@ Arrow
     : '->'
     ;
 
+EqualsArrow
+    : '=>'
+    ;
+
 Dot
     : '.'
     ;
@@ -562,6 +581,18 @@ IntegerConstant
     | OctalConstant IntegerSuffix?
     | HexadecimalConstant IntegerSuffix?
     | BinaryConstant
+    ;
+
+/*
+ * On MacOS, functions often have attributes akin to
+ * `__attribute__(( availability( macos, introduced = 10.13.4 ) ))`.
+ *
+ * Here, if not for this token rule, the `10.13.4` part would be parsed as `10.13` and `.4` separately.
+ *
+ * So far, the `VersionNumber`s are not used anywhere in grammar.
+ */
+VersionNumber
+    : Digit+ '.' Digit+ '.' Digit+
     ;
 
 fragment BinaryDigit

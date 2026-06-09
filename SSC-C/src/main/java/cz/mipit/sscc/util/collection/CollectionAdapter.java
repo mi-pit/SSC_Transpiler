@@ -13,7 +13,7 @@ import java.util.Iterator;
  * @param <ITEM> item type
  */
 public abstract class CollectionAdapter<ITEM, COLL extends java.util.Collection<ITEM>>
-        implements java.util.Collection<ITEM>, Enumerable<ITEM> {
+        implements java.util.Collection<ITEM> {
     protected final COLL _collection;
 
     protected CollectionAdapter(COLL _collection) {
@@ -78,10 +78,9 @@ public abstract class CollectionAdapter<ITEM, COLL extends java.util.Collection<
         return _collection.removeAll(c);
     }
 
-    @SuppressWarnings("SuspiciousMethodCalls")
     @Override
     public boolean retainAll(java.util.Collection<?> c) {
-        return _collection.removeAll(c);
+        return _collection.retainAll(c);
     }
 
 
@@ -101,8 +100,7 @@ public abstract class CollectionAdapter<ITEM, COLL extends java.util.Collection<
         return _collection.hashCode();
     }
 
-    @Override
     public Enumerator<ITEM> enumerator() {
-        return new EnumeratorImpl<>(iterator());
+        return Enumerator.from(iterator());
     }
 }

@@ -1,41 +1,22 @@
 package cz.mipit.sscc.ssc.compiler.data.var;
 
+import java.util.List;
 import java.util.Objects;
 
 public class SuperstructVariable extends Variable {
     private final String ssName;
 
-    public SuperstructVariable(String ssName, int pointer, String name) {
+    public SuperstructVariable(String ssName, List<Pointer> pointer, String name) {
         super(name, pointer);
         this.ssName = Objects.requireNonNull(ssName);
     }
 
-    public String ssName() {
+    public String getSuperstructName() {
         return ssName;
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (obj == this)
-            return true;
-        if (obj == null || obj.getClass() != this.getClass())
-            return false;
-        var that = (SuperstructVariable) obj;
-        return Objects.equals(this.ssName, that.ssName) &&
-                this.pointer == that.pointer &&
-                Objects.equals(this.name, that.name);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(ssName, pointer, name);
-    }
-
-    @Override
     public String toString() {
-        return "SuperstructVariable[" +
-                "ssName=" + ssName + ", " +
-                "pointer=" + pointer + ", " +
-                "name=" + name + ']';
+        return String.format("[SuperStruct %s %s]", ssName, super.createAbstractDeclarator());
     }
 }

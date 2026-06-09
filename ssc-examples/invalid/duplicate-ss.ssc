@@ -1,0 +1,25 @@
+
+object Duplicate interface
+{
+    void vojt();
+    void vojt();
+}
+
+object Duplicate interface
+{
+    meta int pint();
+}
+
+
+object Duplicate
+{
+    object Duplicate *next;
+
+    object Duplicate { int i; } structure;
+};
+int main() {}
+
+object Duplicate
+{
+    int t;
+};

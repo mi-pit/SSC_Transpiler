@@ -1,0 +1,45 @@
+
+tmpl<A, B>
+A scast(B val) {
+    return (A) val;
+}
+
+tmpl<T>
+T type_default() {
+    auto lambda_fn = |[ void ]| -> long long {
+        return 0;
+    };
+    return (T) lambda_fn();
+}
+
+tmpl<TEST>
+TEST test_tmpl(TEST t) {
+    TEST t2 = (TEST) t;
+    return (TEST) t2 + (TEST) t;
+}
+
+
+flagset FlagSet {
+    F1,
+    F2,
+    F3,
+};
+
+int main() {
+    int a = scast<int, long>(0);
+        a = if (a != 0)
+                then scast<int, flagset FlagSet>(F1)
+                else a;
+
+    void *def_ptr = type_default<void *>();
+    (void) type_default<void *>();
+    (void) type_default<void *>;
+
+    int *(*IntPtrGetter)();
+    IntPtrGetter = type_default<int *>;
+    (void) IntPtrGetter;
+
+    return if (a == 0) && (def_ptr == nullptr)
+        then 0
+        else 1;
+}

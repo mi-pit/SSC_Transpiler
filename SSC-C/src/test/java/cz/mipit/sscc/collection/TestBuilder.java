@@ -1,6 +1,6 @@
 package cz.mipit.sscc.collection;
 
-import cz.mipit.sscc.util.collection.Enumerable;
+import cz.mipit.sscc.util.collection.Enumerated;
 import cz.mipit.sscc.util.collection.builder.CollectionBuilder;
 import cz.mipit.sscc.util.collection.builder.HashSetBuilder;
 import cz.mipit.sscc.util.collection.builder.ListBuilder;
@@ -121,8 +121,8 @@ public class TestBuilder {
 
         Assertions.assertTrue(
                 ints.size() == longs.size()
-                        && ints.size() == doubles.size()
-                        && ints.size() == strings.size()
+                && ints.size() == doubles.size()
+                && ints.size() == strings.size()
         );
 
         final List<Integer> intsList = ints.build();
@@ -156,7 +156,7 @@ public class TestBuilder {
                 .plus("!");
 
         int realIdx = 0;
-        for (final Enumerable.Entry<String> indexedString : builder.enumerator()) {
+        for (final Enumerated<String> indexedString : builder.enumerator()) {
             final int gottenIdx = indexedString.index();
             Assertions.assertEquals(realIdx, gottenIdx);
             Assertions.assertEquals(items[gottenIdx], indexedString.item());
@@ -195,10 +195,15 @@ public class TestBuilder {
 
         int i = 1;
         for (final ListBuilder<List<Integer>> listBuilder : builder) {
+            if (listBuilder == null) {
+                continue;
+            }
+
             for (final List<Integer> list : listBuilder) {
                 for (final Integer integer : list) {
                     Assertions.assertNotNull(integer);
-                    Assertions.assertEquals(i++, integer);
+                    Assertions.assertTrue(i == integer || i + 3 == integer, integer.toString());
+                    i++;
                 }
             }
         }

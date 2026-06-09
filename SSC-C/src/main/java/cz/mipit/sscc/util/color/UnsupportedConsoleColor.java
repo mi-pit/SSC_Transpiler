@@ -5,7 +5,7 @@ import java.io.PrintStream;
 /**
  * Does jack
  */
-final class UnsupportedConsoleColor extends ConsoleColor {
+final class UnsupportedConsoleColor implements ConsoleColor {
     static final UnsupportedConsoleColor DEFAULT = new UnsupportedConsoleColor();
 
     private UnsupportedConsoleColor() {

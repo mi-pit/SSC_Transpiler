@@ -1,20 +1,20 @@
 package cz.mipit.sscc.ssc.exceptions;
 
-import cz.mipit.sscc.Main;
-import cz.mipit.sscc.file.InputFile;
-import cz.mipit.sscc.util.EnumeratedLine;
-import cz.mipit.sscc.util.SSCCUtil;
-import cz.mipit.sscc.util.annotations.Nullable;
+import cz.mipit.sscc.file.File;
+import cz.mipit.sscc.ssc.exceptions.data.EnumeratedLine;
+import cz.mipit.sscc.ssc.exceptions.data.ErrorMessage;
+import cz.mipit.sscc.ssc.exceptions.data.Locator;
+import cz.mipit.sscc.util.collection.Enumerated;
+import cz.mipit.sscc.util.collection.Enumerator;
 import cz.mipit.sscc.util.color.ConsoleColor;
 import cz.mipit.sscc.util.color.ConsoleColorFactory;
-import cz.mipit.sscc.util.color.UnixTerminalColor;
 import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.ParseTree;
 
+import java.util.ArrayList;
 import java.util.List;
 
-import static cz.mipit.sscc.util.SSCCUtil.Maths.digitsOf;
 import static cz.mipit.sscc.util.color.ConsoleColorFactory.COLOR_DEFAULT;
 import static cz.mipit.sscc.util.color.ConsoleColorFactory.Color;
 import static cz.mipit.sscc.util.color.ConsoleColorFactory.Ground;
@@ -26,59 +26,139 @@ public class SSCTranspilerException extends RuntimeException {
     public static final int LINES_AFTER = 0;
 
     protected static final ConsoleColor COLOR_FATAL = ConsoleColorFactory.create(Ground.FORE, Color.RED);
-    protected static final ConsoleColor COLOR_ANTLR = ConsoleColorFactory.create(Ground.FORE, Color.RED);
+    protected static final ConsoleColor COLOR_ANTLR = COLOR_FATAL;
 
-    protected static final ConsoleColor COLOR_CODE = ConsoleColorFactory.create(Ground.FORE, Color.WHITE);
-    protected static final ConsoleColor COLOR_LOCATOR = ConsoleColorFactory.create(Ground.FORE, Color.CYAN);
+    protected static final ConsoleColor COLOR_WARNING = ConsoleColorFactory.create(Ground.FORE, Color.YELLOW);
 
-    protected static final ConsoleColor COLOR_CODE_BOLD;
-
-    static {
-        if (System.getProperty("os.name").toLowerCase().startsWith("windows")) {
-            COLOR_CODE_BOLD = ConsoleColorFactory.WINDOWS.defaultColor();
-        } else {
-            COLOR_CODE_BOLD = new UnixTerminalColor("\u001B[1m" + COLOR_CODE);
-        }
-    }
 
     public static final String LINENO_SEPARATOR = " | ";
 
 
-    private final InputFile currentFile;
+    private final File currentFile;
     private final Type type;
-    private final @Nullable String message;
-    private final String context;
-    private final @Nullable String locator;
+    private final List<ErrorMessage> errorMessages;
+
+    /* Base constructor */
+    private SSCTranspilerException(
+            Type type,
+            File currentFile,
+            List<ErrorMessage> errorMessages
+    ) {
+        this.type = requireNonNull(type);
+
+        this.errorMessages = requireNonNull(errorMessages);
+
+        this.currentFile = requireNonNull(currentFile);
+    }
+
+    private SSCTranspilerException(
+            Type type,
+            File currentFile,
+            ErrorMessage errorMessage
+    ) {
+        this(type, currentFile, List.of(errorMessage));
+    }
+
+    protected SSCTranspilerException(
+            Type type,
+            String message, ParseTree offendingCtx,
+            CommonTokenStream tokens, File currentFile
+    ) {
+        this(
+                type,
+                currentFile,
+                ErrorMessage.fromLines(
+                        message,
+                        EnumeratedLine.getLines(
+                                requireNonNull(offendingCtx, "Context"),
+                                requireNonNull(tokens, "Token stream"),
+                                LINES_BEFORE, LINES_AFTER
+                        ),
+                        new Locator(offendingCtx, tokens)
+                )
+        );
+    }
+
+    protected SSCTranspilerException(
+            Type type,
+            String message, Token offendingToken,
+            CommonTokenStream tokens, File currentFile
+    ) {
+        this(
+                type,
+                currentFile,
+                ErrorMessage.fromLines(
+                        message,
+                        EnumeratedLine.getLines(
+                                offendingToken,
+                                tokens,
+                                LINES_BEFORE,
+                                LINES_AFTER
+                        ),
+                        new Locator(offendingToken)
+                )
+        );
+    }
+
+    protected SSCTranspilerException(
+            Type type,
+            String message, List<ParseTree> offenders,
+            CommonTokenStream tokens, File currentFile
+    ) {
+        this(
+                type,
+                currentFile,
+                getErrorMessages(message, offenders, tokens)
+        );
+    }
+
+    public static List<ErrorMessage> getErrorMessages(
+            final String message,
+            List<ParseTree> offenders,
+            CommonTokenStream tokens
+    ) {
+        final List<ErrorMessage> list = new ArrayList<>();
+        for (final Enumerated<ParseTree> offender : Enumerator.of(offenders)) {
+            final int linesBefore = offender.index() == 0 ? LINES_BEFORE : 0;
+            final int linesAfter = offender.index() == 0 ? LINES_AFTER : 0;
+            final String actualMessage = offender.index() == 0 ? message : "Previous definition here:";
+
+            final ErrorMessage errorMessage = ErrorMessage.fromLines(
+                    actualMessage,
+                    EnumeratedLine.getLines(offender.item(), tokens, linesBefore, linesAfter),
+                    new Locator(offender.item(), tokens)
+            );
+            list.add(errorMessage);
+        }
+        return list;
+    }
 
 
-    private String formattedMessage() {
+    @Override
+    public String getMessage() {
+        return createMessage(type, currentFile, errorMessages);
+    }
+
+
+    public static String createMessage(
+            final Type type,
+            final File currentFile,
+            final List<ErrorMessage> errorMessages
+    ) {
         final ConsoleColor color = type.toColor();
 
         final StringBuilder sBuilder = new StringBuilder(color.toString());
         sBuilder
-                .append(Main.SSCC_NAME)
-                .append(": ")
                 .append(type.humanReadableName())
-                .append(" exception while processing file '")
+                .append(" while processing file '")
                 .append(COLOR_DEFAULT)
                 .append(currentFile.fullName())
                 .append(color)
                 .append("':")
                 .append(lineSeparator());
 
-        if (message != null) {
-            sBuilder
-                    .append("    ")
-                    .append(message)
-                    .append(COLOR_DEFAULT)
-                    .append(lineSeparator());
-        }
-        sBuilder.append(context);
-
-        if (locator != null) {
-            sBuilder.append(lineSeparator())
-                    .append(COLOR_LOCATOR)
-                    .append(locator);
+        for (final ErrorMessage errorMessage : errorMessages) {
+            sBuilder.append(errorMessage);
         }
 
         sBuilder.append(COLOR_DEFAULT);
@@ -86,134 +166,28 @@ public class SSCTranspilerException extends RuntimeException {
         return sBuilder.toString();
     }
 
-    /* Base constructor */
-    private SSCTranspilerException(Type type, String message,
-                                   String context, String locator,
-                                   InputFile currentFile) {
-        this.type = requireNonNull(type);
-        this.message = message;
-        this.context = requireNonNull(context);
-        this.locator = locator;
-        this.currentFile = requireNonNull(currentFile);
-    }
 
-    protected SSCTranspilerException(Type type, String message,
-                                     List<EnumeratedLine> lines,
-                                     String locator, InputFile currentFile) {
-        this(type, message, formatLines(lines), locator, currentFile);
-    }
-
-    protected SSCTranspilerException(Type type, String message,
-                                     ParserRuleContext offendingCtx, CommonTokenStream tokens,
-                                     InputFile currentFile) {
-        this(type, message, getLinesFromCtx(
-                        requireNonNull(offendingCtx, "Context"),
-                        requireNonNull(tokens, "Token stream")),
-                getLocator(offendingCtx),
-                currentFile);
-    }
-
-    protected SSCTranspilerException(Type type, String message, Token offendingToken,
-                                     CommonTokenStream tokens, InputFile currentFile) {
-        this(type,
-                message,
-                getLinesFromToken(offendingToken, tokens),
-                getLocator(offendingToken),
-                currentFile);
-    }
-
-    protected static String formatLines(final List<EnumeratedLine> lines) {
-        final StringBuilder sBuilder = new StringBuilder(256)
-                .append(COLOR_CODE_BOLD);
-
-        final int fst = lines.getFirst().lineNumber();
-        final int last = lines.getLast().lineNumber();
-        final String fmtstr = "%" + getLineNumberLength(fst, last) + "d";
-
-        for (int i = 0; i < lines.size(); i++) {
-            final EnumeratedLine line = lines.get(i);
-
-            final String formatted = String.format(fmtstr, line.lineNumber());
-            sBuilder.append(formatted)
-                    .append(LINENO_SEPARATOR)
-                    .append(line.line());
-
-            if (i < lines.size() - 1) {
-                sBuilder.append(lineSeparator());
-            }
-        }
-
-        return "" + sBuilder + COLOR_DEFAULT;
-    }
-
-    protected static List<EnumeratedLine> getLinesFromToken(Token token, CommonTokenStream tokens) {
-        return SSCCUtil.Text.getLinesAroundToken(token, tokens, LINES_BEFORE, LINES_AFTER);
-    }
-
-    protected static List<EnumeratedLine> getLinesFromCtx(ParserRuleContext ctx, CommonTokenStream tokens) {
-        return getLinesFromToken(ctx.getStart(), tokens);
-    }
-
-    /// Creates a locator highlighting a single token
-    protected static String getLocator(Token token) {
-        final int offset = getLineNumberOffset(token.getLine());
-        final int posInLine = token.getCharPositionInLine();
-        final int len = token.getStopIndex() - token.getStartIndex() + 1;
-
-        return " ".repeat(offset + posInLine) + "^".repeat(len) + " here";
-    }
-
-    /// Creates a locator highlighting a context
-    protected static String getLocator(ParserRuleContext ctx) {
-        final int line = ctx.getStart().getLine();
-        final int offset = getLineNumberOffset(line);
-
-        final int start = ctx.getStart().getCharPositionInLine();
-        final int stop = ctx.getStop().getCharPositionInLine();
-
-        final String spaces = " ".repeat(offset + start);
-        final String carets = ctx.getStop().getLine() == line
-                ? "^".repeat(Math.max(stop - start, 1))
-                : "^".repeat(ctx.getSourceInterval().length());
-
-        return spaces + carets + " here";
-    }
-
-    private static int getLineNumberOffset(final int lineNumber) {
-        return getLineNumberLength(lineNumber,
-                lineNumber - (LINES_BEFORE + LINES_AFTER)) + LINENO_SEPARATOR.length();
-    }
-
-    private static int getLineNumberLength(final int min, final int max) {
-        return Math.max(1, Math.max(digitsOf(min), digitsOf(max)));
-    }
-
-
-    @Override
-    public String getMessage() {
-        return formattedMessage();
-    }
-
-
-    protected enum Type {
-        Syntax,
+    public enum Type {
+        Language,
         Antlr_parser,
+        Warning,
         ;
 
         public final ConsoleColor toColor() {
             return switch (this) {
-                case Syntax -> COLOR_FATAL;
+                case Language -> COLOR_FATAL;
                 case Antlr_parser -> COLOR_ANTLR;
+                case Warning -> COLOR_WARNING;
             };
         }
 
         public final String humanReadableName() {
-            return name().replace('_', ' ');
-        }
+            final String replaced = name().replace('_', ' ');
+            if (this == Warning) {
+                return replaced;
+            }
 
-        @Override
-        public String toString() {
-            return "SSCExceptionType{ " + name() + " }";
+            return replaced + " exception";
         }
     }
 }

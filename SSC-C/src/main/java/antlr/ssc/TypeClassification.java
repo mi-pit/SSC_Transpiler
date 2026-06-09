@@ -11,5 +11,8 @@ public enum TypeClassification {
     FunctionSpecifier_,
     AlignmentSpecifier_,
     AtomicTypeSpecifier_,
-    EnumSpecifier_
+    EnumSpecifier_,
+
+    // CUSTOM
+    TemplateTypeSpecifier_,
 }

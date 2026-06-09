@@ -1,14 +1,8 @@
 package cz.mipit.sscc.ssc;
 
 import cz.mipit.sscc.ssc.compiler.data.ss.Field;
-import cz.mipit.sscc.ssc.compiler.data.ss.FunctionDefinition;
-import cz.mipit.sscc.ssc.compiler.data.ss.SSMember;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
-import cz.mipit.sscc.ssc.compiler.data.var.TypedVariable;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -23,21 +17,18 @@ public class TestSuperStruct {
 
         assertEquals(SS_NAME, struct.name());
 
-        final Set<FunctionDefinition> functions = struct.getFunctions();
-        assertTrue(functions == null || functions.isEmpty());
+        assertTrue(struct.fields().isEmpty() && struct.methods().isEmpty());
 
-        final List<SSMember> members = struct.members();
-        assertTrue(members == null || members.isEmpty());
-
-        struct.addMember(
-                SSMember.field(
-                        new Field(
-                                true,
-                                new TypedVariable(List.of("int"), 0, "num")
-                        )
+        struct.addField(
+                new Field(
+                        true,
+                        "int",
+                        "num",
+                        "num"
                 )
         );
 
-        assertFalse(struct.members().isEmpty());
+        assertFalse(struct.fields().isEmpty());
+        assertTrue(struct.methods().isEmpty());
     }
 }

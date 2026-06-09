@@ -1,0 +1,21 @@
+
+tmpl<O, R>
+R cast(O o) {
+    return (R) o;
+}
+
+tmpl<A>
+A def(void) {
+    return cast<int, A>(0);
+}
+
+flagset Flags {
+    F1,
+    F2,
+    F3,
+};
+
+int main() {
+    flagset Flags fvar = def<flagset Flags>();
+    return cast<flagset Flags, int>(fvar);
+}

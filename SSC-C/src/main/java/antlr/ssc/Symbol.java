@@ -3,14 +3,18 @@ package antlr.ssc;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.StringJoiner;
 
 public class Symbol {
     private String name;
-    private HashSet<TypeClassification> classification;
-    private Map<String, Symbol> members = new HashMap<>();
     private Symbol parent;
     private boolean predefined = false;
+    private HashSet<TypeClassification> classification;
+
+    // For blocks (scopes)
+    private final Map<String, Symbol> members = new HashMap<>();
+
+    // Very optional
     private String definedFile = "";
     private int definedLine = 0;
     private int definedColumn = 0;
@@ -77,14 +81,26 @@ public class Symbol {
 
     @Override
     public String toString() {
-        String result = name;
-        String classificationStr = classification.stream()
-                .map(TypeClassification::name)
-                .collect(Collectors.joining(", "));
-        result += " (with classification " + classificationStr + ")";
-        if (definedFile != null && !definedFile.isEmpty()) {
-            result += " defined at " + definedFile + ":" + definedLine + ":" + definedColumn;
+        final StringJoiner classificationString = new StringJoiner(", ");
+        for (final TypeClassification typeClassification : this.classification) {
+            classificationString.add(typeClassification.name());
         }
-        return result;
+
+        final StringBuilder result = new StringBuilder(name);
+        result.append(" (with classification ")
+                .append(classificationString)
+                .append(")");
+
+        if (definedFile != null && !definedFile.isEmpty()) {
+            result
+                    .append(" defined at ")
+                    .append(definedFile)
+                    .append(":")
+                    .append(definedLine)
+                    .append(":")
+                    .append(definedColumn);
+        }
+
+        return result.toString();
     }
 }

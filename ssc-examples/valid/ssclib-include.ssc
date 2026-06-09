@@ -1,5 +1,4 @@
-# /* comment */ /**/ include /* // ---- */   <ssclib.ssch>
-#/* comment *//**/include/* // ---- */<stdlib.h>
+#include <ssclib.ssch>
 
 int main( void )
 {

@@ -127,12 +127,15 @@ predefinedConstant
 
 // ISO C: primary-expression (6.5.2)
 primaryExpression
-    : Identifier {this.LookupSymbol();}
+    : templateDispatch // SSC: template dispatch as primary expression
+    | (Identifier | templateDispatch) '::' Identifier // SSC primary expression: superstruct static function reference
+    | Identifier {this.LookupSymbol();}
     | constant
     | StringLiteral+
     | '(' expression ')'
     | genericSelection
-
+    | lambdaFunction // SSC: lambda definition as primary expression
+    | switchExpression // SSC: switch expression as primary expression
     // GNU
     // https://github.com/gcc-mirror/gcc/blob/5d69161a7c36a2da8565967eb0cc2df1322a05a3/gcc/c/c-parser.cc#L11715-L11734
     | '__func__' //GNU
@@ -145,6 +148,35 @@ primaryExpression
     | '__builtin_types_compatible_p' '(' typeName ',' typeName ')' //GNU
     | '__builtin_tgmath' '(' exprList ')'
     | '__builtin_complex' '(' assignmentExpression ',' assignmentExpression ')'
+    ;
+
+// SSC: Lambda function definition
+lambdaFunction
+    : '|' '[' parameterTypeList ']' '|' '->' typeName
+        lambdaAttributes?
+    functionBody
+    ;
+
+// SSC: Lambda attributes
+lambdaAttributes
+    : (attributeSpecifier | gnuAttribute | declarationSpecifier)+
+    ;
+
+// SSC
+switchExpression
+    : 'swex' '(' expression ')' '->' typeName '{'
+          switchExpressionBranch+
+      '}'
+    ;
+
+switchExpressionBranch
+    : ('case'    (constant | StringLiteral) '=>' switchExpressionResult)
+    | ('default'                            '=>' switchExpressionResult)
+    ;
+
+switchExpressionResult
+    : expression ';'
+    | compoundStatement
     ;
 
 // GNU exprList
@@ -176,13 +208,25 @@ postfixExpression
     ) (
         '[' expression ']'
          | '(' argumentExpressionList? ')'                           /* function call / macro invocation */
-         | '::'          Identifier '(' argumentExpressionList? ')'  // SSC: Static superstruct function call
-         | '::'          Identifier                                  // SSC: Superstruct function reference
          | ('.' | '->')  Identifier '(' argumentExpressionList? ')'  // SSC: Object method call
-         | ('.' | '->')  Identifier                                  // Attribute access (plain C)
+         | ('.' | '->')  Identifier                                  /* Attribute access (plain C) */
          | '++'
          | '--'
     )*
+    ;
+
+templateDispatchTypeArguments
+    : '<' typeArgument (',' typeArgument)* '>'
+    ;
+
+// SSC: template call
+templateDispatch
+    : Identifier templateDispatchTypeArguments
+    ;
+
+// SSC: template type argument
+typeArgument
+    : typeQualifier* typeSpecifier typeQualifier* pointer*
     ;
 
 // ISO C: argument-expression-list (6.5.3.1)
@@ -199,12 +243,14 @@ unaryExpression
     : ('++' | '--' | 'sizeof')* (
         postfixExpression
         | unaryOperator=('&' | '*' | '+' | '-' | '~' | '!'
-		| '__extension__' // GNU
-		| '__real__' // GNU
-		| '__imag__' // GNU
-		) castExpression
-        | ('sizeof' | Alignof) ( '(' typeName ')'
-		| unaryExpression //GNU
+            | '__extension__' // GNU
+            | '__real__' // GNU
+            | '__imag__' // GNU
+		)
+		castExpression
+        | ('sizeof' | Alignof) (
+            '(' typeName ')'
+		    | unaryExpression //GNU
 		)
         | '&&' Identifier // GCC extension address of label
     )
@@ -231,7 +277,11 @@ additiveExpression
 
 // ISO C: shift-expression (6.5.8)
 shiftExpression
-    : additiveExpression (('<<' | '>>') additiveExpression)*
+    : additiveExpression (shiftOperator additiveExpression)*
+    ;
+
+shiftOperator
+    : ('<<' | '>' '>')
     ;
 
 // ISO C: relational-expression (6.5.9)
@@ -270,16 +320,9 @@ logicalOrExpression
     ;
 
 // ISO C: conditional-expression (6.5.16)
-// ISO C: conditional-expression (6.5.16)
 conditionalExpression
     : logicalOrExpression (Question expression Colon conditionalExpression)?
-    /* SSC */
-    | 'if'
-        logicalOrExpression
-        'then'
-        expression
-        'else'
-        conditionalExpression
+    | 'if' logicalOrExpression 'then' expression 'else' conditionalExpression // SSC
     ;
 
 // ISO C: assignment-expression (6.5.17.1)
@@ -304,10 +347,10 @@ constantExpression
 // ISO C: declaration (6.7.1)
 declaration
     : (
-	declarationSpecifiers initDeclaratorList? ';'
-	| staticAssertDeclaration
-	| attributeDeclaration
-      ) {this.EnterDeclaration();}
+        declarationSpecifiers initDeclaratorList? ';'
+        | staticAssertDeclaration
+        | attributeDeclaration
+    ) {this.EnterDeclaration();}
     ;
 
 // ISO C: declaration-specifiers (6.7.1)
@@ -322,6 +365,14 @@ declarationSpecifier
     | typeQualifier
     | functionSpecifier
     | alignmentSpecifier
+    | superstructMemberDeclarationSpecifier // SSC
+    ;
+
+// SSC: declaration specifier for superstruct members
+superstructMemberDeclarationSpecifier
+    : Pure
+    | Private
+    | StaticFunction
     ;
 
 // ISO C: init-declarator-list (6.7.1)
@@ -369,7 +420,8 @@ typeSpecifier
     | A__uint128_t
     | '__extension__' '(' ('__m128' | '__m128d' | '__m128i') ')'
     | atomicTypeSpecifier
-    | superStructSpecifier // SSC
+    | superStructSpecifier // SSC: superstruct as type specifier
+    | (Superstruct | Struct) templateDispatch // SSC: superstruct template as type specifier
     | structOrUnionSpecifier
     | enumSpecifier
     | flagsSpecifier // SSC
@@ -384,10 +436,12 @@ superStructSpecifier
     | Superstruct Identifier
     ;
 
+// SSC
 superStructBody
     : superStructMember+
     ;
 
+// SSC
 superStructMember
     : declaration
     | functionDefinition
@@ -399,7 +453,7 @@ structOrUnionSpecifier
 	( Identifier? '{' ( {this.IsNullStructDeclarationListExtension()}? | memberDeclarationList) '}'
 	| Identifier
 	)
-//	{this.EnterDeclaration();}
+	{this.EnterDeclaration();}
     ;
 
 // ISO C: struct-or-union (6.7.3.2)
@@ -449,20 +503,25 @@ enumSpecifier
     | 'enum' Identifier enumTypeSpecifier?
     ;
 
-// SSC
-flagsSpecifier
+// SSC: Flag set specifier
+flagsSpecifier // TODO: allow type specifier
     : FlagsSet attributeSpecifierSequence? gnuAttributes? Identifier? '{' flagsInitializerList ','? '}'
     | FlagsSet Identifier
     ;
 
-// SSC
+// SSC: Flag initializer list
 flagsInitializerList
     : flagsInitializer (',' flagsInitializer)*
     ;
 
-// SSC
+// SSC: Flag initializer
 flagsInitializer
-    : Identifier ('=' Identifier ('|' Identifier)*)?
+    : Identifier (
+        '=' (
+            Identifier ('|' Identifier)*
+            | IntegerConstant // zero
+        )
+    )?
     ;
 
 // ISO C: enumerator-list (6.7.3.3)
@@ -514,8 +573,6 @@ functionSpecifier
 		| Restrict // CLANG
 		| 'deprecated' '(' StringLiteral? ')'
 		) ')'
-    | Pure      // SSC
-    | Private   // SSC
     ;
 
 // ISO C: alignment-specifier (6.7.6)
@@ -581,7 +638,7 @@ parameterList
 //   attribute-specifier-sequenceopt declaration-specifiers abstract-declaratoropt
 //
 // Includes disambiguating predicate.
-// Note the spec states parameter-declataion cannot be empty. But, we
+// Note the spec states parameter-declaration cannot be empty. But, we
 // found situations where it must be allowed.
 parameterDeclaration
     : (attributeSpecifierSequence? ({this.IsDeclarationSpecifier()}? declarationSpecifiers | ) )
@@ -798,20 +855,52 @@ translationUnit
 
 // ISO C: external-declaration (6.9.1)
 externalDeclaration
-    : '__extension__'? (
-	functionDefinition
-	| declaration
-	| ';' // stray ;
-	| asmDefinition // GCC
+    : '__extension__'?
+    (
+        functionDefinition
+        | templateDefinition    // SSC
+        | superStructInterface  // SSC
+        | declaration
+        | ';' // stray ;
+        | asmDefinition // GCC
 	)
     ;
 
-// ISO C: function-definition (6.9.2)
-functionDefinition
-    : attributeSpecifierSequence? declarationSpecifiers? declarator declarationList? functionBody
+// SSC: template definition
+templateDefinition
+    : templateHeader {this.EnterTemplate();}
+    (
+        functionDefinition
+        | superStructSpecifier ';'
+        | superStructInterface
+    )
+      {this.ExitTemplate();}
     ;
 
-// declarationList
+templateHeader
+    : Template '<' templateTypes '>'
+    ;
+
+templateTypes
+    : Identifier (',' Identifier)*
+    ;
+
+// SSC: superstruct interface
+superStructInterface
+    : Superstruct Identifier Interface '{' (functionHeader ';')+ '}'
+    ;
+
+// ISO C: function-definition (6.9.2) -- header part
+functionHeader
+    : attributeSpecifierSequence? declarationSpecifiers? declarator
+    ;
+
+// ISO C: function-definition (6.9.2) -- complete
+functionDefinition
+    : functionHeader functionBody
+    ;
+
+// K&R C: declarationList
 declarationList
     : declaration+
     ;

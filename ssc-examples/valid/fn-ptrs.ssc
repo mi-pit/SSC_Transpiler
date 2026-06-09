@@ -1,0 +1,48 @@
+
+object Weird
+{
+    private int a;
+
+    pure void first( void ) { ( void ) this; }
+
+    pure void ( *second( void * ) )( const object Weird * )
+    {
+        ( void ) this;
+        return &Weird::first;
+    }
+
+    pure void ( *( *third( int ) )( const object Weird *, void * ) )( const object Weird * )
+    {
+        ( void ) this;
+        return &Weird::second;
+    }
+
+
+    meta void meta_first( void ) {}
+
+    meta void ( *meta_second( void * ) )( void )
+    {
+        return &Weird::meta_first;
+    }
+
+    meta void ( *( *meta_third( int ) )( void * ) )( void )
+    {
+        return &Weird::meta_second;
+    }
+};
+
+
+int main()
+{
+    object Weird w = {};
+
+    ( void )
+    w.third( ( int ) 1 )
+        ( &w, ( void * ) 0 )
+            ( &w );
+
+    ( void )
+    Weird::meta_third( ( int ) 1 )
+        ( ( void * ) 0 )
+            ();
+}

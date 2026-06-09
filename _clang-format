@@ -7,7 +7,7 @@ AlignConsecutiveAssignments:
   Enabled: true
   AcrossComments: false
   AcrossEmptyLines: false
-AlignConsecutiveBitFields: false
+AlignConsecutiveBitFields: true
 AlignConsecutiveDeclarations: false
 AlignEscapedNewlines: Left
 AlignOperands: Align
@@ -73,9 +73,16 @@ ExperimentalAutoDetectBinPacking: true
 FixNamespaceComments: true
 ForEachMacros:
   - foreach
-  - foreach_uni  # in CLibs
+  - foreach_uni
   - Q_FOREACH
   - BOOST_FOREACH
+IfMacros:
+  - then # SSC keyword
+  - on_fail
+  - on_error
+  - swex_case_imm
+  - swex_case_ptr
+  - swex_case_str
 IncludeBlocks: Regroup
 IncludeCategories:
   - Regex: '^"(llvm|llvm-c|clang|clang-c)/'

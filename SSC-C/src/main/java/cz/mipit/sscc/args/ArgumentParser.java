@@ -2,12 +2,15 @@ package cz.mipit.sscc.args;
 
 import cz.mipit.sscc.Logger;
 import cz.mipit.sscc.file.DirectoryTreeParser;
-import cz.mipit.sscc.file.InputFile;
+import cz.mipit.sscc.file.FileType;
+import cz.mipit.sscc.file.File;
 import cz.mipit.sscc.util.ExitValue;
+import cz.mipit.sscc.util.UnreachableCodeException;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Set;
 
 import static cz.mipit.sscc.Logger.warn;
 import static cz.mipit.sscc.args.SSCCOptions.OPTION_HELP;
@@ -17,7 +20,7 @@ public final class ArgumentParser {
 
     private static final String HELP_STRING = """
             Usage: sscc [options|files]
-            Options:
+            Options:    // output of options marked as "unstable" is subject to change
             """;
 
     private static void printHelpAndExit() {
@@ -28,7 +31,7 @@ public final class ArgumentParser {
         System.exit(0);
     }
 
-    public static SSCCOptions parse(String[] args) throws IOException {
+    public static SSCCOptions parse(String[] args) {
         if (args.length == 0) {
             printHelpAndExit();
         }
@@ -48,8 +51,9 @@ public final class ArgumentParser {
     }
 
     @SuppressWarnings("DuplicateExpressions") /* Path.of(arg) could throw if unverified */
-    private SSCCOptions parse_(String[] args) throws IOException {
+    private SSCCOptions parse_(String[] args) {
         NextOperation nextOperation = NextOperation.None;
+        FileType nextFileType = null;
         for (final String arg : args) {
             nextOperation = switch (nextOperation) {
                 case FilesOnly -> {
@@ -66,33 +70,60 @@ public final class ArgumentParser {
                 }
 
                 case LibPath -> {
-                    options.addFiles(DirectoryTreeParser.getPathsInDirectory(Path.of(arg)));
+                    final Set<File> files;
+                    try {
+                        files = DirectoryTreeParser.getFilesInDirectory(Path.of(arg), Set.of("ssc", "c"));
+                    } catch (final IOException io) {
+                        Logger.errExit(ExitValue.IO_EXCEPTION, io.getMessage());
+                        throw new UnreachableCodeException();
+                    }
+                    options.addFiles(files);
+                    yield NextOperation.None;
+                }
+
+                case FileType -> {
+                    nextFileType = FileType.fromString(arg);
+                    yield NextOperation.InputFile;
+                }
+
+                case InputFile -> {
+                    final Path path = Path.of(arg);
+                    final File in = nextFileType == null
+                            ? File.fromPath(path)
+                            : File.fromPath(nextFileType, path);
+                    nextFileType = null;
+
+                    options.addFile(in);
                     yield NextOperation.None;
                 }
 
                 case None -> {
                     if (!arg.startsWith("-")) {
                         final Path path = Path.of(arg);
-                        final InputFile inputFile = verifyInputFilePath(path);
+                        final File file = verifyInputFilePath(path);
 
-                        options.addFile(inputFile);
+                        options.addFile(file);
                         yield NextOperation.None;
                     }
-                    if (OPTION_HELP.strings.matches(arg)) {
+                    if (OPTION_HELP.matches(arg)) {
                         printHelpAndExit();
                     }
                     for (final Option<?> opt : options) {
-                        final OptionString optstr = opt.strings;
-                        if (optstr.matches(arg)) {
-                            if (opt.defaultValue instanceof Boolean def) {
+                        if (opt.matches(arg)) {
+                            if (opt.defaultValue() instanceof Boolean def) {
                                 opt.setValue(!def);
                             }
 
-                            yield opt.nextOperation;
+                            yield opt.nextOperation();
                         }
                     }
                     Logger.errExit(ExitValue.INVALID_ARGUMENTS, "Unknown option: " + arg);
                     throw new AssertionError("Unreachable");
+                }
+
+                case OutputFile -> {
+                    options.setFormatOutputFile(arg);
+                    yield NextOperation.None;
                 }
             };
         }
@@ -104,7 +135,7 @@ public final class ArgumentParser {
         return options;
     }
 
-    private static InputFile verifyInputFilePath(final Path path) {
+    private static File verifyInputFilePath(final Path path) {
         if (!Files.exists(path)) {
             Logger.errExit(ExitValue.INVALID_ARGUMENTS, "File '" + path + "' does not exist");
         }
@@ -112,13 +143,13 @@ public final class ArgumentParser {
             Logger.errExit(ExitValue.INVALID_ARGUMENTS, "File '" + path + "' is not a regular file");
         }
 
-        final InputFile inputFile = InputFile.fromPath(path.toAbsolutePath());
+        final File file = File.fromPath(path.toAbsolutePath());
 
-        if (inputFile.suffix() == null) {
-            Logger.errExit(ExitValue.INVALID_ARGUMENTS, "Could not verify type of file '" + inputFile.absolutePathString() + "'");
+        if (file.suffix() == null) {
+            Logger.errExit(ExitValue.INVALID_ARGUMENTS, "Could not verify type of file '" + file.absolutePathString() + "'");
         }
 
-        return inputFile;
+        return file;
     }
 
     private ArgumentParser() {
