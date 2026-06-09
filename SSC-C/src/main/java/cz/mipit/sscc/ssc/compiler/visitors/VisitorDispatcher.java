@@ -183,14 +183,16 @@ public class VisitorDispatcher extends FormattingConvertor {
 
     @Override
     public String visitDeclaration(SSCParser.DeclarationContext ctx) {
+        final String s = super.visitDeclaration(ctx);
         collector.collect(ctx);
-        return super.visitDeclaration(ctx);
+        return s;
     }
 
     @Override
     public String visitParameterDeclaration(SSCParser.ParameterDeclarationContext ctx) {
+        final String s = super.visitParameterDeclaration(ctx);
         collector.collect(ctx);
-        return super.visitParameterDeclaration(ctx);
+        return s;
     }
 
 
