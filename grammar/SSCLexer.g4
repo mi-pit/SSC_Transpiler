@@ -265,8 +265,8 @@ Switch
     : 'switch'
     ;
 
-SwitchExpr
-    : 'swex'
+SwitchExpression
+    : 'match'
     ;
 
 // SSC

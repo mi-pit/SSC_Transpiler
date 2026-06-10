@@ -164,7 +164,7 @@ lambdaAttributes
 
 // SSC
 switchExpression
-    : 'swex' '(' expression ')' '->' typeName '{'
+    : 'match' '(' expression ')' '->' typeName '{'
           switchExpressionBranch+
       '}'
     ;
