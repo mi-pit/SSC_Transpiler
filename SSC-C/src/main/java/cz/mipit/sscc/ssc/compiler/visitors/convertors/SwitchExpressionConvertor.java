@@ -67,26 +67,25 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
         final String paramType = type.getParameterType();
         final String param = paramType + " hash";
 
-        final LambdaFunction lambda = new LambdaFunction(
+        final LambdaFunction lambda = LambdaFunction.withCaptures(
+                dispatcher,
                 swexFunctionName,
+                surroundingFunctionName,
                 returnTypeIdentifier,
-                param,
-                body,
                 "",
-                captures
+                body,
+                param,
+                captures,
+                true
         );
         assert lambda.getName().equals(swexFunctionName);
 
         dispatcher.addExternalDeclarationToEmitBefore(lambda.getDefinition());
 
-        // 'swex' '(' expression ')' '->' typeName
-        // assignmentExpression (',' assignmentExpression)*
-
         final String expression = dispatcher.visit(ctx.expression());
         final String hashedExpression = type.getPassedValue(expression);
 
-        final String sep = capturesAsParams.isBlank() ? "" : ", ";
-        return String.format("%s( %s%s %s )", lambda.getName(), hashedExpression, sep, capturesAsParams);
+        return String.format("%s( %s )", lambda.getName(), hashedExpression);
     }
 
     // switchExpressionBranch
@@ -111,7 +110,7 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
         for (final SSCParser.SwitchExpressionBranchContext branchCtx : ctx.switchExpressionBranch()) {
             if (branchCtx.Case() != null) {
                 processCaseBranch(
-                        surroundingFunctionName, returnType, captures, capturesAsParams, branchCtx,
+                        surroundingFunctionName, returnType, captures, branchCtx,
                         switchedType, alreadyParsedBools, alreadyParsedStrings, hashes, body
                 );
                 continue;
@@ -124,7 +123,7 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
                 );
             }
             processDefaultBranch(
-                    surroundingFunctionName, returnType, captures, capturesAsParams,
+                    surroundingFunctionName, returnType, captures,
                     branchCtx, defaultBranchCtx, body
             );
         }
@@ -153,7 +152,6 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
             String surroundingFunctionName,
             String returnType,
             List<LiteralVariable> captures,
-            String capturesAsParams,
             SSCParser.SwitchExpressionBranchContext branchCtx,
             Box<ExpressionType> switchedType,
             boolean[] alreadyParsedBools,
@@ -183,8 +181,7 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
                 branchCtx.switchExpressionResult(),
                 surroundingFunctionName,
                 returnType,
-                captures,
-                capturesAsParams
+                captures
         );
 
         final String caseLabel = String.format("""
@@ -215,7 +212,6 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
     private void processDefaultBranch(String surroundingFunctionName,
                                       String returnType,
                                       List<LiteralVariable> captures,
-                                      String capturesAsParams,
                                       SSCParser.SwitchExpressionBranchContext branchCtx,
                                       Box<SSCParser.SwitchExpressionBranchContext> defaultBranchCtx,
                                       StringJoiner body) {
@@ -231,8 +227,7 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
                 branchCtx.switchExpressionResult(),
                 surroundingFunctionName,
                 returnType,
-                captures,
-                capturesAsParams
+                captures
         );
         final String returnStmt = ("void".equals(returnType) ? "%s; return" : "return %s").formatted(returnExpression);
 
@@ -336,27 +331,27 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
             SSCParser.SwitchExpressionResultContext ctx,
             String surroundingFunctionName,
             String returnType,
-            List<LiteralVariable> captures,
-            String capturesAsParams
+            List<LiteralVariable> captures
     ) {
         if (ctx.expression() != null) {
             return dispatcher.visit(ctx.expression()) + dispatcher.visit(ctx.Semi());
         }
 
-        final String params = ""; // TODO
-
-        final LambdaFunction subLambda = new LambdaFunction(
+        final LambdaFunction subLambda = LambdaFunction.withCaptures(
+                dispatcher,
                 SSCCUtil.createNameWithID("__ssc_swex_branch", surroundingFunctionName),
+                surroundingFunctionName,
                 returnType,
-                params,
+                "",
                 dispatcher.visit(ctx.compoundStatement()),
                 "",
-                captures
+                captures,
+                true
         );
 
         dispatcher.addExternalDeclarationToEmitBefore(subLambda.getDefinition());
 
-        return subLambda.getName() + "( " + params + capturesAsParams + " );";
+        return subLambda.getName() + "();";
     }
 
 

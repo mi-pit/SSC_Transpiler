@@ -75,7 +75,7 @@ int swex_string( const char *string )
 
 #define TEST_SWEX_STRING( LITERAL, OTHER )                  \
     do {                                                    \
-        const char *_string = LITERAL;                      \
+        char *_string = LITERAL;                            \
         const bool _correct = match ( _string ) -> bool {   \
             case LITERAL => true;                           \
             case OTHER => {                                 \

@@ -1,10 +1,13 @@
 package cz.mipit.sscc.ssc.compiler.data.lambda;
 
 import cz.mipit.sscc.ssc.compiler.data.var.LiteralVariable;
+import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
+import cz.mipit.sscc.util.SSCCUtil;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.StringJoiner;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import static cz.mipit.sscc.util.Util.requireNonBlank;
 import static java.util.Objects.requireNonNull;
@@ -18,25 +21,95 @@ public final class LambdaFunction {
     private final String name;
 
 
-    public LambdaFunction(
+    private LambdaFunction(
             String prettifiedName,
             String returnType,
             String params,
             String ctx,
-            String attributes,
-            List<LiteralVariable> captures
+            String attributes
     ) {
-        final String capturesJoined = (!captures.isEmpty() && !params.isBlank() ? ", " : "")
-                                      + captures.stream()
-                                              .map(v -> "/* capture */ __attribute__((unused)) " + v.getDeclaration())
-                                              .collect(Collectors.joining(", "));
+        this.returnType = returnType;
+        this.params = params;
+        this.body = ctx;
+        this.attributes = attributes;
+        this.name = prettifiedName;
+    }
 
-        this.returnType = " " + requireNonBlank(requireNonNull(returnType)) + " ";
-        this.params = padIfNotBlank(requireNonNull(params), s -> " " + s + " ") + capturesJoined;
-        this.body = requireNonNull(ctx);
-        this.attributes = padIfNotBlank(requireNonNull(attributes), s -> s + " ");
+    public static LambdaFunction withCaptures(
+            final VisitorDispatcher dispatcher,
+            final String prettifiedName,
+            final String surroundingFunctionName,
+            final String returnType,
+            final String attributes,
+            final String origBody,
+            final String params,
+            final List<LiteralVariable> captures,
+            final boolean capturesMayBeUnused
+    ) {
+        final StringJoiner bodybuilder = new StringJoiner("\n    ", "\n{\n    ", "\n}\n");
 
-        this.name = requireNonNull(prettifiedName);
+        final String _returnType = " " + requireNonBlank(requireNonNull(returnType)) + " ";
+        final String _params = requireNonNull(params);
+        final String _attributes = padIfNotBlank(requireNonNull(attributes), s -> s + " ");
+
+        final String _name = requireNonNull(prettifiedName);
+
+        final List<String> assignmentsBeforeLambda = new ArrayList<>();
+        saveCaptures(
+                dispatcher,
+                captures,
+                surroundingFunctionName,
+                assignmentsBeforeLambda,
+                bodybuilder,
+                capturesMayBeUnused
+        );
+
+        bodybuilder.add(
+                origBody /* added as a compound statement within the function body */
+        );
+        final String _body = requireNonNull(bodybuilder.toString());
+
+        final LambdaFunction lambdaFunction = new LambdaFunction(
+                _name, _returnType, _params, _body, _attributes
+        );
+
+        for (final String assignment : assignmentsBeforeLambda) {
+            dispatcher.addBlockItemToEmitBefore(assignment);
+        }
+
+        return lambdaFunction;
+    }
+
+    private static void saveCaptures(
+            final VisitorDispatcher dispatcher,
+            List<LiteralVariable> captures,
+            String surroundingFunctionName,
+            List<String> assignmentsBeforeLambda,
+            StringJoiner bodybuilder,
+            final boolean capturesMayBeUnused
+    ) {
+        for (final LiteralVariable variable : captures) {
+            final String staticCaptureIdent = SSCCUtil.createNameWithID("__ssc_lmbd_cap", surroundingFunctionName)
+                                              + "_" + variable.getIdentifier();
+
+            final String staticVariable = variable.getDeclarationForLambda(
+                    true,
+                    staticCaptureIdent
+            );
+            final String localVariable = variable.getDeclarationForLambda(
+                    false,
+                    variable.getIdentifier()
+            );
+
+            assignmentsBeforeLambda.add(staticCaptureIdent + " = " + variable.getIdentifier() + ";");
+
+            final String staticDecl = "static " + staticVariable + " = 0;";
+            dispatcher.addExternalDeclarationToEmitBefore(staticDecl);
+
+            final String un = capturesMayBeUnused ? "__attribute__((unused)) " : "";
+            final String localDecl = un + localVariable + " = " + staticCaptureIdent + ";";
+            bodybuilder.add(localDecl);
+        }
     }
 
     public String getName() {
