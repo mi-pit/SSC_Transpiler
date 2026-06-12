@@ -44,8 +44,18 @@ public final class LiteralVariable extends Variable {
             final boolean removeConst,
             final String newIdentifier
     ) {
-        return getDeclSpecsPadded(removeConst)
-               + SSCCUtil.getDeclaratorForLambdaPassover(dispatcher, this.declarator, newIdentifier);
+        final boolean removeConstFromDeclSpecs = removeConst && this.declarator.pointer().isEmpty();
+        final boolean removeConstFromRightmostPointer = removeConst && !this.declarator.pointer().isEmpty();
+        return
+                getDeclSpecsPadded(
+                        removeConstFromDeclSpecs
+                )
+                + SSCCUtil.getDeclaratorForLambdaPassover(
+                        dispatcher,
+                        this.declarator,
+                        newIdentifier,
+                        removeConstFromRightmostPointer
+                );
     }
 
     private String getDeclSpecsPadded(boolean removeConst) {

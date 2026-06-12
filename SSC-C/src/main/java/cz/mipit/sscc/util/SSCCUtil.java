@@ -57,9 +57,15 @@ public final class SSCCUtil {
     public static String getDeclaratorForLambdaPassover(
             final VisitorDispatcher dispatcher,
             final SSCParser.DeclaratorContext declarator,
-            final String newIdentifier
+            final String newIdentifier,
+            final boolean removeConstFromRightmostPointer
     ) {
         final StringJoiner joiner = new StringJoiner(" ");
+
+        final SSCParser.PointerContext rightmostPointer = !removeConstFromRightmostPointer || declarator.pointer().isEmpty()
+                ? null
+                : declarator.pointer().getLast();
+
         for (final ParseTree child : declarator.children) {
             if (child instanceof SSCParser.DirectDeclaratorContext directDeclarator) {
                 final String got = _getDeclaratorForLambdaPassover(
@@ -71,10 +77,45 @@ public final class SSCCUtil {
                 joiner.add(got);
                 break;
             }
+
+            if (child == rightmostPointer) {
+                assert child != null;
+                joiner.add(
+                        removeConstFromPointer(dispatcher, rightmostPointer)
+                );
+                continue;
+            }
             joiner.add(dispatcher.visit(child));
         }
 
         return joiner.toString();
+    }
+
+    private static String removeConstFromPointer(
+            final VisitorDispatcher dispatcher,
+            final SSCParser.PointerContext rightmostPointer
+    ) {
+        final StringJoiner pointerJoiner = new StringJoiner(" ");
+        // (('*' | '^') typeQualifierList?)+
+        for (final ParseTree pointerChild : rightmostPointer.children) {
+            if (!(pointerChild instanceof SSCParser.TypeQualifierListContext typeQualifiers)) {
+                pointerJoiner.add(
+                        dispatcher.visit(pointerChild)
+                );
+                continue;
+            }
+
+            for (final SSCParser.TypeQualifierContext typeQualifierContext : typeQualifiers.typeQualifier()) {
+                if (typeQualifierContext.Const() != null) {
+                    continue;
+                }
+
+                pointerJoiner.add(
+                        dispatcher.visit(typeQualifierContext)
+                );
+            }
+        }
+        return pointerJoiner.toString();
     }
 
     //	  Identifier attributeSpecifierSequence?
