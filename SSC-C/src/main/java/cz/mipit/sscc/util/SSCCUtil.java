@@ -13,6 +13,7 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.StringJoiner;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
 
@@ -50,6 +51,92 @@ public final class SSCCUtil {
         }
         return result;
     }
+
+
+    // declarator: (pointer declarationSpecifiers?)* directDeclarator
+    public static String getDeclaratorForLambdaPassover(
+            final VisitorDispatcher dispatcher,
+            final SSCParser.DeclaratorContext declarator,
+            final String newIdentifier
+    ) {
+        final StringJoiner joiner = new StringJoiner(" ");
+        for (final ParseTree child : declarator.children) {
+            if (child instanceof SSCParser.DirectDeclaratorContext directDeclarator) {
+                final String got = _getDeclaratorForLambdaPassover(
+                        dispatcher,
+                        getIdentifierFromDeclarator(declarator),
+                        directDeclarator,
+                        newIdentifier
+                );
+                joiner.add(got);
+                break;
+            }
+            joiner.add(dispatcher.visit(child));
+        }
+
+        return joiner.toString();
+    }
+
+    //	  Identifier attributeSpecifierSequence?
+    //	| '(' declarator ')'
+    //	| Identifier ':' DigitSequence         // bit field
+    //	| vcSpecificModifer Identifier         // Visual C Extension
+    //	| '(' vcSpecificModifer declarator ')' // Visual C Extension
+    //	| gnuAttribute
+    //    )
+    //    ( '[' typeQualifierList? assignmentExpression? ']' attributeSpecifierSequence?
+    //      | '[' 'static' typeQualifierList? assignmentExpression ']' attributeSpecifierSequence?
+    //      | '[' typeQualifierList 'static' assignmentExpression ']' attributeSpecifierSequence?
+    //      | '[' typeQualifierList? '*' ']' attributeSpecifierSequence?
+    //      | '(' parameterTypeList ')' attributeSpecifierSequence?
+    //    )*
+    private static String _getDeclaratorForLambdaPassover(
+            final VisitorDispatcher dispatcher,
+            final TerminalNode identifierNode,
+            final SSCParser.DirectDeclaratorContext directDeclarator,
+            final String newIdentifier
+    ) {
+        final boolean hasAnyBrackets = !directDeclarator.LeftBracket().isEmpty();
+        if (hasAnyBrackets) {
+            dispatcher.addTerminalReplacement(identifierNode, String.format("( * %s )", newIdentifier));
+        } else {
+            dispatcher.addTerminalReplacement(identifierNode, newIdentifier);
+        }
+
+        final StringJoiner s = new StringJoiner(" ");
+        {
+            boolean hasFoundBrackets = false;
+            boolean currentlyInFirstBrackets = false;
+            for (final ParseTree child : directDeclarator.children) {
+                if (child instanceof TerminalNode t) {
+                    if (t.getSymbol().getType() == SSCParser.LeftBracket && !hasFoundBrackets) {
+                        hasFoundBrackets = true;
+                        currentlyInFirstBrackets = true;
+                    }
+
+                    if (currentlyInFirstBrackets && t.getSymbol().getType() == SSCParser.RightBracket) {
+                        currentlyInFirstBrackets = false;
+                        continue;
+                    }
+                }
+
+                if (currentlyInFirstBrackets) {
+                    continue;
+                }
+
+                s.add(
+                        dispatcher.visit(child)
+                );
+            }
+        }
+
+        if (hasAnyBrackets) {
+            dispatcher.removeTerminalReplacement(identifierNode);
+        }
+
+        return s.toString();
+    }
+
 
     // vcSpecificModifer? pointer
     // vcSpecificModifer? pointer? directAbstractDeclarator gccDeclaratorExtension*

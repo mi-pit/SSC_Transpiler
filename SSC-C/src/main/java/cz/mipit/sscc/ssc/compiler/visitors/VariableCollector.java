@@ -264,6 +264,7 @@ public class VariableCollector {
             final List<Pointer> pointers = Pointer.fromDeclarator(dispatcher::visit, declarator);
 
             final LiteralVariable var = new LiteralVariable(
+                    dispatcher,
                     identifier,
                     pointers,
                     declSpecs.stream().filter(s -> s.storageClassSpecifier() == null).toList(),

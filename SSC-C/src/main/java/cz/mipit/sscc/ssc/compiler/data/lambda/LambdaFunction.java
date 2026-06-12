@@ -1,7 +1,6 @@
 package cz.mipit.sscc.ssc.compiler.data.lambda;
 
 import cz.mipit.sscc.ssc.compiler.data.var.LiteralVariable;
-import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 
 import java.util.List;
 import java.util.function.Function;
@@ -25,12 +24,11 @@ public final class LambdaFunction {
             String params,
             String ctx,
             String attributes,
-            VisitorDispatcher dispatcher,
             List<LiteralVariable> captures
     ) {
         final String capturesJoined = (!captures.isEmpty() && !params.isBlank() ? ", " : "")
                                       + captures.stream()
-                                              .map(v -> "/* capture */ __attribute__((unused)) " + v.getDeclaration(dispatcher))
+                                              .map(v -> "/* capture */ __attribute__((unused)) " + v.getDeclaration())
                                               .collect(Collectors.joining(", "));
 
         this.returnType = " " + requireNonBlank(requireNonNull(returnType)) + " ";
@@ -49,7 +47,7 @@ public final class LambdaFunction {
         return attributes + "static" + returnType + getName() + "(" + params + ")" + body;
     }
 
-    public static String padIfNotBlank(
+    private static String padIfNotBlank(
             final String string,
             final Function<String, String> mapper
     ) {

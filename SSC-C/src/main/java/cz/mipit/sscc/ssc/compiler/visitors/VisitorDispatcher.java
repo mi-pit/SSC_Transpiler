@@ -41,11 +41,17 @@ import static cz.mipit.sscc.Main.logger;
 public class VisitorDispatcher extends FormattingConvertor {
     public final CompilerState state;
 
+
     private final List<String> externalDeclarationsToEmitBefore = new ArrayList<>();
     private final List<String> externalDeclarationsToEmitAfter = new ArrayList<>();
 
+    private final List<String> blockItemsToEmitBefore = new ArrayList<>();
+    private final List<String> blockItemsToEmitAfter = new ArrayList<>();
+
+
     private final Stack<Map<String, String>> replacements = new Stack<>();
     private final Map<TerminalNode, String> terminalReplacements = new HashMap<>();
+
 
     private final VariableCollector collector;
 
@@ -195,6 +201,17 @@ public class VisitorDispatcher extends FormattingConvertor {
         return s;
     }
 
+    @Override
+    public String visitBlockItem(SSCParser.BlockItemContext ctx) {
+        final String s = super.visitBlockItem(ctx);
+
+        final StringJoiner joiner = new StringJoiner(System.lineSeparator());
+        dumpListToJoiner(blockItemsToEmitBefore, joiner, getIndent());
+        joiner.add(s);
+        dumpListToJoiner(blockItemsToEmitAfter, joiner, getIndent());
+
+        return joiner.toString();
+    }
 
     /* ==== DATA ==== */
 
@@ -204,6 +221,14 @@ public class VisitorDispatcher extends FormattingConvertor {
 
     public void addExternalDeclarationToEmitBefore(String code) {
         externalDeclarationsToEmitBefore.add(code);
+    }
+
+    public void addBlockItemToEmitBefore(String code) {
+        blockItemsToEmitBefore.add(code);
+    }
+
+    public void addBlockItemToEmitAfter(String code) {
+        blockItemsToEmitAfter.add(code);
     }
 
 
@@ -276,8 +301,8 @@ public class VisitorDispatcher extends FormattingConvertor {
             logger.printDebug("\t" + entry.getValue());
         }
 
-        logger.printDebug("Scopes:");
-        logger.printDebug(state.debugInfo());
+        //logger.printDebug("Scopes:");
+        //logger.printDebug(state.debugInfo());
 
         logger.printDebug("Debug dump complete");
     }

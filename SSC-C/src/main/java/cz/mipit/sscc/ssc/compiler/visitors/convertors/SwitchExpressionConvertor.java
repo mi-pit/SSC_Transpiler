@@ -73,7 +73,6 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
                 param,
                 body,
                 "",
-                dispatcher,
                 captures
         );
         assert lambda.getName().equals(swexFunctionName);
@@ -352,7 +351,6 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
                 params,
                 dispatcher.visit(ctx.compoundStatement()),
                 "",
-                dispatcher,
                 captures
         );
 

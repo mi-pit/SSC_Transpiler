@@ -152,7 +152,7 @@ primaryExpression
 
 // SSC: Lambda function definition
 lambdaFunction
-    : '|' '[' parameterTypeList ']' '|' '->' typeName
+    : '|' '[' parameterTypeList ']' (',' identifierList)? '|' '->' typeName
         lambdaAttributes?
     functionBody
     ;
@@ -169,11 +169,13 @@ switchExpression
       '}'
     ;
 
+// SSC
 switchExpressionBranch
-    : ('case'    (constant | StringLiteral) '=>' switchExpressionResult)
-    | ('default'                            '=>' switchExpressionResult)
+    : 'case'    (constant | StringLiteral) '=>' switchExpressionResult
+    | 'default'                            '=>' switchExpressionResult
     ;
 
+// SSC
 switchExpressionResult
     : expression ';'
     | compoundStatement

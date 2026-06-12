@@ -1,0 +1,125 @@
+#include <ssclib.ssch>
+
+
+int swex_int( void )
+{
+    const int i = match ( errno ) -> int {
+        /* constant expression => one of: integral, character, string-literal
+         * int, char may have normal switches
+         * strings must be converted (hashed) */
+        case 0 => 0;
+        case 1 => {
+            return 1;
+        }
+
+        default => {
+            fwarn( "invalid" );
+            return -1;
+        }
+    };
+    return i;
+}
+
+int swex_bool( const bool value )
+{
+    const int i = match ( value ) -> int {
+        case false => 0;
+        case true => 1;
+    };
+    return i;
+}
+
+int swex_nested()
+{
+    const int input = 123;
+    const int i = match (
+        match ( "string" ) -> int {
+            case "String" => 1;
+            case "invalid" => -1;
+            case "string" => 0;
+            default => {
+                fwarn( "default" );
+                return -1;
+            }
+        }
+    ) -> int {
+        case 0 => 0;
+
+        default => {
+            fwarn( "invalid" );
+            return -1;
+        }
+    };
+    return i;
+}
+
+int bool_to_int( bool );
+
+int swex_string( const char *string )
+{
+    return if match ( string ) -> int (*)(bool) {
+        case "Stirng" => nullptr;
+        case "String" => bool_to_int;
+
+        case "#include <inttypes.h>" => swex_bool;
+
+        default => {
+            fwarn( "invalid" );
+            return nullptr;
+        }
+    }
+        then 0
+        else 1;
+}
+
+
+#define TEST_SWEX_STRING( LITERAL, OTHER )                  \
+    do {                                                    \
+        const char *_string = LITERAL;                      \
+        const bool _correct = match ( _string ) -> bool {   \
+            case LITERAL => true;                           \
+            case OTHER => {                                 \
+                printf( "Got wrong but expected string\n\t" );          \
+                array_printf( _string, strlen( _string ), char, "%d" ); \
+                return false;                                           \
+            }                                               \
+            case nullptr => printf( "NULL POINTER!!!\n" );  \
+            default => {                                    \
+                printf( "Unexpected string\n\t" );                      \
+                array_printf( _string, strlen( _string ), char, "%d" ); \
+                return true;                                            \
+            }                                               \
+        };                                                  \
+        if (!_correct) {                                    \
+            ferr( EXIT_FAILURE, "Does not work :(" );       \
+        } else {                                            \
+            printf( "Did work :)\n" );                      \
+        }                                                   \
+    } while ( false );
+
+
+int main()
+{
+    swex_int();
+    swex_bool( false );
+    swex_nested();
+    swex_string( "#include <inttypes.h>" );
+
+    const char *s = "\\x20\\b";
+
+    TEST_SWEX_STRING( "\\x20\\b", "\x20\b" );
+    TEST_SWEX_STRING( "\x20\b", "\\x20\\b" );
+    TEST_SWEX_STRING( "\020\a", "\\020\\a" );
+    TEST_SWEX_STRING( "0", "nullptr" );
+    TEST_SWEX_STRING( "", "0" );
+
+    printf("Testing null as param... ");
+    match ( nullptr ) -> void {
+        case nullptr => printf( "correct :)\n" );
+        default      => printf( "wrong :(\n" );
+    };
+}
+
+int bool_to_int( bool b ) {
+    return b;
+}

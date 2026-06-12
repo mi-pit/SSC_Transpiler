@@ -251,7 +251,7 @@ public final class SSCCompiler implements Compiler {
         if (options.formatOnly()) {
             result = result
                     .lines()
-                    .map(line -> line.stripTrailing())
+                    .map(line -> line.stripTrailing() + "\n")
                     .collect(Collectors.joining("\n"));
         }
 
