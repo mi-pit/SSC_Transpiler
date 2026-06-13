@@ -126,7 +126,7 @@ public final class Logger {
         System.err.print(e.getMessage());
 
         if (isUnexpected && !options.verbose()) {
-            System.err.print(" (for stack trace, run with `" + SSCCOptions.OPTSTR_VERBOSE_SHORT + "` option)");
+            System.err.print("\n    (for stack trace, run with verbose or debug option)");
         }
 
         System.err.println();
@@ -140,7 +140,10 @@ public final class Logger {
      * @param e Any valid exception
      */
     public void printException(Throwable e) {
-        printException(true, e);
+        if (e instanceof SSCTranspilerException ssc)
+            printException(ssc);
+        else
+            printException(true, e);
     }
 
     public void printException(SSCTranspilerException e) {

@@ -2,10 +2,10 @@ package cz.mipit.sscc.util;
 
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
-import cz.mipit.sscc.ssc.exceptions.data.EnumeratedLine;
 import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.Parser;
 import org.antlr.v4.runtime.ParserRuleContext;
-import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.RuleContext;
 import org.antlr.v4.runtime.misc.Interval;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
@@ -18,7 +18,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
 
 import static cz.mipit.sscc.util.SSCCUtil.Maths.digitsOf;
-import static java.lang.System.lineSeparator;
 
 public final class SSCCUtil {
     public static TerminalNode getIdentifierFromDeclarator(SSCParser.DeclaratorContext declarator) {
@@ -301,30 +300,34 @@ public final class SSCCUtil {
     }
 
     /**
-     * Retrieves lines before and after the given token.
+     * For debugging
      *
-     * @return {@link ArrayList} of {@code before + 1 + after}-many {@link EnumeratedLine}s
+     * @param tree   root
+     * @param parser parser
      */
-    public static List<EnumeratedLine> getLinesAroundToken(
-            final Token token,
-            final CommonTokenStream tokens,
-            final int before,
-            final int after
-    ) {
-        final String fullText = tokens.getTokenSource().getInputStream().toString();
-        final String[] lines = fullText.split(lineSeparator(), -1);
+    public static void ASTPrint(ParseTree tree, Parser parser) {
+        _astPrint(tree, parser, 0);
+    }
 
-        final int lineIndex = token.getLine() - 1;
-        final int start = Math.max(0, lineIndex - before);
-        final int end = Math.min(lines.length - 1, lineIndex + after);
+    private static void _astPrint(ParseTree node, Parser parser, int indentation) {
+        final String indent = "  ".repeat(indentation);
 
-        final List<EnumeratedLine> ls = new ArrayList<>();
-        for (int i = start; i <= end; i++) {
-            ls.add(new EnumeratedLine(i + 1, lines[i]));
+        final String nodeName;
+        if (node instanceof RuleContext ctx) {
+            final int ruleIndex = ctx.getRuleIndex();
+            nodeName = parser.getRuleNames()[ruleIndex];
+        } else {
+            assert node instanceof TerminalNode;
+            nodeName = '"' + node.getText() + '"';
         }
 
-        return ls;
+        System.out.println(indent + nodeName);
+
+        for (int i = 0; i < node.getChildCount(); i++) {
+            _astPrint(node.getChild(i), parser, indentation + 1);
+        }
     }
+
 
     public static class Text {
         public static final String INDENT = "    ";

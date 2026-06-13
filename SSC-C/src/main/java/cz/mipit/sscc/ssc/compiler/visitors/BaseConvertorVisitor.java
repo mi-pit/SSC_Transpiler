@@ -155,9 +155,9 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
 
     public SSCTranspilerException getSSCLanguageException(String message, ParseTree ctx) {
         if (ctx instanceof ParserRuleContext prc)
-            return new SSCLanguageException(message, prc, tokens, currentFile);
+            return new SSCLanguageException(message, prc, tokens);
         if (ctx instanceof TerminalNode t)
-            return new SSCLanguageException(message, t, tokens, currentFile);
+            return new SSCLanguageException(message, t, tokens);
 
         throw new IllegalStateException("Invalid parse tree: " + ctx.getClass().getName());
     }
@@ -173,7 +173,6 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
         Logger.warn(
                 SSCTranspilerException.createMessage(
                         SSCTranspilerException.Type.Warning,
-                        currentFile,
                         SSCTranspilerException.getErrorMessages(
                                 message,
                                 ctxs,

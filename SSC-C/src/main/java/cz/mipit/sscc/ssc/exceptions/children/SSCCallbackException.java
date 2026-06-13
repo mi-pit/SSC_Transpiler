@@ -17,8 +17,7 @@ public class SSCCallbackException extends SSCTranspilerException {
                 Type.Language,
                 message,
                 offenders,
-                tokens,
-                currentFile
+                tokens
         );
     }
 }

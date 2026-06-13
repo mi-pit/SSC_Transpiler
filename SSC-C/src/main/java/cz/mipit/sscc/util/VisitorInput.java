@@ -33,6 +33,11 @@ public record VisitorInput(
         parser.addErrorListener(listener);
 
         final ParseTree root = parser.compilationUnit();
+
+        // TODO
+        //if (options.antlrDebug())
+        //    SSCCUtil.ASTPrint(root, parser);
+
         return new VisitorInput(tokens, root, file, parser.getSymbolTable());
     }
 }

@@ -39,8 +39,7 @@ public class SSCErrorListener extends BaseErrorListener {
         errors.add(new AntlrException(
                 msg + symbolicNameMsg,
                 token,
-                tokenStream,
-                file
+                tokenStream
         ));
     }
 }

@@ -3,13 +3,16 @@
 
 int swex_int( void )
 {
+    const int n = 123;
+    const int *p = &n;
+
     const int i = match ( errno ) -> int {
         /* constant expression => one of: integral, character, string-literal
          * int, char may have normal switches
          * strings must be converted (hashed) */
         case 0 => 0;
         case 1 => {
-            return 1;
+            return *p;
         }
 
         default => {
