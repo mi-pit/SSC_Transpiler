@@ -7,6 +7,8 @@ import cz.mipit.sscc.ssc.compiler.data.var.LiteralVariable;
 import cz.mipit.sscc.ssc.compiler.data.var.Pointer;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.data.var.Typedef;
+import cz.mipit.sscc.ssc.compiler.visitors.convertors.AbstractConvertor;
+import cz.mipit.sscc.ssc.compiler.visitors.convertors.Convertor;
 import cz.mipit.sscc.util.Either;
 import cz.mipit.sscc.util.SSCCUtil;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -18,54 +20,130 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-public class VariableCollector {
-    private final VisitorDispatcher dispatcher;
-
-    public VariableCollector(final VisitorDispatcher dispatcher) {
-        this.dispatcher = dispatcher;
+public final class VariableCollector {
+    private VariableCollector() {
     }
 
-    public void collect(SSCParser.ParameterDeclarationContext ctx) {
-        if (dispatcher.getCurrentFunctionName() == null) {
-            return;
-        }
-
-        final SSCParser.DeclarationSpecifiersContext declSpecsCtx = ctx.declarationSpecifiers();
-        if (declSpecsCtx == null) {
-            return; // empty parameter list
-        }
-
-        final SSCParser.DeclaratorContext declarator = ctx.declarator();
-        if (declarator == null) {
-            return;
-        }
-
-        collectVariables(declSpecsCtx, List.of(declarator));
+    public static List<Convertor<? extends ParserRuleContext>> collectors(final VisitorDispatcher dispatcher) {
+        return List.of(
+                new DeclarationCollector(dispatcher),
+                new VariableCollector.ParameterCollector(dispatcher)
+        );
     }
 
-    public void collect(SSCParser.DeclarationContext ctx) {
-        if (ctx.staticAssertDeclaration() != null) {
-            assert ctx.declarationSpecifiers() == null;
-            return;
+    private static class ParameterCollector extends AbstractConvertor<SSCParser.ParameterDeclarationContext> {
+        private ParameterCollector(VisitorDispatcher dispatcher) {
+            super(dispatcher, SSCParser.ParameterDeclarationContext.class);
         }
-        assert ctx.declarationSpecifiers() != null;
-        final var declSpecsLs = ctx.declarationSpecifiers().declarationSpecifier();
-        assert declSpecsLs != null;
 
-        final boolean isTypedef = declSpecsLs
-                .stream()
-                .anyMatch(declSpec ->
-                        declSpec.storageClassSpecifier() != null && declSpec.storageClassSpecifier().Typedef() != null
+        public String convert(SSCParser.ParameterDeclarationContext ctx) {
+            final String s = dispatcher.visitSuper(ctx);
+            _convert(ctx);
+            return s;
+        }
+
+        private void _convert(SSCParser.ParameterDeclarationContext ctx) {
+            if (dispatcher.getCurrentFunctionName() == null) {
+                return;
+            }
+
+            final SSCParser.DeclarationSpecifiersContext declSpecsCtx = ctx.declarationSpecifiers();
+            if (declSpecsCtx == null) {
+                return; // empty parameter list
+            }
+
+            final SSCParser.DeclaratorContext declarator = ctx.declarator();
+            if (declarator == null) {
+                return;
+            }
+
+            collectVariables(dispatcher, declSpecsCtx, List.of(declarator));
+        }
+    }
+
+    private static class DeclarationCollector extends AbstractConvertor<SSCParser.DeclarationContext> {
+        private DeclarationCollector(final VisitorDispatcher dispatcher) {
+            super(dispatcher, SSCParser.DeclarationContext.class);
+        }
+
+        @Override
+        public String convert(SSCParser.DeclarationContext ctx) {
+            final String visited = dispatcher.visitSuper(ctx);
+            _collect(ctx);
+            return visited;
+        }
+
+        private void _collect(final SSCParser.DeclarationContext ctx) {
+            if (ctx.staticAssertDeclaration() != null) {
+                assert ctx.declarationSpecifiers() == null;
+                return;
+            }
+            assert ctx.declarationSpecifiers() != null;
+            final var declSpecsLs = ctx.declarationSpecifiers().declarationSpecifier();
+            assert declSpecsLs != null;
+
+            final boolean isTypedef = declSpecsLs
+                    .stream()
+                    .anyMatch(declSpec ->
+                            declSpec.storageClassSpecifier() != null && declSpec.storageClassSpecifier().Typedef() != null
+                    );
+
+            if (isTypedef) {
+                collectTypedefs(dispatcher, ctx, declSpecsLs);
+            } else {
+                collectVariablesFromDeclaration(dispatcher, ctx);
+            }
+        }
+
+        private static void collectVariablesFromDeclaration(
+                final VisitorDispatcher dispatcher,
+                final SSCParser.DeclarationContext ctx
+        ) {
+            if (ctx.initDeclaratorList() == null) {
+                // e.g. `int;` | `struct { ... };`
+                return;
+            }
+
+            final SSCParser.DeclarationSpecifiersContext declSpecs = ctx.declarationSpecifiers();
+            if (declSpecs == null) {
+                throw dispatcher.getSSCLanguageException(
+                        "No declaration specifiers in declaration", ctx
                 );
+            }
 
-        if (isTypedef) {
-            collectTypedefs(ctx, declSpecsLs);
-        } else {
-            collectVariablesFromDeclaration(ctx);
+            // initDeclarator
+            //      : declarator ('=' initializer)?
+            // initializer
+            //      : assignmentExpression
+            //      | '{' initializerList ','? '}'
+            //      | '{' '}'
+
+            final List<SSCParser.DeclaratorContext> declarators = ctx
+                    .initDeclaratorList()
+                    .initDeclarator()
+                    .stream()
+                    .map(SSCParser.InitDeclaratorContext::declarator)
+                    .toList();
+
+            collectVariables(dispatcher, declSpecs, declarators);
+        }
+
+        private static List<SSCParser.PrimaryExpressionContext> getPrimaryExpression(
+                final ParseTree node
+        ) {
+            if (node instanceof SSCParser.PrimaryExpressionContext p) {
+                return List.of(p);
+            }
+            final List<SSCParser.PrimaryExpressionContext> primaryExpressions = new ArrayList<>();
+            for (int i = 0; i < node.getChildCount(); i++) {
+                primaryExpressions.addAll(getPrimaryExpression(node.getChild(i)));
+            }
+            return primaryExpressions;
         }
     }
 
-    private void collectTypedefs(
+    private static void collectTypedefs(
+            final VisitorDispatcher dispatcher,
             final SSCParser.DeclarationContext ctx,
             final List<SSCParser.DeclarationSpecifierContext> declSpecsLs
     ) {
@@ -102,7 +180,7 @@ public class VariableCollector {
                 .toList();
 
         if (ssSpecs.isEmpty()) {
-            collectNonSuperstructVariable(declaratorsList, declSpecsLs);
+            collectNonSuperstructVariable(dispatcher, declaratorsList, declSpecsLs);
             return;
         }
 
@@ -138,70 +216,9 @@ public class VariableCollector {
         }
     }
 
-    private void collectVariablesFromDeclaration(
-            final SSCParser.DeclarationContext ctx
-    ) {
-        if (ctx.initDeclaratorList() == null) {
-            // e.g. `int;` | `struct { ... };`
-            return;
-        }
 
-        final SSCParser.DeclarationSpecifiersContext declSpecs = ctx.declarationSpecifiers();
-        if (declSpecs == null) {
-            throw dispatcher.getSSCLanguageException(
-                    "No declaration specifiers in declaration", ctx
-            );
-        }
-
-        // initDeclarator
-        //      : declarator ('=' initializer)?
-        // initializer
-        //      : assignmentExpression
-        //      | '{' initializerList ','? '}'
-        //      | '{' '}'
-
-        final List<SSCParser.DeclaratorContext> declarators = ctx
-                .initDeclaratorList()
-                .initDeclarator()
-                .stream()
-                .filter(initDecl -> {
-                    if (initDecl.initializer() == null) {
-                        return true;
-                    }
-                    final SSCParser.InitializerContext initializer = initDecl.initializer();
-                    if (initializer.assignmentExpression() == null) {
-                        return true;
-                    }
-
-                    final List<SSCParser.PrimaryExpressionContext> primaryExpressions =
-                            getPrimaryExpression(initializer.assignmentExpression());
-                    for (final SSCParser.PrimaryExpressionContext primary : primaryExpressions) {
-                        if (primary.switchExpression() != null || primary.lambdaFunction() != null) {
-                            return false;
-                        }
-                    }
-                    return true;
-                })
-                .map(SSCParser.InitDeclaratorContext::declarator)
-                .toList();
-
-        collectVariables(declSpecs, declarators);
-    }
-
-    private List<SSCParser.PrimaryExpressionContext> getPrimaryExpression(
-            final ParseTree node
-    ) {
-        if (node instanceof SSCParser.PrimaryExpressionContext p) {
-            return List.of(p);
-        }
-        final List<SSCParser.PrimaryExpressionContext> primaryExpressions = new ArrayList<>();
-        for (int i = 0; i < node.getChildCount(); i++) {
-            primaryExpressions.addAll(getPrimaryExpression(node.getChild(i)));
-        }
-        return primaryExpressions;
-    }
-
-    private void collectVariables(
+    private static void collectVariables(
+            VisitorDispatcher dispatcher,
             SSCParser.DeclarationSpecifiersContext declSpecsCtx,
             List<SSCParser.DeclaratorContext> declarators
     ) {
@@ -210,9 +227,9 @@ public class VariableCollector {
         }
 
         final List<SSCParser.DeclarationSpecifierContext> declSpecs = declSpecsCtx.declarationSpecifier();
-        final Optional<Either<String, Typedef<SuperStruct>>> maybeEither = findSSNameInDeclSpecs(declSpecs);
+        final Optional<Either<String, Typedef<SuperStruct>>> maybeEither = findSSNameInDeclSpecs(dispatcher, declSpecs);
         if (maybeEither.isEmpty()) {
-            collectNonSuperstructVariable(declarators, declSpecs);
+            collectNonSuperstructVariable(dispatcher, declarators, declSpecs);
             return;
         }
 
@@ -225,8 +242,8 @@ public class VariableCollector {
             }
 
             final Optional<SuperstructVariable> mapped = ssNameOrTypedef.map(
-                    str -> tryCreateSuperstructVariableFromDeclarator(str, declarator),
-                    typedef -> tryCreateSuperstructVariableFromDeclarator(typedef, declarator)
+                    str -> tryCreateSuperstructVariableFromDeclarator(dispatcher, str, declarator),
+                    typedef -> tryCreateSuperstructVariableFromDeclarator(dispatcher, typedef, declarator)
             );
 
             mapped.ifPresent(v ->
@@ -235,7 +252,55 @@ public class VariableCollector {
         }
     }
 
-    private void collectNonSuperstructVariable(
+    private static Optional<SuperstructVariable> tryCreateSuperstructVariableFromDeclarator(
+            final VisitorDispatcher dispatcher,
+            final String ssName,
+            final SSCParser.DeclaratorContext declarator
+    ) {
+        return tryCreateSuperstructVariableFromDeclarator(dispatcher, ssName, Pointer.none(), declarator);
+    }
+
+    private static Optional<SuperstructVariable> tryCreateSuperstructVariableFromDeclarator(
+            final VisitorDispatcher dispatcher,
+            final Typedef<SuperStruct> typedef,
+            final SSCParser.DeclaratorContext declarator
+    ) {
+        final SuperStruct ss = typedef.getRepresentedType();
+        return tryCreateSuperstructVariableFromDeclarator(
+                dispatcher,
+                ss.name(),
+                typedef.getPointers(),
+                declarator
+        );
+    }
+
+    private static Optional<SuperstructVariable> tryCreateSuperstructVariableFromDeclarator(
+            final VisitorDispatcher dispatcher,
+            final String ssName,
+            final List<Pointer> pointerBase,
+            final SSCParser.DeclaratorContext declarator
+    ) {
+        if (declarator == null) {
+            return Optional.empty();
+        }
+        final SSCParser.DirectDeclaratorContext directDecl = declarator.directDeclarator();
+        if (directDecl.Identifier() == null) {
+            return Optional.empty();
+        }
+
+        final List<Pointer> declaratorPointers = Pointer.fromDeclarator(dispatcher::visit, declarator);
+        final String varName = dispatcher.visit(directDecl.Identifier());
+
+        final SuperstructVariable ssVar = new SuperstructVariable(
+                ssName,
+                Pointer.combine(pointerBase, declaratorPointers),
+                varName
+        );
+        return Optional.of(ssVar);
+    }
+
+    private static void collectNonSuperstructVariable(
+            final VisitorDispatcher dispatcher,
             List<SSCParser.DeclaratorContext> declarators,
             List<SSCParser.DeclarationSpecifierContext> declSpecs
     ) {
@@ -275,50 +340,9 @@ public class VariableCollector {
         }
     }
 
-    public Optional<SuperstructVariable> tryCreateSuperstructVariableFromDeclarator(
-            final String ssName,
-            final SSCParser.DeclaratorContext declarator
-    ) {
-        return tryCreateSuperstructVariableFromDeclarator(ssName, Pointer.none(), declarator);
-    }
 
-    public Optional<SuperstructVariable> tryCreateSuperstructVariableFromDeclarator(
-            final Typedef<SuperStruct> typedef,
-            final SSCParser.DeclaratorContext declarator
-    ) {
-        final SuperStruct ss = typedef.getRepresentedType();
-        return tryCreateSuperstructVariableFromDeclarator(
-                ss.name(),
-                typedef.getPointers(),
-                declarator
-        );
-    }
-
-    private Optional<SuperstructVariable> tryCreateSuperstructVariableFromDeclarator(
-            final String ssName,
-            final List<Pointer> pointerBase,
-            final SSCParser.DeclaratorContext declarator
-    ) {
-        if (declarator == null) {
-            return Optional.empty();
-        }
-        final SSCParser.DirectDeclaratorContext directDecl = declarator.directDeclarator();
-        if (directDecl.Identifier() == null) {
-            return Optional.empty();
-        }
-
-        final List<Pointer> declaratorPointers = Pointer.fromDeclarator(dispatcher::visit, declarator);
-        final String varName = dispatcher.visit(directDecl.Identifier());
-
-        final SuperstructVariable ssVar = new SuperstructVariable(
-                ssName,
-                Pointer.combine(pointerBase, declaratorPointers),
-                varName
-        );
-        return Optional.of(ssVar);
-    }
-
-    private Optional<Either<String, Typedef<SuperStruct>>> findSSNameInDeclSpecs(
+    private static Optional<Either<String, Typedef<SuperStruct>>> findSSNameInDeclSpecs(
+            final VisitorDispatcher dispatcher,
             final List<SSCParser.DeclarationSpecifierContext> declSpecs
     ) {
         for (final SSCParser.DeclarationSpecifierContext declSpec : declSpecs) {

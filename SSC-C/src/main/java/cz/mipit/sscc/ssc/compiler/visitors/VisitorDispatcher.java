@@ -21,6 +21,7 @@ import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateDispatchConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TernaryOperatorConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.fmt.FormattingConvertor;
 import cz.mipit.sscc.util.VisitorInput;
+import cz.mipit.sscc.util.collection.builder.ListBuilder;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -52,9 +53,6 @@ public class VisitorDispatcher extends FormattingConvertor {
     private final Stack<Map<String, String>> replacements = new Stack<>();
     private final Map<TerminalNode, String> terminalReplacements = new HashMap<>();
 
-
-    private final VariableCollector collector;
-
     private final Map<Class<? extends ParserRuleContext>, Convertor<? extends ParserRuleContext>> convertors;
 
 
@@ -63,29 +61,30 @@ public class VisitorDispatcher extends FormattingConvertor {
 
         state = new CompilerState(input.symbolTable(), this);
 
-        collector = new VariableCollector(this);
+        final List<Convertor<? extends ParserRuleContext>> convertorsList = ListBuilder
+                .from(VariableCollector.collectors(this))
+                .plusMany(
+                        new PostfixExpressionConvertor(this),
+                        new PrimaryExpressionConvertor(this),
+                        new TernaryOperatorConvertor(this),
 
-        final List<Convertor<? extends ParserRuleContext>> convertorsList = List.of(
-                new PostfixExpressionConvertor(this),
-                new PrimaryExpressionConvertor(this),
-                new TernaryOperatorConvertor(this),
+                        new FlagsConvertor(this),
+                        new LambdaConvertor(this),
+                        new SwitchExpressionConvertor(this),
 
-                new FlagsConvertor(this),
-                new LambdaConvertor(this),
-                new SwitchExpressionConvertor(this),
+                        new FunctionHeaderConvertor(this),
+                        new FunctionDefinitionConvertor(this),
+                        new CustomDeclSpecConvertor(this),
+                        new SuperstructMemberConvertor(this),
+                        new ParameterTypeListConvertor(this),
 
-                new FunctionHeaderConvertor(this),
-                new FunctionDefinitionConvertor(this),
-                new CustomDeclSpecConvertor(this),
-                new SuperstructMemberConvertor(this),
-                new ParameterTypeListConvertor(this),
+                        new SuperstructInterfaceConvertor(this),
+                        new SuperstructConvertor(this),
 
-                new SuperstructInterfaceConvertor(this),
-                new SuperstructConvertor(this),
-
-                new TemplateDispatchConvertor(this),
-                new TemplateDefinitionConvertor(this)
-        );
+                        new TemplateDispatchConvertor(this),
+                        new TemplateDefinitionConvertor(this)
+                )
+                .build();
 
         convertors = new HashMap<>();
 
@@ -185,20 +184,6 @@ public class VisitorDispatcher extends FormattingConvertor {
             joiner.add(indent + item);
         }
         ls.clear();
-    }
-
-    @Override
-    public String visitDeclaration(SSCParser.DeclarationContext ctx) {
-        final String s = super.visitDeclaration(ctx);
-        collector.collect(ctx);
-        return s;
-    }
-
-    @Override
-    public String visitParameterDeclaration(SSCParser.ParameterDeclarationContext ctx) {
-        final String s = super.visitParameterDeclaration(ctx);
-        collector.collect(ctx);
-        return s;
     }
 
     @Override

@@ -32,8 +32,8 @@ public final class CompilerState {
         ParseTree ctx;
 
         WithContext(T var, ParseTree ctx) {
-            this.var = var;
-            this.ctx = ctx;
+            this.var = Objects.requireNonNull(var);
+            this.ctx = Objects.requireNonNull(ctx);
         }
 
         abstract String identifier();

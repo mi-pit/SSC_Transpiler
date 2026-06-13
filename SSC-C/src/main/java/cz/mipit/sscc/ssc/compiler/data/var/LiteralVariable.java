@@ -1,7 +1,6 @@
 package cz.mipit.sscc.ssc.compiler.data.var;
 
 import antlr.ssc.SSCParser;
-import cz.mipit.sscc.Main;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import cz.mipit.sscc.util.SSCCUtil;
 
@@ -27,8 +26,6 @@ public final class LiteralVariable extends Variable {
 
         this.declSpecs = Objects.requireNonNull(declSpecs);
         this.declarator = Objects.requireNonNull(declarator);
-
-        Main.logger.printDebug("Constructing LiteralVariable: " + this);
     }
 
     public String getDeclaration() {
