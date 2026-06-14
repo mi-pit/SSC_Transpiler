@@ -112,6 +112,7 @@ public final class Logger {
     synchronized private void printException(final boolean isUnexpected, Throwable e) {
         System.out.flush();
 
+        COLOR_ERROR.setConsoleColor(System.err);
         System.err.print(Main.SSCC_NAME + ": ");
 
         if (isUnexpected) {

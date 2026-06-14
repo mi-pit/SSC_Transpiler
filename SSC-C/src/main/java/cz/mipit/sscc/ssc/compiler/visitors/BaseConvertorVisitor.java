@@ -165,7 +165,7 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
     public SSCTranspilerException getSSCCallbackException(
             String message, ParseTree curr, ParseTree old
     ) {
-        return new SSCCallbackException(message, List.of(curr, old), tokens, currentFile);
+        return new SSCCallbackException(message, List.of(curr, old), tokens);
     }
 
 
@@ -176,8 +176,10 @@ public abstract class BaseConvertorVisitor extends SSCParserBaseVisitor<String> 
                         SSCTranspilerException.getErrorMessages(
                                 message,
                                 ctxs,
-                                tokens
-                        ))
+                                tokens,
+                                SSCTranspilerException.Type.Warning
+                        )
+                )
         );
     }
 

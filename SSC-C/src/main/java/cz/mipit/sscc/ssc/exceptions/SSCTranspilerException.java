@@ -68,7 +68,8 @@ public class SSCTranspilerException extends RuntimeException {
                 ErrorMessage.fromErrorContext(
                         message,
                         errorContext,
-                        new Locator(offendingCtx, tokens, errorContext.lastLineNumber())
+                        new Locator(offendingCtx, tokens, errorContext.lastLineNumber()),
+                        type.toColor()
                 )
         );
     }
@@ -105,7 +106,8 @@ public class SSCTranspilerException extends RuntimeException {
                 ErrorMessage.fromErrorContext(
                         message,
                         apparentContext,
-                        new Locator(offendingToken, apparentContext.lastLineNumber())
+                        new Locator(offendingToken, apparentContext.lastLineNumber()),
+                        type.toColor()
                 )
         );
     }
@@ -132,19 +134,21 @@ public class SSCTranspilerException extends RuntimeException {
 
     protected SSCTranspilerException(
             Type type,
-            String message, List<ParseTree> offenders,
+            String message,
+            List<ParseTree> offenders,
             CommonTokenStream tokens
     ) {
         this(
                 type,
-                getErrorMessages(message, offenders, tokens)
+                getErrorMessages(message, offenders, tokens, type)
         );
     }
 
     public static List<ErrorMessage> getErrorMessages(
             final String message,
-            List<ParseTree> offenders,
-            CommonTokenStream tokens
+            final List<ParseTree> offenders,
+            final CommonTokenStream tokens,
+            final Type type
     ) {
         final List<ErrorMessage> list = new ArrayList<>();
         for (final Enumerated<ParseTree> offender : Enumerator.of(offenders)) {
@@ -162,7 +166,8 @@ public class SSCTranspilerException extends RuntimeException {
             final ErrorMessage errorMessage = ErrorMessage.fromErrorContext(
                     actualMessage,
                     ctx,
-                    new Locator(offender.item(), tokens, ctx.lastLineNumber())
+                    new Locator(offender.item(), tokens, ctx.lastLineNumber()),
+                    type.toColor()
             );
             list.add(errorMessage);
         }
@@ -180,13 +185,11 @@ public class SSCTranspilerException extends RuntimeException {
             final Type type,
             final List<ErrorMessage> errorMessages
     ) {
-        final ConsoleColor color = type.toColor();
-
-        final StringBuilder sBuilder = new StringBuilder(color.toString());
+        final StringBuilder sBuilder = new StringBuilder(type.toColor().toString());
         sBuilder
                 .append(type.humanReadableName())
-                .append(color)
                 .append(":")
+                .append(COLOR_DEFAULT)
                 .append(lineSeparator());
 
         for (final ErrorMessage errorMessage : errorMessages) {
