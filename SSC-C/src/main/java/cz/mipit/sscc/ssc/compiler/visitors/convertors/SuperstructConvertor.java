@@ -20,24 +20,23 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
     public String convert(SSCParser.SuperStructSpecifierContext ctx) {
         final String thisSSName = dispatcher.visit(ctx.Identifier());
 
+        dispatcher.state.registerSuperstructIfNotDefined(thisSSName, ctx);
+
         if (ctx.superStructBody() == null) {
             return dispatcher.visitSuper(ctx);
         }
         Main.logger.printDebug("Entering Superstruct Body");
 
-        final SuperStruct got = dispatcher.state.getSuperstruct(thisSSName);
-        // superstructs only have fields if they are defined
-        if (got != null && !got.fields().isEmpty()) {
+        final SuperStruct superStruct = Objects.requireNonNull(dispatcher.state.getSuperstruct(thisSSName));
+
+        if (superStruct.isDefined()) {
             throw dispatcher.getSSCCallbackException(
                     "Superstruct with name '" + thisSSName + "' already exists",
-                    ctx.Identifier(), superstructContexts.get(got).Identifier()
+                    ctx.Identifier(), superstructContexts.get(superStruct).Identifier()
             );
         }
+        superStruct.setDefined();
 
-        final SuperStruct superStruct = Objects.requireNonNullElseGet(
-                got,
-                () -> new SuperStruct(thisSSName)
-        );
         superstructContexts.put(superStruct, ctx);
 
         dispatcher.state.pushSuperstruct(superStruct, ctx);

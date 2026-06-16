@@ -38,11 +38,12 @@ public final class VariableCollector {
 
         public String convert(SSCParser.ParameterDeclarationContext ctx) {
             final String s = dispatcher.visitSuper(ctx);
-            _convert(ctx);
+            if (!dispatcher.state.inAnInterface)
+                _collect(ctx);
             return s;
         }
 
-        private void _convert(SSCParser.ParameterDeclarationContext ctx) {
+        private void _collect(SSCParser.ParameterDeclarationContext ctx) {
             if (dispatcher.getCurrentFunctionName() == null) {
                 return;
             }
@@ -242,7 +243,14 @@ public final class VariableCollector {
             }
 
             final Optional<SuperstructVariable> mapped = ssNameOrTypedef.map(
-                    str -> tryCreateSuperstructVariableFromDeclarator(dispatcher, str, declarator),
+                    ssName -> tryCreateSuperstructVariableFromDeclarator(
+                            dispatcher,
+                            Optional.ofNullable(dispatcher.state.getSuperstruct(ssName))
+                                    .orElseThrow(() -> dispatcher.getSSCLanguageException(
+                                            "No such superstruct", declSpecsCtx
+                                    )),
+                            declarator
+                    ),
                     typedef -> tryCreateSuperstructVariableFromDeclarator(dispatcher, typedef, declarator)
             );
 
@@ -254,10 +262,10 @@ public final class VariableCollector {
 
     private static Optional<SuperstructVariable> tryCreateSuperstructVariableFromDeclarator(
             final VisitorDispatcher dispatcher,
-            final String ssName,
+            final SuperStruct superstruct,
             final SSCParser.DeclaratorContext declarator
     ) {
-        return tryCreateSuperstructVariableFromDeclarator(dispatcher, ssName, Pointer.none(), declarator);
+        return tryCreateSuperstructVariableFromDeclarator(dispatcher, superstruct, Pointer.none(), declarator);
     }
 
     private static Optional<SuperstructVariable> tryCreateSuperstructVariableFromDeclarator(
@@ -265,10 +273,9 @@ public final class VariableCollector {
             final Typedef<SuperStruct> typedef,
             final SSCParser.DeclaratorContext declarator
     ) {
-        final SuperStruct ss = typedef.getRepresentedType();
         return tryCreateSuperstructVariableFromDeclarator(
                 dispatcher,
-                ss.name(),
+                typedef.getRepresentedType(),
                 typedef.getPointers(),
                 declarator
         );
@@ -276,7 +283,7 @@ public final class VariableCollector {
 
     private static Optional<SuperstructVariable> tryCreateSuperstructVariableFromDeclarator(
             final VisitorDispatcher dispatcher,
-            final String ssName,
+            final SuperStruct superstruct,
             final List<Pointer> pointerBase,
             final SSCParser.DeclaratorContext declarator
     ) {
@@ -292,7 +299,7 @@ public final class VariableCollector {
         final String varName = dispatcher.visit(directDecl.Identifier());
 
         final SuperstructVariable ssVar = new SuperstructVariable(
-                ssName,
+                superstruct,
                 Pointer.combine(pointerBase, declaratorPointers),
                 varName
         );

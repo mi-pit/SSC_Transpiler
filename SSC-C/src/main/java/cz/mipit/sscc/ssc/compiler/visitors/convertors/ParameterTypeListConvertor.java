@@ -99,10 +99,11 @@ public class ParameterTypeListConvertor extends AbstractConvertor<SSCParser.Para
 
 
     private void registerSelfReferenceVariable(
-            SuperStruct superstruct, ParseTree ctx
+            final SuperStruct superstruct,
+            final ParseTree ctx
     ) {
         final SuperstructVariable selfReferenceVariable =
-                new SuperstructVariable(superstruct.name(), Pointer.oneConst(), "this");
+                new SuperstructVariable(superstruct, Pointer.oneConst(), "this");
 
         dispatcher.state.addSuperstructVariable(selfReferenceVariable, ctx);
     }

@@ -106,6 +106,8 @@ public final class CompilerState {
 
     private final VisitorDispatcher dispatcher;
 
+    public boolean inAnInterface = false;
+
 
     public CompilerState(SymbolTable symbolTable, VisitorDispatcher dispatcher) {
         this.symbolTable = symbolTable;
@@ -196,6 +198,36 @@ public final class CompilerState {
     }
 
 
+    private static class SuperstructWithContext extends WithContext<SuperStruct> {
+        SuperstructWithContext(SuperStruct var, ParseTree ctx) {
+            super(var, ctx);
+        }
+
+        @Override
+        String identifier() {
+            return var.name();
+        }
+
+        @Override
+        String kind() {
+            return "superstruct";
+        }
+    }
+
+    public void registerSuperstructIfNotDefined(String name, ParseTree ctx) {
+        if (getSuperstruct(name) != null) {
+            return;
+        }
+
+        addToScope(
+                false,
+                getGlobalScope(),
+                Scope::superstructs,
+                name,
+                new SuperstructWithContext(new SuperStruct(name), ctx)
+        );
+    }
+
     public void pushSuperstruct(
             final SuperStruct superstruct,
             final ParseTree ctx
@@ -207,17 +239,7 @@ public final class CompilerState {
                         : getCurrentScope(),
                 Scope::superstructs,
                 superstruct.name(),
-                new WithContext<>(superstruct, ctx) {
-                    @Override
-                    String identifier() {
-                        return var.name();
-                    }
-
-                    @Override
-                    String kind() {
-                        return "superstruct";
-                    }
-                }
+                new SuperstructWithContext(superstruct, ctx)
         );
 
         superstructStack.push(superstruct);
@@ -280,6 +302,10 @@ public final class CompilerState {
 
     public LiteralVariable getLiteralVariable(String name) {
         return getAllVisible(Scope::literalVariables).get(name);
+    }
+
+    public Optional<SuperstructVariable> getSuperstructVariable(String name) {
+        return Optional.ofNullable(getAllVisible(Scope::superstructVariables).get(name));
     }
 
     public Collection<LiteralVariable> visibleVariables() {
@@ -373,23 +399,13 @@ public final class CompilerState {
             Function<Scope, Map<String, WithContext<T>>> setGetter
     ) {
         final Map<String, T> visibleVariables = new HashMap<>();
-        final Map<String, ParseTree> contexts = new HashMap<>();
 
         for (final Scope scope : scopes) {
             for (final Map.Entry<String, WithContext<T>> e : setGetter.apply(scope).entrySet()) {
-                final T prev = visibleVariables.put(
+                visibleVariables.put(
                         e.getKey(),
                         e.getValue().var
                 );
-
-                if (prev != null) {
-                    dispatcher.warn(
-                            "Variable '" + e.getKey() + "' shadows previous definition",
-                            e.getValue().ctx, contexts.get(e.getKey())
-                    );
-                }
-
-                contexts.put(e.getKey(), e.getValue().ctx);
             }
         }
 

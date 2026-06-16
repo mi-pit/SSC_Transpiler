@@ -237,14 +237,26 @@ public final class SSCCUtil {
     }
 
 
-    private static String getRestOfChildren(
-            final VisitorDispatcher dispatcher, final ParseTree node,
+    public static String getRestOfChildren(
+            final VisitorDispatcher dispatcher,
+            final ParseTree node,
             final int offset
     ) {
-        final StringBuilder buf = new StringBuilder();
+        final StringJoiner buf = new StringJoiner(" ");
         for (int i = offset; i < node.getChildCount(); i++) {
             final ParseTree child = node.getChild(i);
-            buf.append(dispatcher.visit(child));
+            buf.add(dispatcher.visit(child));
+        }
+        return buf.toString();
+    }
+
+    public static String getRestOfChildren(
+            final VisitorDispatcher dispatcher,
+            final List<ParseTree> children
+    ) {
+        final StringJoiner buf = new StringJoiner(" ");
+        for (final ParseTree child : children) {
+            buf.add(dispatcher.visit(child));
         }
         return buf.toString();
     }

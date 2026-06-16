@@ -18,13 +18,24 @@ public class SuperStruct {
     private final ArrayList<Field> fields;
     private final ArrayList<SuperstructMethod> methods;
 
+    private boolean isDefined;
+
     public SuperStruct(@NotNull final String name) {
         this.name = Objects.requireNonNull(name);
 
         this.fields = new ArrayList<>();
         this.methods = new ArrayList<>();
+
+        this.isDefined = false;
     }
 
+    public boolean isDefined() {
+        return isDefined;
+    }
+
+    public void setDefined() {
+        isDefined = true;
+    }
 
     public String qualifyName(String unqualifiedName) {
         return "__ssc_ss_" + this.name + "__" + unqualifiedName;
