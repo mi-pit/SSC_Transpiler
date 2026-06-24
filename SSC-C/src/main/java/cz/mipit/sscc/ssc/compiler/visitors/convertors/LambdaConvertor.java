@@ -2,7 +2,7 @@ package cz.mipit.sscc.ssc.compiler.visitors.convertors;
 
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.ssc.compiler.data.lambda.LambdaFunction;
-import cz.mipit.sscc.ssc.compiler.data.var.LiteralVariable;
+import cz.mipit.sscc.ssc.compiler.data.var.LambdaVariable;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import cz.mipit.sscc.util.SSCCUtil;
 import org.antlr.v4.runtime.tree.TerminalNode;
@@ -36,10 +36,10 @@ public class LambdaConvertor extends AbstractConvertor<SSCParser.LambdaFunctionC
                 )
                 .orElse(Collections.emptyList());
 
-        final List<LiteralVariable> captures = new ArrayList<>();
+        final List<LambdaVariable> captures = new ArrayList<>();
         for (final TerminalNode captureIdentifier : captureIdentifiers) {
             final String identifier = dispatcher.visit(captureIdentifier);
-            final LiteralVariable var = dispatcher.state.getLiteralVariable(identifier);
+            final LambdaVariable var = dispatcher.state.getLiteralVariable(identifier);
             if (var == null) {
                 throw dispatcher.getSSCLanguageException(
                         "No variable named '" + captureIdentifier + "' is in scope",

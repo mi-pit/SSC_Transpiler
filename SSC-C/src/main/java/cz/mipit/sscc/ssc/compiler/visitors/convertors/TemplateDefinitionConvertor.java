@@ -22,6 +22,11 @@ public class TemplateDefinitionConvertor extends AbstractConvertor<SSCParser.Tem
     private void collect(SSCParser.TemplateDefinitionContext ctx) {
         Main.logger.printDebug("Found template definition");
 
+        if (ctx.declarationSpecifiers() != null) {
+            processTypedef(ctx);
+            return;
+        }
+
         final String name = parseRawName(ctx);
         Main.logger.printDebug("\tName: " + name);
 
@@ -70,6 +75,26 @@ public class TemplateDefinitionConvertor extends AbstractConvertor<SSCParser.Tem
         definedBefore.addContext(ctx);
     }
 
+    private void processTypedef(SSCParser.TemplateDefinitionContext tmplDef) {
+        final SSCParser.DeclarationSpecifiersContext declSpecsCtx = tmplDef.declarationSpecifiers();
+        if (declSpecsCtx
+                .declarationSpecifier()
+                .stream()
+                .noneMatch(ds ->
+                        ds.storageClassSpecifier() != null
+                        && ds.storageClassSpecifier().Typedef() != null
+                )
+        ) {
+            throw dispatcher.getSSCLanguageException(
+                    "Declaration in a template definition must be a typedef", tmplDef
+            );
+        }
+
+        throw dispatcher.getSSCLanguageException(
+                "template typedefs not supported yet", tmplDef.declarationSpecifiers()
+        );
+    }
+
     private String parseRawName(SSCParser.TemplateDefinitionContext templateDefinitionContext) {
         if (templateDefinitionContext.functionDefinition() != null) {
             return dispatcher.visit(
@@ -98,6 +123,6 @@ public class TemplateDefinitionConvertor extends AbstractConvertor<SSCParser.Tem
             );
         }
 
-        throw new IllegalStateException("Template definition context must be one function, ss-interface or declaration");
+        throw new IllegalStateException("Template definition context must be a function, ss-interface or declaration");
     }
 }

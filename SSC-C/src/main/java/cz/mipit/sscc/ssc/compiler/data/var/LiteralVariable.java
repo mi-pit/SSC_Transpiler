@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public final class LiteralVariable extends Variable {
+public final class LiteralVariable extends LambdaVariable {
     private final List<SSCParser.DeclarationSpecifierContext> declSpecs;
     private final SSCParser.DeclaratorContext declarator;
     private final VisitorDispatcher dispatcher;
@@ -26,15 +26,6 @@ public final class LiteralVariable extends Variable {
 
         this.declSpecs = Objects.requireNonNull(declSpecs);
         this.declarator = Objects.requireNonNull(declarator);
-    }
-
-    public String getDeclaration() {
-        return getDeclSpecsPadded()
-               + dispatcher.visit(declarator);
-    }
-
-    private String getDeclSpecsPadded() {
-        return getDeclSpecsPadded(false);
     }
 
     public String getDeclarationForLambda(

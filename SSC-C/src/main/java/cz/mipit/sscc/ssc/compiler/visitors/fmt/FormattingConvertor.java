@@ -458,7 +458,8 @@ public class FormattingConvertor extends BaseConvertorVisitor {
             final ParseTree child = ctx.children.get(i);
             final boolean isLast = i == (ctx.children.size() - 1);
 
-            builder.append(visit(child));
+            final String visited = visit(child);
+            builder.append(visited);
 
             if (!(child instanceof SSCParser.PointerContext) && !isLast) {
                 builder.append(" ");
@@ -547,27 +548,30 @@ public class FormattingConvertor extends BaseConvertorVisitor {
 
         for (int i = lastChild; i < ctx.children.size(); i++) {
             final ParseTree child = ctx.children.get(i);
-            if (child instanceof TerminalNode t) {
-                if (
-                        (t.getSymbol().getType() == SSCParser.RightBracket)
-                        || (t.getSymbol().getType() == SSCParser.RightParen
-                            && parameterTypeListIsNotEmpty((SSCParser.ParameterTypeListContext) ctx.children.get(i - 1)))
-                ) {
-                    builder.append(" ");
-                }
-            }
+            // fixme
+//            if (child instanceof TerminalNode t) {
+//                if (
+//                        (t.getSymbol().getType() == SSCParser.RightBracket)
+//                        || (t.getSymbol().getType() == SSCParser.RightParen
+//                            && parameterTypeListIsNotEmpty((SSCParser.ParameterTypeListContext) ctx.children.get(i - 1)))
+//                ) {
+//                    builder.append(" ");
+//                }
+//            }
 
-            builder.append(visit(child));
+            builder
+                    .append(visit(child))
+                    .append(" ");
 
-            if (child instanceof TerminalNode t) {
-                if (
-                        (t.getSymbol().getType() == SSCParser.LeftBracket)
-                        || (t.getSymbol().getType() == SSCParser.LeftParen
-                            && parameterTypeListIsNotEmpty((SSCParser.ParameterTypeListContext) ctx.children.get(i + 1)))
-                ) {
-                    builder.append(" ");
-                }
-            }
+//            if (child instanceof TerminalNode t) {
+//                if (
+//                        (t.getSymbol().getType() == SSCParser.LeftBracket)
+//                        || (t.getSymbol().getType() == SSCParser.LeftParen
+//                            && parameterTypeListIsNotEmpty((SSCParser.ParameterTypeListContext) ctx.children.get(i + 1)))
+//                ) {
+//                    builder.append(" ");
+//                }
+//            }
         }
 
         return builder.toString();

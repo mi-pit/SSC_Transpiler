@@ -1,6 +1,6 @@
 package cz.mipit.sscc.ssc.compiler.data.lambda;
 
-import cz.mipit.sscc.ssc.compiler.data.var.LiteralVariable;
+import cz.mipit.sscc.ssc.compiler.data.var.LambdaVariable;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
 import cz.mipit.sscc.util.SSCCUtil;
 
@@ -43,7 +43,7 @@ public final class LambdaFunction {
             final String attributes,
             final String origBody,
             final String params,
-            final List<LiteralVariable> captures,
+            final List<LambdaVariable> captures,
             final boolean capturesMayBeUnused
     ) {
         final StringJoiner bodybuilder = new StringJoiner("\n    ", "\n{\n    ", "\n}\n");
@@ -82,13 +82,13 @@ public final class LambdaFunction {
 
     private static void saveCaptures(
             final VisitorDispatcher dispatcher,
-            List<LiteralVariable> captures,
+            List<LambdaVariable> captures,
             String surroundingFunctionName,
             List<String> assignmentsBeforeLambda,
             StringJoiner bodybuilder,
             final boolean capturesMayBeUnused
     ) {
-        for (final LiteralVariable variable : captures) {
+        for (final LambdaVariable variable : captures) {
             final String staticCaptureIdent = SSCCUtil.createNameWithID("__ssc_lmbd_cap", surroundingFunctionName)
                                               + "_" + variable.getIdentifier();
 
@@ -116,9 +116,14 @@ public final class LambdaFunction {
         return name;
     }
 
-    public String getDefinition() {
-        return attributes + "static" + returnType + getName() + "(" + params + ")" + body;
+    public String getHeader() {
+        return attributes + "static" + returnType + getName() + "(" + params + ")";
     }
+
+    public String getDefinition() {
+        return getHeader() + body;
+    }
+
 
     private static String padIfNotBlank(
             final String string,

@@ -1,8 +1,8 @@
 package cz.mipit.sscc.ssc.compiler.visitors;
 
+import antlr.ssc.SSCLexer;
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.ssc.compiler.data.tmpl.Template;
-import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.Convertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.CustomDeclSpecConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.FlagsConvertor;
@@ -32,7 +32,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Stack;
 import java.util.StringJoiner;
 
@@ -161,7 +160,25 @@ public class VisitorDispatcher extends FormattingConvertor {
         // visit first
         final String external = super.visitChildren(ctx);
 
-        final StringJoiner joiner = new StringJoiner(System.lineSeparator());
+        final StringJoiner joiner = new StringJoiner(System.lineSeparator(), System.lineSeparator(), System.lineSeparator());
+
+        int firstTokenIndex = ctx.getStart().getTokenIndex();
+        int lineChannel = SSCLexer.LINEDIRECTIVECHANNEL;
+
+        final List<Token> tokensToLeft = tokens.getHiddenTokensToLeft(firstTokenIndex, lineChannel);
+
+        if (tokensToLeft != null && !tokensToLeft.isEmpty()) {
+            Token lastDirectiveBeforeThisDecl = tokensToLeft.getLast();
+
+            String rawText = lastDirectiveBeforeThisDecl.getText();
+
+            final String lineDirective = rawText.replaceAll(
+                    "^#\\s*(?:line\\s+)?(?<num>\\d+)(?:\\s+\"(?<file>[^\"]+)\")?.*",
+                    "#line ${num} \"${file}\""
+            );
+            joiner.add(lineDirective);
+        }
+
         dumpListToJoiner(externalDeclarationsToEmitBefore, joiner, "");
         joiner.add(external);
         dumpListToJoiner(externalDeclarationsToEmitAfter, joiner, "");
@@ -254,20 +271,6 @@ public class VisitorDispatcher extends FormattingConvertor {
 
     public String getCurrentFunctionName() {
         return state.functionStack().peek();
-    }
-
-
-    /* ==== GETTERS ==== */
-
-    /// Searches current function & global variables
-    public Optional<SuperstructVariable> findSuperstructVariable(String objectName) {
-        for (Map.Entry<String, SuperstructVariable> entry : state.currentVariables().entrySet()) {
-            if (entry.getKey().equals(objectName)) {
-                return Optional.of(entry.getValue());
-            }
-        }
-
-        return Optional.empty();
     }
 
 

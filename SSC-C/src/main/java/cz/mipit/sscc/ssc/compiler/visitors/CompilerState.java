@@ -4,7 +4,7 @@ import antlr.ssc.SymbolTable;
 import cz.mipit.sscc.ssc.compiler.data.FunctionSSCData;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.tmpl.Template;
-import cz.mipit.sscc.ssc.compiler.data.var.LiteralVariable;
+import cz.mipit.sscc.ssc.compiler.data.var.LambdaVariable;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.data.var.Typedef;
 import cz.mipit.sscc.util.SSCCUtil;
@@ -47,7 +47,7 @@ public final class CompilerState {
             Map<String, WithContext<Typedef<SuperStruct>>> superstructTypedefs,
             Map<String, WithContext<SuperstructVariable>> superstructVariables,
 
-            Map<String, WithContext<LiteralVariable>> literalVariables
+            Map<String, WithContext<LambdaVariable>> literalVariables
     ) {
         private static <T> String mapToString(Collection<Map.Entry<String, WithContext<T>>> s) {
             return s.stream()
@@ -282,7 +282,7 @@ public final class CompilerState {
     }
 
 
-    public void addVariable(LiteralVariable var, ParseTree ctx) {
+    public void addVariable(LambdaVariable var, ParseTree ctx) {
         addToScope(
                 Scope::literalVariables,
                 var.getIdentifier(),
@@ -300,7 +300,7 @@ public final class CompilerState {
         );
     }
 
-    public LiteralVariable getLiteralVariable(String name) {
+    public LambdaVariable getLiteralVariable(String name) {
         return getAllVisible(Scope::literalVariables).get(name);
     }
 
@@ -308,12 +308,12 @@ public final class CompilerState {
         return Optional.ofNullable(getAllVisible(Scope::superstructVariables).get(name));
     }
 
-    public Collection<LiteralVariable> visibleVariables() {
+    public Collection<LambdaVariable> visibleVariables() {
         return getAllVisible(Scope::literalVariables).values();
     }
 
-    public List<LiteralVariable> nonGlobalVariables() {
-        final List<LiteralVariable> nonGlobalVariables =
+    public List<LambdaVariable> nonGlobalVariables() {
+        final List<LambdaVariable> nonGlobalVariables =
                 new ArrayList<>(getAllVisible(Scope::literalVariables).values());
         nonGlobalVariables.removeAll(
                 getGlobalScope().literalVariables.values().stream().map(wc -> wc.var).toList()

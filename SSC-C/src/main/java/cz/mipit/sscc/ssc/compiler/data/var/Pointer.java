@@ -3,6 +3,7 @@ package cz.mipit.sscc.ssc.compiler.data.var;
 import antlr.ssc.SSCParser;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
@@ -13,6 +14,7 @@ public class Pointer {
 
     private static final Pointer BARE = new Pointer();
     private static final List<Pointer> ONE_BARE = List.of(BARE);
+
 
     private final List<String> qualifiers;
 
@@ -82,6 +84,10 @@ public class Pointer {
 
     public String toCString() {
         return "*" + String.join(" ", qualifiers);
+    }
+
+    public List<String> qualifiers() {
+        return Collections.unmodifiableList(qualifiers);
     }
 
     @Override

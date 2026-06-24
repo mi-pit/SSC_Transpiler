@@ -38,7 +38,7 @@ public class ErrorContext {
     private final String filename;
 
 
-    public ErrorContext(
+    private ErrorContext(
             List<EnumeratedLine> enumeratedLines,
             String filename
     ) {

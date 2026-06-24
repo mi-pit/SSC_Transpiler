@@ -180,8 +180,9 @@ public final class VariableCollector {
                 .filter(Objects::nonNull)
                 .toList();
 
+
+        collectLiteralVariable(dispatcher, declaratorsList, declSpecsLs);
         if (ssSpecs.isEmpty()) {
-            collectNonSuperstructVariable(dispatcher, declaratorsList, declSpecsLs);
             return;
         }
 
@@ -228,9 +229,10 @@ public final class VariableCollector {
         }
 
         final List<SSCParser.DeclarationSpecifierContext> declSpecs = declSpecsCtx.declarationSpecifier();
+        collectLiteralVariable(dispatcher, declarators, declSpecs);
+
         final Optional<Either<String, Typedef<SuperStruct>>> maybeEither = findSSNameInDeclSpecs(dispatcher, declSpecs);
         if (maybeEither.isEmpty()) {
-            collectNonSuperstructVariable(dispatcher, declarators, declSpecs);
             return;
         }
 
@@ -306,21 +308,26 @@ public final class VariableCollector {
         return Optional.of(ssVar);
     }
 
-    private static void collectNonSuperstructVariable(
+    private static void collectLiteralVariable(
             final VisitorDispatcher dispatcher,
             List<SSCParser.DeclaratorContext> declarators,
             List<SSCParser.DeclarationSpecifierContext> declSpecs
     ) {
-        if (
-                declSpecs
+        {
+            final List<SSCParser.StorageClassSpecifierContext> storageClassSpecs = declSpecs
+                    .stream()
+                    .map(SSCParser.DeclarationSpecifierContext::storageClassSpecifier)
+                    .filter(Objects::nonNull)
+                    .toList();
+            if (storageClassSpecs
                         .stream()
-                        .map(SSCParser.DeclarationSpecifierContext::storageClassSpecifier)
-                        .filter(Objects::nonNull)
-                        .map(SSCParser.StorageClassSpecifierContext::Typedef)
-                        .anyMatch(Objects::nonNull)
-        ) {
-            // typedef
-            return;
+                        .anyMatch(s -> s.Typedef() != null)
+                || storageClassSpecs
+                        .stream()
+                        .anyMatch(s -> s.Extern() != null)
+            ) {
+                return;
+            }
         }
 
         for (SSCParser.DeclaratorContext declarator : declarators) {

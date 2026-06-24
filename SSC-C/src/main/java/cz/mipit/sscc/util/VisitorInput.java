@@ -28,7 +28,7 @@ public record VisitorInput(
 
         final SSCParser parser = new SSCParser(tokens);
 
-        final SSCErrorListener listener = new SSCErrorListener(file, errors);
+        final SSCErrorListener listener = new SSCErrorListener(errors);
         parser.removeErrorListeners();
         parser.addErrorListener(listener);
 

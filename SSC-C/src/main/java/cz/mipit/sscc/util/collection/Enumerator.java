@@ -13,8 +13,7 @@ public final class Enumerator<T> implements Enumerable<T> {
     }
 
     private Enumerator(Collection<T> coll, int index) {
-        this.iterator = coll.iterator();
-        this.index = index;
+        this(coll.iterator(), index);
     }
 
     private Enumerator(Iterator<T> iterator) {
