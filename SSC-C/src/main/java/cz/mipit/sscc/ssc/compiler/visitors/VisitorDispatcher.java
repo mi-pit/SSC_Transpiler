@@ -162,10 +162,10 @@ public class VisitorDispatcher extends FormattingConvertor {
 
         final StringJoiner joiner = new StringJoiner(System.lineSeparator(), System.lineSeparator(), System.lineSeparator());
 
-        int firstTokenIndex = ctx.getStart().getTokenIndex();
-        int lineChannel = SSCLexer.LINEDIRECTIVECHANNEL;
-
-        final List<Token> tokensToLeft = tokens.getHiddenTokensToLeft(firstTokenIndex, lineChannel);
+        final List<Token> tokensToLeft = tokens.getHiddenTokensToLeft(
+                ctx.getStart().getTokenIndex(),
+                SSCLexer.LINEDIRECTIVECHANNEL
+        );
 
         if (tokensToLeft != null && !tokensToLeft.isEmpty()) {
             Token lastDirectiveBeforeThisDecl = tokensToLeft.getLast();
@@ -289,8 +289,8 @@ public class VisitorDispatcher extends FormattingConvertor {
             logger.printDebug("\t" + entry.getValue());
         }
 
-        //logger.printDebug("Scopes:");
-        //logger.printDebug(state.debugInfo());
+        logger.printDebug("Scopes:");
+        logger.printDebug(state.debugInfo());
 
         logger.printDebug("Debug dump complete");
     }

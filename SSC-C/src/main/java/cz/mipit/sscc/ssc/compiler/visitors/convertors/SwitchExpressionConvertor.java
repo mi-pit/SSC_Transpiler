@@ -339,6 +339,13 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
             return dispatcher.visit(ctx.expression()) + dispatcher.visit(ctx.Semi());
         }
 
+        final String capturesAsParams = captures.stream()
+                .map(v -> "__attribute__((unused)) " + v.getDeclarationForLambda(false, v.getIdentifier()))
+                .collect(Collectors.joining(", "));
+        final String capturesAsArgs = captures.stream()
+                .map(Variable::getIdentifier)
+                .collect(Collectors.joining(", "));
+
         final LambdaFunction subLambda = LambdaFunction.withCaptures(
                 dispatcher,
                 SSCCUtil.createNameWithID("__ssc_swex_branch", surroundingFunctionName),
@@ -346,15 +353,15 @@ public class SwitchExpressionConvertor extends AbstractConvertor<SSCParser.Switc
                 returnType,
                 "",
                 dispatcher.visit(ctx.compoundStatement()),
-                "",
-                captures,
+                capturesAsParams,
+                List.of(),
                 true
         );
 
         dispatcher.addExternalDeclarationToEmitBefore(subLambda.getHeader() + ";");
         dispatcher.addExternalDeclarationToEmitAfter(subLambda.getDefinition());
 
-        return subLambda.getName() + "();";
+        return subLambda.getName() + "( " + capturesAsArgs + " );";
     }
 
 

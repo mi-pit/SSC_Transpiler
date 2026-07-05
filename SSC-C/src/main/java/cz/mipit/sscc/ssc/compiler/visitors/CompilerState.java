@@ -46,8 +46,7 @@ public final class CompilerState {
             Map<String, WithContext<SuperStruct>> superstructs,
             Map<String, WithContext<Typedef<SuperStruct>>> superstructTypedefs,
             Map<String, WithContext<SuperstructVariable>> superstructVariables,
-
-            Map<String, WithContext<LambdaVariable>> literalVariables
+            Map<String, WithContext<LambdaVariable>> variables
     ) {
         private static <T> String mapToString(Collection<Map.Entry<String, WithContext<T>>> s) {
             return s.stream()
@@ -284,7 +283,7 @@ public final class CompilerState {
 
     public void addVariable(LambdaVariable var, ParseTree ctx) {
         addToScope(
-                Scope::literalVariables,
+                Scope::variables,
                 var.getIdentifier(),
                 new WithContext<>(var, ctx) {
                     @Override
@@ -301,7 +300,7 @@ public final class CompilerState {
     }
 
     public LambdaVariable getLiteralVariable(String name) {
-        return getAllVisible(Scope::literalVariables).get(name);
+        return getAllVisible(Scope::variables).get(name);
     }
 
     public Optional<SuperstructVariable> getSuperstructVariable(String name) {
@@ -309,14 +308,14 @@ public final class CompilerState {
     }
 
     public Collection<LambdaVariable> visibleVariables() {
-        return getAllVisible(Scope::literalVariables).values();
+        return getAllVisible(Scope::variables).values();
     }
 
     public List<LambdaVariable> nonGlobalVariables() {
         final List<LambdaVariable> nonGlobalVariables =
-                new ArrayList<>(getAllVisible(Scope::literalVariables).values());
+                new ArrayList<>(getAllVisible(Scope::variables).values());
         nonGlobalVariables.removeAll(
-                getGlobalScope().literalVariables.values().stream().map(wc -> wc.var).toList()
+                getGlobalScope().variables.values().stream().map(wc -> wc.var).toList()
         );
         return nonGlobalVariables;
     }

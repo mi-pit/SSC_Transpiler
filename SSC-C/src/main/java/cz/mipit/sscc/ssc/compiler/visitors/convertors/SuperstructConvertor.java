@@ -35,7 +35,6 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
                     ctx.Identifier(), superstructContexts.get(superStruct).Identifier()
             );
         }
-        superStruct.setDefined();
 
         superstructContexts.put(superStruct, ctx);
 
@@ -44,6 +43,7 @@ public class SuperstructConvertor extends AbstractConvertor<SSCParser.SuperStruc
         for (SSCParser.SuperStructMemberContext memberCtx : ctx.superStructBody().superStructMember()) {
             dispatcher.visit(memberCtx);
         }
+        superStruct.setDefined();
 
         dispatcher.state.popSuperstruct();
 

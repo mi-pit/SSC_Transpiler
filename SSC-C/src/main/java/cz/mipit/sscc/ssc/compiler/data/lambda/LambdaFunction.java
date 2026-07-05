@@ -35,6 +35,16 @@ public final class LambdaFunction {
         this.name = prettifiedName;
     }
 
+    public static LambdaFunction withoutCaptures(
+            final String prettifiedName,
+            String returnType,
+            String params,
+            String body,
+            String attributes
+    ) {
+        return new LambdaFunction(prettifiedName, returnType, params, body, attributes);
+    }
+
     public static LambdaFunction withCaptures(
             final VisitorDispatcher dispatcher,
             final String prettifiedName,
