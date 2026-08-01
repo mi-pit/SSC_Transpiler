@@ -25,6 +25,13 @@ public final class Util {
         return number;
     }
 
+    public static int requireNonNegative(int number) {
+        if (number < 0) {
+            throw new IllegalArgumentException();
+        }
+        return number;
+    }
+
 
     public static String unescapeString(String string) {
         return unescape_perl_string(string);

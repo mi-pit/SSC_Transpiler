@@ -24,7 +24,6 @@ int main( int argc, char **argv )
             return 1;
     }
 
-    // TODO
-    //object Second o = {};
-    //return o.get();
+    object Second o = {};
+    return o.get();
 }

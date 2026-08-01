@@ -2,6 +2,7 @@ package cz.mipit.sscc.ssc.compiler.visitors.convertors;
 
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
+import cz.mipit.sscc.ssc.compiler.data.var.LambdaVariable;
 import cz.mipit.sscc.ssc.compiler.data.var.Pointer;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
@@ -99,11 +100,29 @@ public class ParameterTypeListConvertor extends AbstractConvertor<SSCParser.Para
 
 
     private void registerSelfReferenceVariable(
-            SuperStruct superstruct, ParseTree ctx
+            final SuperStruct superstruct,
+            final ParseTree ctx
     ) {
         final SuperstructVariable selfReferenceVariable =
-                new SuperstructVariable(superstruct.name(), Pointer.oneConst(), "this");
+                new SuperstructVariable(superstruct, Pointer.oneConst(), "this");
+
+        final boolean isConst = dispatcher.state.getCurrentFunctionSSCData().isPure();
+
+        final LambdaVariable selfReferenceLiteral = new LambdaVariable("this", Pointer.oneConst()) {
+            @Override
+            public String getDeclarationForLambda(boolean removeConst, String newIdentifier) {
+                final String constP = removeConst ? "" : "const ";
+                final String constS = isConst ? "const " : "";
+                return constS + "struct " + superstruct.name() + " *" + constP + newIdentifier;
+            }
+
+            @Override
+            public boolean isCompound() {
+                return true;
+            }
+        };
 
         dispatcher.state.addSuperstructVariable(selfReferenceVariable, ctx);
+        dispatcher.state.addVariable(selfReferenceLiteral, ctx);
     }
 }

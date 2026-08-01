@@ -2,10 +2,10 @@ package cz.mipit.sscc.util;
 
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
-import cz.mipit.sscc.ssc.exceptions.data.EnumeratedLine;
 import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.Parser;
 import org.antlr.v4.runtime.ParserRuleContext;
-import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.RuleContext;
 import org.antlr.v4.runtime.misc.Interval;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
@@ -13,11 +13,11 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.StringJoiner;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
 
 import static cz.mipit.sscc.util.SSCCUtil.Maths.digitsOf;
-import static java.lang.System.lineSeparator;
 
 public final class SSCCUtil {
     public static TerminalNode getIdentifierFromDeclarator(SSCParser.DeclaratorContext declarator) {
@@ -50,6 +50,133 @@ public final class SSCCUtil {
         }
         return result;
     }
+
+
+    // declarator: (pointer declarationSpecifiers?)* directDeclarator
+    public static String getDeclaratorForLambdaPassover(
+            final VisitorDispatcher dispatcher,
+            final SSCParser.DeclaratorContext declarator,
+            final String newIdentifier,
+            final boolean removeConstFromRightmostPointer
+    ) {
+        final StringJoiner joiner = new StringJoiner(" ");
+
+        final SSCParser.PointerContext rightmostPointer = !removeConstFromRightmostPointer || declarator.pointer().isEmpty()
+                ? null
+                : declarator.pointer().getLast();
+
+        for (final ParseTree child : declarator.children) {
+            if (child instanceof SSCParser.DirectDeclaratorContext directDeclarator) {
+                final String got = _getDeclaratorForLambdaPassover(
+                        dispatcher,
+                        getIdentifierFromDeclarator(declarator),
+                        directDeclarator,
+                        newIdentifier
+                );
+                joiner.add(got);
+                break;
+            }
+
+            if (child == rightmostPointer) {
+                assert child != null;
+                joiner.add(
+                        removeConstFromPointer(dispatcher, rightmostPointer)
+                );
+                continue;
+            }
+            joiner.add(dispatcher.visit(child));
+        }
+
+        return joiner.toString();
+    }
+
+    private static String removeConstFromPointer(
+            final VisitorDispatcher dispatcher,
+            final SSCParser.PointerContext rightmostPointer
+    ) {
+        final StringJoiner pointerJoiner = new StringJoiner(" ");
+        // (('*' | '^') typeQualifierList?)+
+        for (final ParseTree pointerChild : rightmostPointer.children) {
+            if (!(pointerChild instanceof SSCParser.TypeQualifierListContext typeQualifiers)) {
+                pointerJoiner.add(
+                        dispatcher.visit(pointerChild)
+                );
+                continue;
+            }
+
+            for (final SSCParser.TypeQualifierContext typeQualifierContext : typeQualifiers.typeQualifier()) {
+                if (typeQualifierContext.Const() != null) {
+                    continue;
+                }
+
+                pointerJoiner.add(
+                        dispatcher.visit(typeQualifierContext)
+                );
+            }
+        }
+        return pointerJoiner.toString();
+    }
+
+    //	  Identifier attributeSpecifierSequence?
+    //	| '(' declarator ')'
+    //	| Identifier ':' DigitSequence         // bit field
+    //	| vcSpecificModifer Identifier         // Visual C Extension
+    //	| '(' vcSpecificModifer declarator ')' // Visual C Extension
+    //	| gnuAttribute
+    //    )
+    //    ( '[' typeQualifierList? assignmentExpression? ']' attributeSpecifierSequence?
+    //      | '[' 'static' typeQualifierList? assignmentExpression ']' attributeSpecifierSequence?
+    //      | '[' typeQualifierList 'static' assignmentExpression ']' attributeSpecifierSequence?
+    //      | '[' typeQualifierList? '*' ']' attributeSpecifierSequence?
+    //      | '(' parameterTypeList ')' attributeSpecifierSequence?
+    //    )*
+    private static String _getDeclaratorForLambdaPassover(
+            final VisitorDispatcher dispatcher,
+            final TerminalNode identifierNode,
+            final SSCParser.DirectDeclaratorContext directDeclarator,
+            final String newIdentifier
+    ) {
+        final boolean hasAnyBrackets = !directDeclarator.LeftBracket().isEmpty();
+        if (hasAnyBrackets) {
+            dispatcher.addTerminalReplacement(identifierNode, String.format("( * %s )", newIdentifier));
+        } else {
+            dispatcher.addTerminalReplacement(identifierNode, newIdentifier);
+        }
+
+        final StringJoiner s = new StringJoiner(" ");
+        {
+            boolean hasFoundBrackets = false;
+            boolean currentlyInFirstBrackets = false;
+            for (final ParseTree child : directDeclarator.children) {
+                if (child instanceof TerminalNode t) {
+                    if (t.getSymbol().getType() == SSCParser.LeftBracket && !hasFoundBrackets) {
+                        hasFoundBrackets = true;
+                        currentlyInFirstBrackets = true;
+                    }
+
+                    if (currentlyInFirstBrackets && t.getSymbol().getType() == SSCParser.RightBracket) {
+                        currentlyInFirstBrackets = false;
+                        continue;
+                    }
+                }
+
+                if (currentlyInFirstBrackets) {
+                    continue;
+                }
+
+                s.add(
+                        dispatcher.visit(child)
+                );
+            }
+        }
+
+        if (hasAnyBrackets) {
+            dispatcher.removeTerminalReplacement(identifierNode);
+        }
+
+        return s.toString();
+    }
+
 
     // vcSpecificModifer? pointer
     // vcSpecificModifer? pointer? directAbstractDeclarator gccDeclaratorExtension*
@@ -110,14 +237,26 @@ public final class SSCCUtil {
     }
 
 
-    private static String getRestOfChildren(
-            final VisitorDispatcher dispatcher, final ParseTree node,
+    public static String getRestOfChildren(
+            final VisitorDispatcher dispatcher,
+            final ParseTree node,
             final int offset
     ) {
-        final StringBuilder buf = new StringBuilder();
+        final StringJoiner buf = new StringJoiner(" ");
         for (int i = offset; i < node.getChildCount(); i++) {
             final ParseTree child = node.getChild(i);
-            buf.append(dispatcher.visit(child));
+            buf.add(dispatcher.visit(child));
+        }
+        return buf.toString();
+    }
+
+    public static String getRestOfChildren(
+            final VisitorDispatcher dispatcher,
+            final List<ParseTree> children
+    ) {
+        final StringJoiner buf = new StringJoiner(" ");
+        for (final ParseTree child : children) {
+            buf.add(dispatcher.visit(child));
         }
         return buf.toString();
     }
@@ -173,30 +312,34 @@ public final class SSCCUtil {
     }
 
     /**
-     * Retrieves lines before and after the given token.
+     * For debugging
      *
-     * @return {@link ArrayList} of {@code before + 1 + after}-many {@link EnumeratedLine}s
+     * @param tree   root
+     * @param parser parser
      */
-    public static List<EnumeratedLine> getLinesAroundToken(
-            final Token token,
-            final CommonTokenStream tokens,
-            final int before,
-            final int after
-    ) {
-        final String fullText = tokens.getTokenSource().getInputStream().toString();
-        final String[] lines = fullText.split(lineSeparator(), -1);
+    public static void ASTPrint(ParseTree tree, Parser parser) {
+        _astPrint(tree, parser, 0);
+    }
 
-        final int lineIndex = token.getLine() - 1;
-        final int start = Math.max(0, lineIndex - before);
-        final int end = Math.min(lines.length - 1, lineIndex + after);
+    private static void _astPrint(ParseTree node, Parser parser, int indentation) {
+        final String indent = "  ".repeat(indentation);
 
-        final List<EnumeratedLine> ls = new ArrayList<>();
-        for (int i = start; i <= end; i++) {
-            ls.add(new EnumeratedLine(i + 1, lines[i]));
+        final String nodeName;
+        if (node instanceof RuleContext ctx) {
+            final int ruleIndex = ctx.getRuleIndex();
+            nodeName = parser.getRuleNames()[ruleIndex];
+        } else {
+            assert node instanceof TerminalNode;
+            nodeName = '"' + node.getText() + '"';
         }
 
-        return ls;
+        System.out.println(indent + nodeName);
+
+        for (int i = 0; i < node.getChildCount(); i++) {
+            _astPrint(node.getChild(i), parser, indentation + 1);
+        }
     }
+
 
     public static class Text {
         public static final String INDENT = "    ";

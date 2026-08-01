@@ -6,12 +6,14 @@ import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
 import cz.mipit.sscc.ssc.compiler.data.ss.SuperstructMethod;
 import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.visitors.VisitorDispatcher;
+import cz.mipit.sscc.util.SSCCUtil;
+import cz.mipit.sscc.util.collection.Box;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
+import java.util.List;
 import java.util.Optional;
-
-import static java.lang.System.lineSeparator;
+import java.util.StringJoiner;
 
 public class PostfixExpressionConvertor
         extends AbstractConvertor<SSCParser.PostfixExpressionContext> {
@@ -22,118 +24,137 @@ public class PostfixExpressionConvertor
     @Override
     public String convert(SSCParser.PostfixExpressionContext ctx) {
         /* Compound literals for some reason count as postfix expressions */
-        {
-            final Optional<String> res = getCompoundLiteralReplaced(ctx);
-            if (res.isPresent()) {
-                return res.get();
-            }
+        if (ctx.typeName() != null) {
+            /* postfixExpression.typeName implies compound literal */
+            // TODO: check private fields?
+            return dispatcher.visitSuper(ctx);
         }
 
-        if (
-                ctx.children.size() >= 3
-                // must be first child
-                && ctx.children.get(1) instanceof TerminalNode t
-                && (t.getSymbol().getType() == SSCParser.Arrow || t.getSymbol().getType() == SSCParser.Dot)
+        if (ctx.children.size() >= 3
+            && ctx.children.get(1) instanceof TerminalNode arrowOrDotNode
+            && (arrowOrDotNode.getSymbol().getType() == SSCParser.Arrow
+                || arrowOrDotNode.getSymbol().getType() == SSCParser.Dot)
         ) {
-            return convertMethodCall(ctx);
+            return convertMethodCall(ctx, arrowOrDotNode);
         }
+
         return dispatcher.visitSuper(ctx);
     }
 
-    private Optional<String> getCompoundLiteralReplaced(SSCParser.PostfixExpressionContext ctx) {
-        // TODO: check private fields?
-
-        /* postfixExpression.typeName implies compound literal */
-        if (ctx.typeName() == null) {
-            return Optional.empty();
+    //    : templateDispatch
+    //    | (Identifier | templateDispatch) '::' Identifier
+    //    | Identifier {this.LookupSymbol();}
+    //    | constant
+    //    | StringLiteral+
+    //    | '(' expression ')'
+    //    | genericSelection
+    //    | lambdaFunction
+    //    | switchExpression
+    private Optional<SuperstructVariable> getSuperstructPrimaryExpression(SSCParser.PostfixExpressionContext ctx) {
+        assert ctx.primaryExpression() != null;
+        final SSCParser.PrimaryExpressionContext primaryExpression = ctx.primaryExpression();
+        if (!primaryExpression.Identifier().isEmpty()) {
+            final String varName = dispatcher.visit(
+                    primaryExpression.Identifier().getFirst()
+            );
+            return (dispatcher.state.getSuperstructVariable(varName));
         }
 
-        final String res = dispatcher.visitSuper(ctx);
+        if (primaryExpression.LeftParen() != null) {
+            final String visited = dispatcher.visit(
+                    primaryExpression.expression()
+            );
+            return (dispatcher.state.getSuperstructVariable(visited));
+        }
 
-        Main.logger.printDebug(() -> "superStructSpecifier in: "
-                                     + dispatcher.getLiteral(ctx).replace(lineSeparator(), " ")
-                                     + lineSeparator() + "\t\tReturning: " + res.replace(lineSeparator(), " "));
-
-        return Optional.of(res);
+        return Optional.empty();
     }
 
-    public String convertMethodCall(final SSCParser.PostfixExpressionContext ctx) {
-        enum ArrowOrDot {Arrow, Dot}
+    private enum ArrowOrDot {
+        Arrow, Dot,
+        ;
 
-        assert ctx.typeName() == null;
-        assert !ctx.Arrow().isEmpty() || !ctx.Dot().isEmpty();
-
-        assert !ctx.children.isEmpty();
-        assert ctx.children.getFirst() instanceof SSCParser.PrimaryExpressionContext;
-        assert ctx.children.get(1) instanceof TerminalNode t
-               && (t.getSymbol().getType() == SSCParser.Arrow || t.getSymbol().getType() == SSCParser.Dot);
-
-        final ArrowOrDot arrowOrDot = !ctx.Arrow().isEmpty()
-                ? ArrowOrDot.Arrow
-                : ArrowOrDot.Dot;
-
-        Main.logger.printDebug(() -> arrowOrDot + " in '" + dispatcher.getLiteral(ctx) + "'");
-
-        final StringBuilder expressionBuilder = new StringBuilder();
-
-        final SSCParser.PrimaryExpressionContext primaryExprCtx = ctx.primaryExpression();
-        if (primaryExprCtx.Identifier() == null
-            && primaryExprCtx.templateDispatch() == null) {
-            throw dispatcher.getSSCLanguageException(
-                    "Invalid left-side operand of a " + arrowOrDot + " expression",
-                    primaryExprCtx
-            );
+        private static ArrowOrDot fromCtx(TerminalNode node) {
+            return switch (node.getSymbol().getType()) {
+                case SSCParser.Arrow -> Arrow;
+                case SSCParser.Dot -> Dot;
+                default -> throw new IllegalStateException("Unknown ArrowOrDot: " + node.getSymbol().getType());
+            };
         }
-        final String objectName = dispatcher.visit(primaryExprCtx);
-        final String currentFn = dispatcher.getCurrentFunctionName();
+    }
 
-        final Optional<SuperstructVariable> maybeSSVar = dispatcher.findSuperstructVariable(objectName);
-        if (maybeSSVar.isEmpty()) {
-            Main.logger.printDebug(() -> "\tVariable is not superstruct; vars (" + currentFn + "): "
-                                         + dispatcher.state.currentVariables());
-            return dispatcher.visitSuper(ctx);
-        }
-        final SuperstructVariable ssVar = maybeSSVar.get();
-
-        final String superstructName = ssVar.getSuperstructName();
-        final SuperStruct superStruct = dispatcher.state.getSuperstruct(superstructName);
-        if (superStruct == null) {
-            throw dispatcher.getSSCLanguageException(
-                    "Could not find superstruct named '" + superstructName + "'",
-                    primaryExprCtx
-            );
+    // postfixExpression
+    //    : primaryExpression
+    //   (
+    //        '[' expression ']'
+    //         | '(' argumentExpressionList? ')'                           /* function call */
+    //         | ('.' | '->')  Identifier '(' argumentExpressionList? ')'  // SSC: Object method call
+    //         | ('.' | '->')  Identifier                                  /* Attribute access (plain C) */
+    //         | '++'
+    //         | '--'
+    //    )*
+    public String _convertMethodCall(
+            final SuperstructVariable ssVar,
+            final String prevExpression,
+            final List<ParseTree> children,
+            final ParseTree ctx
+    ) {
+        Main.logger.printDebug("ssVar: " + ssVar + " for expr: " + prevExpression);
+        if (children.isEmpty()
+            || ssVar == null
+            || !(children.getFirst() instanceof TerminalNode t
+                 && (t.getSymbol().getType() == SSCParser.Arrow
+                     || t.getSymbol().getType() == SSCParser.Dot))) {
+            return prevExpression + SSCCUtil.getRestOfChildren(dispatcher, children);
         }
 
-        final String methodName;
+        final ArrowOrDot arrowOrDot = ArrowOrDot.fromCtx(t);
+        if (!(children.get(1) instanceof TerminalNode methodNameNode) || methodNameNode.getSymbol().getType() != SSCParser.Identifier)
+            throw new AssertionError();
+
+        ensureExpressionPointerLevel(ssVar, ctx, arrowOrDot);
+
+        final String methodName = dispatcher.visit(methodNameNode);
+        final SuperStruct ss = ssVar.superstruct();
+
+        final Optional<SuperstructMethod> maybeMethod = ss.findMethod(methodName);
+        checkMethodAvailability(ctx, maybeMethod, ss, methodName);
+
+        final String qualifiedName = ss.qualifyName(methodName);
+
+        final SuperstructVariable typeOfExpression = maybeMethod
+                .map(SuperstructMethod::returnType)
+                .orElse(null);
+
+        final Box<Integer> currentChildIndex = new Box<>(2);
         {
-            final ParseTree thirdChild = ctx.children.get(2);
-            if (!(thirdChild instanceof TerminalNode t) || t.getSymbol().getType() != SSCParser.Identifier) {
-                throw dispatcher.getSSCLanguageException(
-                        "Invalid right-side operand of a " + arrowOrDot + " expression",
-                        ctx
-                );
-            }
-            methodName = dispatcher.visit(t);
+            final ParseTree nextChild = children.get(currentChildIndex.item++);
+            assert nextChild instanceof TerminalNode lp && lp.getSymbol().getType() == SSCParser.LeftParen;
         }
+        final String finalExpression = getFinalExpression(
+                children, prevExpression, currentChildIndex, qualifiedName
+        );
 
-        final boolean isAField = superStruct.fields()
-                .stream()
-                .anyMatch(decl -> decl.getName().equals(methodName));
-        if (isAField) {
-            Main.logger.printDebug(() -> "\t\tSeems to be a field. No conversion");
-            return dispatcher.visitSuper(ctx);
-        }
+        return _convertMethodCall(
+                typeOfExpression,
+                finalExpression,
+                children.subList(currentChildIndex.item, children.size()),
+                ctx
+        );
+    }
 
-
-        final Optional<SuperstructMethod> maybeMethod = superStruct.findMethod(methodName);
-
+    @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
+    private void checkMethodAvailability(ParseTree ctx,
+                                         Optional<SuperstructMethod> maybeMethod,
+                                         SuperStruct ss,
+                                         String methodName) {
         if (maybeMethod.isEmpty()) {
             Main.logger.printDebug(() -> "\tVariable does not have such a method");
 
             if (dispatcher.state.currentSuperstruct().isEmpty() ||
-                !dispatcher.state.currentSuperstruct().get().equals(superStruct)) {
+                !dispatcher.state.currentSuperstruct().get().equals(ss)) {
                 throw dispatcher.getSSCLanguageException(
-                        "Superstruct '" + superStruct.name() + "' has no method called '" + methodName + "'",
+                        "Superstruct '" + ss.name() + "' has no method called '" + methodName + "'",
                         ctx
                 );
             }
@@ -146,13 +167,93 @@ public class PostfixExpressionConvertor
         } else if (maybeMethod.get().metadata().isPrivate()) {
             Main.logger.printDebug(() -> "Method '" + methodName + "' is private. Going to check if it may be used here...");
             if (dispatcher.state.currentSuperstruct().isEmpty()
-                || !dispatcher.state.currentSuperstruct().get().name().equals(superStruct.name())) {
+                || !dispatcher.state.currentSuperstruct().get().name().equals(ss.name())) {
                 throw dispatcher.getSSCLanguageException(
                         "Cannot access private method `" + methodName + "` from outside the superstruct", ctx);
             }
         }
+    }
+
+    private void ensureExpressionPointerLevel(SuperstructVariable ssVar, ParseTree ctx, ArrowOrDot arrowOrDot) {
+        if (arrowOrDot == ArrowOrDot.Dot && !ssVar.getPointers().isEmpty()) {
+            throw dispatcher.getSSCLanguageException(
+                    "Cannot access non-local superstruct variable using '.'",
+                    ctx
+            );
+        }
+        final int ptrLvl = ssVar.getPointers().size();
+        if (arrowOrDot == ArrowOrDot.Arrow && ptrLvl != 1) {
+            final String hintString;
+            if (ptrLvl == 0) {
+                hintString = "(use '.')";
+            } else {
+                hintString = "(dereference with " + "*".repeat(ptrLvl) + ")";
+            }
+            throw dispatcher.getSSCLanguageException(
+                    "Variable '" + ssVar.getIdentifier() + "' is not a pointer to struct " + hintString,
+                    ctx
+            );
+        }
+    }
+
+    public String convertMethodCall(
+            final SSCParser.PostfixExpressionContext ctx,
+            final TerminalNode arrowOrDotNode
+    ) {
+        assert ctx.typeName() == null;
+        assert !ctx.Arrow().isEmpty() || !ctx.Dot().isEmpty();
+
+        assert !ctx.children.isEmpty();
+        assert ctx.children.getFirst() instanceof SSCParser.PrimaryExpressionContext;
+        assert ctx.children.get(1) instanceof TerminalNode t
+               && (t.getSymbol().getType() == SSCParser.Arrow || t.getSymbol().getType() == SSCParser.Dot);
+
+        final ArrowOrDot arrowOrDot = ArrowOrDot.fromCtx(arrowOrDotNode);
+
+        Main.logger.printDebug(() -> arrowOrDot + " in '" + dispatcher.getLiteral(ctx) + "'");
+
+        final SSCParser.PrimaryExpressionContext primaryExprCtx = ctx.primaryExpression();
+        if (primaryExprCtx.Identifier() == null
+            && primaryExprCtx.templateDispatch() == null) {
+            throw dispatcher.getSSCLanguageException(
+                    "Invalid left-side operand of a " + arrowOrDot + " expression",
+                    primaryExprCtx
+            );
+        }
+        final String currentFn = dispatcher.getCurrentFunctionName();
+
+        final Optional<SuperstructVariable> maybeSSVar = getSuperstructPrimaryExpression(ctx);
+        if (maybeSSVar.isEmpty()) {
+            Main.logger.printDebug(() -> "\tExpression \"" + dispatcher.getLiteral(ctx.primaryExpression())
+                                         + "\" is not superstruct; vars (" + currentFn + "): "
+                                         + dispatcher.state.currentVariables());
+            return dispatcher.visitSuper(ctx);
+        }
+        final SuperstructVariable ssVar = maybeSSVar.get();
+        final SuperStruct superStruct = ssVar.superstruct();
+
+        final ParseTree thirdChild = ctx.children.get(2);
+        if (!(thirdChild instanceof TerminalNode methodNameIdentifierNode) || methodNameIdentifierNode.getSymbol().getType() != SSCParser.Identifier) {
+            throw dispatcher.getSSCLanguageException(
+                    "Invalid right-side operand of a " + arrowOrDot + " expression: expected method name identifier",
+                    ctx
+            );
+        }
+        final String methodName = dispatcher.visit(methodNameIdentifierNode);
+
+        final boolean isAField = superStruct.fields()
+                .stream()
+                .anyMatch(decl -> decl.getName().equals(methodName));
+        if (isAField) {
+            Main.logger.printDebug(() -> "\t\tSeems to be a field. No conversion");
+            return dispatcher.visitSuper(ctx);
+        }
+
+
+        final Optional<SuperstructMethod> maybeMethod = superStruct.findMethod(methodName);
+        checkMethodAvailability(ctx, maybeMethod, superStruct, methodName);
+
         final String qualifiedName = superStruct.qualifyName(methodName);
-        expressionBuilder.append(qualifiedName);
 
         {
             if (ctx.children.size() <= 3
@@ -162,64 +263,59 @@ public class PostfixExpressionConvertor
                 return dispatcher.visitSuper(ctx);
             }
         }
-        expressionBuilder.append("( ");
 
-        if (arrowOrDot == ArrowOrDot.Dot && !ssVar.getPointers().isEmpty()) {
-            throw dispatcher.getSSCLanguageException("Cannot access non-local superstruct variable using `.`", ctx);
-        }
-        if (arrowOrDot == ArrowOrDot.Arrow && ssVar.getPointers().size() != 1) {
-            throw dispatcher.getSSCLanguageException("Variable '" + ssVar.getIdentifier() + "' is not a pointer to struct", ctx);
-        }
+        ensureExpressionPointerLevel(ssVar, ctx.primaryExpression(), arrowOrDot);
+
+        final StringBuilder selfRef = new StringBuilder();
 
         if (arrowOrDot == ArrowOrDot.Dot) {
-            expressionBuilder.append('&');
+            selfRef.append('&');
         }
-        expressionBuilder.append(objectName);
+        selfRef.append(ssVar.getIdentifier());
 
-        int currentChildIndex = 4;
+        final Box<Integer> currentChildIndex = new Box<>(4);
+
+        final String finalExpression = getFinalExpression(
+                ctx.children,
+                selfRef.toString(),
+                currentChildIndex,
+                qualifiedName
+        );
+
+        Main.logger.printDebug(() -> "Final expression: " + finalExpression);
+
+        final SuperstructVariable typeOfExpression = maybeMethod.map(SuperstructMethod::returnType).orElse(null);
+
+        return _convertMethodCall(
+                typeOfExpression,
+                finalExpression,
+                ctx.children.subList(currentChildIndex.item, ctx.children.size()),
+                methodNameIdentifierNode
+        );
+    }
+
+    private String getFinalExpression(
+            List<ParseTree> children,
+            String selfRef,
+            Box<Integer> currentChildIndex,
+            String qualifiedName
+    ) {
+        final StringJoiner argsJoiner = new StringJoiner(", ");
+        argsJoiner.add(selfRef);
         {
-            final ParseTree fifthChild = ctx.children.get(currentChildIndex++);
-            if (fifthChild instanceof SSCParser.ArgumentExpressionListContext argumentExprLs) {
-                expressionBuilder.append(", ");
-                expressionBuilder.append(
-                        dispatcher.visit(argumentExprLs)
+            final ParseTree nextChild = children.get(currentChildIndex.item);
+            if (nextChild instanceof SSCParser.ArgumentExpressionListContext) {
+                currentChildIndex.item++;
+                argsJoiner.add(
+                        dispatcher.visit(nextChild)
                 );
-            } else if (fifthChild instanceof TerminalNode t && t.getSymbol().getType() == SSCParser.RightParen) {
-                expressionBuilder.append(" ");
-                expressionBuilder.append(dispatcher.visit(t));
-            } else {
-                throw new AssertionError("Left-paren not followed by either arguments list or right-paren");
             }
         }
-
-        assert ctx.children.size() == ctx.getChildCount();
-        for (; currentChildIndex < ctx.getChildCount(); ++currentChildIndex) {
-            final ParseTree child = ctx.children.get(currentChildIndex);
-
-            assert !(child instanceof SSCParser.PrimaryExpressionContext);
-
-            if (child instanceof TerminalNode t &&
-                (t.getSymbol().getType() == SSCParser.RightParen ||
-                 t.getSymbol().getType() == SSCParser.RightBracket ||
-                 t.getSymbol().getType() == SSCParser.RightBrace)
-            ) {
-                expressionBuilder.append(' ');
-            }
-
-            expressionBuilder.append(dispatcher.visit(child));
-
-            if (child instanceof TerminalNode t &&
-                (t.getSymbol().getType() == SSCParser.LeftParen ||
-                 t.getSymbol().getType() == SSCParser.LeftBracket ||
-                 t.getSymbol().getType() == SSCParser.LeftBrace)
-            ) {
-                expressionBuilder.append(' ');
-            }
+        {
+            final ParseTree nextChild = children.get(currentChildIndex.item++);
+            assert nextChild instanceof TerminalNode rp && rp.getSymbol().getType() == SSCParser.RightParen;
         }
-        assert currentChildIndex == ctx.getChildCount();
 
-        Main.logger.printDebug(() -> "Final expression: " + expressionBuilder);
-
-        return expressionBuilder.toString();
+        return qualifiedName + "( " + argsJoiner + " )";
     }
 }

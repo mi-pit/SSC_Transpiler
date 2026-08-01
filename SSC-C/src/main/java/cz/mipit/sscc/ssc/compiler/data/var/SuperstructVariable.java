@@ -1,22 +1,24 @@
 package cz.mipit.sscc.ssc.compiler.data.var;
 
+import cz.mipit.sscc.ssc.compiler.data.ss.SuperStruct;
+
 import java.util.List;
 import java.util.Objects;
 
 public class SuperstructVariable extends Variable {
-    private final String ssName;
+    private final SuperStruct superstruct;
 
-    public SuperstructVariable(String ssName, List<Pointer> pointer, String name) {
+    public SuperstructVariable(SuperStruct superstruct, List<Pointer> pointer, String name) {
         super(name, pointer);
-        this.ssName = Objects.requireNonNull(ssName);
+        this.superstruct = Objects.requireNonNull(superstruct);
     }
 
-    public String getSuperstructName() {
-        return ssName;
+    public SuperStruct superstruct() {
+        return superstruct;
     }
 
     @Override
     public String toString() {
-        return String.format("[SuperStruct %s %s]", ssName, super.createAbstractDeclarator());
+        return String.format("[ss %s %s]", superstruct.name(), super.createAbstractDeclarator());
     }
 }

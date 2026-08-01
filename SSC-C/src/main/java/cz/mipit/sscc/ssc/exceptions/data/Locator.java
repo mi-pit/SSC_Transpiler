@@ -26,17 +26,27 @@ public class Locator {
         this.data = Objects.requireNonNull(data);
     }
 
-    public Locator(ParseTree tree, CommonTokenStream tokens) {
-        this(getLocator(tree, tokens));
+    public Locator(
+            final ParseTree tree,
+            final CommonTokenStream tokens,
+            final int lineNumber
+    ) {
+        this(getLocator(tree, tokens, lineNumber));
     }
 
-    public Locator(Token token) {
-        this(getLocator(token));
+    public Locator(
+            final Token token,
+            final int lineNumber
+    ) {
+        this(getLocator(token, lineNumber));
     }
 
     /// Creates a locator highlighting a single token
-    private static String getLocator(Token token) {
-        final int offset = getLineNumberOffset(token.getLine());
+    private static String getLocator(
+            final Token token,
+            final int lastLineNumber
+    ) {
+        final int offset = getLineNumberOffset(lastLineNumber);
         final int posInLine = token.getCharPositionInLine();
         final int len = token.getStopIndex() - token.getStartIndex() + 1;
 
@@ -45,11 +55,15 @@ public class Locator {
     }
 
     /// Creates a locator highlighting a context
-    private static String getLocator(ParserRuleContext ctx, CommonTokenStream tokens) {
+    private static String getLocator(
+            final ParserRuleContext ctx,
+            final CommonTokenStream tokens,
+            final int lastLineNumber
+    ) {
         final int startLine = ctx.getStart().getLine();
         final int endLine = ctx.getStop().getLine();
 
-        final int offset = getLineNumberOffset(startLine);
+        final int offset = getLineNumberOffset(lastLineNumber);
 
         final int start = ctx.getStart().getCharPositionInLine();
 
@@ -66,12 +80,16 @@ public class Locator {
         return getLocator(nSpaces, nCarets);
     }
 
-    private static String getLocator(ParseTree node, CommonTokenStream tokens) {
+    private static String getLocator(
+            ParseTree node,
+            CommonTokenStream tokens,
+            final int lastLineNumber
+    ) {
         if (node instanceof TerminalNode t) {
-            return getLocator(t.getSymbol());
+            return getLocator(t.getSymbol(), lastLineNumber);
         }
         if (node instanceof ParserRuleContext p) {
-            return getLocator(p, tokens);
+            return getLocator(p, tokens, lastLineNumber);
         }
 
         throw new IllegalArgumentException("Unrecognized ParseTree type: " + node.getClass().getName());

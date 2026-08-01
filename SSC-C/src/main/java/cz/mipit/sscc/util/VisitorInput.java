@@ -28,11 +28,16 @@ public record VisitorInput(
 
         final SSCParser parser = new SSCParser(tokens);
 
-        final SSCErrorListener listener = new SSCErrorListener(file, errors);
+        final SSCErrorListener listener = new SSCErrorListener(errors);
         parser.removeErrorListeners();
         parser.addErrorListener(listener);
 
         final ParseTree root = parser.compilationUnit();
+
+        // TODO
+        //if (options.antlrDebug())
+        //    SSCCUtil.ASTPrint(root, parser);
+
         return new VisitorInput(tokens, root, file, parser.getSymbolTable());
     }
 }

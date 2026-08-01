@@ -152,7 +152,7 @@ primaryExpression
 
 // SSC: Lambda function definition
 lambdaFunction
-    : '|' '[' parameterTypeList ']' '|' '->' typeName
+    : '|' '[' parameterTypeList ']' (',' identifierList)? '|' '->' typeName
         lambdaAttributes?
     functionBody
     ;
@@ -164,16 +164,18 @@ lambdaAttributes
 
 // SSC
 switchExpression
-    : 'swex' '(' expression ')' '->' typeName '{'
+    : 'match' '(' expression ')' '->' typeName '{'
           switchExpressionBranch+
       '}'
     ;
 
+// SSC
 switchExpressionBranch
-    : ('case'    (constant | StringLiteral) '=>' switchExpressionResult)
-    | ('default'                            '=>' switchExpressionResult)
+    : 'case'    (constant | StringLiteral) '=>' switchExpressionResult
+    | 'default'                            '=>' switchExpressionResult
     ;
 
+// SSC
 switchExpressionResult
     : expression ';'
     | compoundStatement
@@ -421,7 +423,7 @@ typeSpecifier
     | '__extension__' '(' ('__m128' | '__m128d' | '__m128i') ')'
     | atomicTypeSpecifier
     | superStructSpecifier // SSC: superstruct as type specifier
-    | (Superstruct | Struct) templateDispatch // SSC: superstruct template as type specifier
+    | Superstruct templateDispatch // SSC: superstruct template as type specifier
     | structOrUnionSpecifier
     | enumSpecifier
     | flagsSpecifier // SSC
@@ -873,6 +875,7 @@ templateDefinition
         functionDefinition
         | superStructSpecifier ';'
         | superStructInterface
+        | declarationSpecifiers declarator ';' // tmpl typedef
     )
       {this.ExitTemplate();}
     ;

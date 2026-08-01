@@ -1,8 +1,8 @@
 package cz.mipit.sscc.ssc.compiler.visitors;
 
+import antlr.ssc.SSCLexer;
 import antlr.ssc.SSCParser;
 import cz.mipit.sscc.ssc.compiler.data.tmpl.Template;
-import cz.mipit.sscc.ssc.compiler.data.var.SuperstructVariable;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.Convertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.CustomDeclSpecConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.FlagsConvertor;
@@ -21,6 +21,7 @@ import cz.mipit.sscc.ssc.compiler.visitors.convertors.TemplateDispatchConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.convertors.TernaryOperatorConvertor;
 import cz.mipit.sscc.ssc.compiler.visitors.fmt.FormattingConvertor;
 import cz.mipit.sscc.util.VisitorInput;
+import cz.mipit.sscc.util.collection.builder.ListBuilder;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -31,7 +32,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Stack;
 import java.util.StringJoiner;
 
@@ -41,13 +41,16 @@ import static cz.mipit.sscc.Main.logger;
 public class VisitorDispatcher extends FormattingConvertor {
     public final CompilerState state;
 
+
     private final List<String> externalDeclarationsToEmitBefore = new ArrayList<>();
     private final List<String> externalDeclarationsToEmitAfter = new ArrayList<>();
 
+    private final List<String> blockItemsToEmitBefore = new ArrayList<>();
+    private final List<String> blockItemsToEmitAfter = new ArrayList<>();
+
+
     private final Stack<Map<String, String>> replacements = new Stack<>();
     private final Map<TerminalNode, String> terminalReplacements = new HashMap<>();
-
-    private final VariableCollector collector;
 
     private final Map<Class<? extends ParserRuleContext>, Convertor<? extends ParserRuleContext>> convertors;
 
@@ -57,29 +60,30 @@ public class VisitorDispatcher extends FormattingConvertor {
 
         state = new CompilerState(input.symbolTable(), this);
 
-        collector = new VariableCollector(this);
+        final List<Convertor<? extends ParserRuleContext>> convertorsList = ListBuilder
+                .from(VariableCollector.collectors(this))
+                .plusMany(
+                        new PostfixExpressionConvertor(this),
+                        new PrimaryExpressionConvertor(this),
+                        new TernaryOperatorConvertor(this),
 
-        final List<Convertor<? extends ParserRuleContext>> convertorsList = List.of(
-                new PostfixExpressionConvertor(this),
-                new PrimaryExpressionConvertor(this),
-                new TernaryOperatorConvertor(this),
+                        new FlagsConvertor(this),
+                        new LambdaConvertor(this),
+                        new SwitchExpressionConvertor(this),
 
-                new FlagsConvertor(this),
-                new LambdaConvertor(this),
-                new SwitchExpressionConvertor(this),
+                        new FunctionHeaderConvertor(this),
+                        new FunctionDefinitionConvertor(this),
+                        new CustomDeclSpecConvertor(this),
+                        new SuperstructMemberConvertor(this),
+                        new ParameterTypeListConvertor(this),
 
-                new FunctionHeaderConvertor(this),
-                new FunctionDefinitionConvertor(this),
-                new CustomDeclSpecConvertor(this),
-                new SuperstructMemberConvertor(this),
-                new ParameterTypeListConvertor(this),
+                        new SuperstructInterfaceConvertor(this),
+                        new SuperstructConvertor(this),
 
-                new SuperstructInterfaceConvertor(this),
-                new SuperstructConvertor(this),
-
-                new TemplateDispatchConvertor(this),
-                new TemplateDefinitionConvertor(this)
-        );
+                        new TemplateDispatchConvertor(this),
+                        new TemplateDefinitionConvertor(this)
+                )
+                .build();
 
         convertors = new HashMap<>();
 
@@ -156,7 +160,25 @@ public class VisitorDispatcher extends FormattingConvertor {
         // visit first
         final String external = super.visitChildren(ctx);
 
-        final StringJoiner joiner = new StringJoiner(System.lineSeparator());
+        final StringJoiner joiner = new StringJoiner(System.lineSeparator(), System.lineSeparator(), System.lineSeparator());
+
+        final List<Token> tokensToLeft = tokens.getHiddenTokensToLeft(
+                ctx.getStart().getTokenIndex(),
+                SSCLexer.LINEDIRECTIVECHANNEL
+        );
+
+        if (tokensToLeft != null && !tokensToLeft.isEmpty()) {
+            Token lastDirectiveBeforeThisDecl = tokensToLeft.getLast();
+
+            String rawText = lastDirectiveBeforeThisDecl.getText();
+
+            final String lineDirective = rawText.replaceAll(
+                    "^#\\s*(?:line\\s+)?(?<num>\\d+)(?:\\s+\"(?<file>[^\"]+)\")?.*",
+                    "#line ${num} \"${file}\""
+            );
+            joiner.add(lineDirective);
+        }
+
         dumpListToJoiner(externalDeclarationsToEmitBefore, joiner, "");
         joiner.add(external);
         dumpListToJoiner(externalDeclarationsToEmitAfter, joiner, "");
@@ -182,19 +204,16 @@ public class VisitorDispatcher extends FormattingConvertor {
     }
 
     @Override
-    public String visitDeclaration(SSCParser.DeclarationContext ctx) {
-        final String s = super.visitDeclaration(ctx);
-        collector.collect(ctx);
-        return s;
-    }
+    public String visitBlockItem(SSCParser.BlockItemContext ctx) {
+        final String s = super.visitBlockItem(ctx);
 
-    @Override
-    public String visitParameterDeclaration(SSCParser.ParameterDeclarationContext ctx) {
-        final String s = super.visitParameterDeclaration(ctx);
-        collector.collect(ctx);
-        return s;
-    }
+        final StringJoiner joiner = new StringJoiner(System.lineSeparator());
+        dumpListToJoiner(blockItemsToEmitBefore, joiner, getIndent());
+        joiner.add(s);
+        dumpListToJoiner(blockItemsToEmitAfter, joiner, getIndent());
 
+        return joiner.toString();
+    }
 
     /* ==== DATA ==== */
 
@@ -204,6 +223,14 @@ public class VisitorDispatcher extends FormattingConvertor {
 
     public void addExternalDeclarationToEmitBefore(String code) {
         externalDeclarationsToEmitBefore.add(code);
+    }
+
+    public void addBlockItemToEmitBefore(String code) {
+        blockItemsToEmitBefore.add(code);
+    }
+
+    public void addBlockItemToEmitAfter(String code) {
+        blockItemsToEmitAfter.add(code);
     }
 
 
@@ -247,20 +274,6 @@ public class VisitorDispatcher extends FormattingConvertor {
     }
 
 
-    /* ==== GETTERS ==== */
-
-    /// Searches current function & global variables
-    public Optional<SuperstructVariable> findSuperstructVariable(String objectName) {
-        for (Map.Entry<String, SuperstructVariable> entry : state.currentVariables().entrySet()) {
-            if (entry.getKey().equals(objectName)) {
-                return Optional.of(entry.getValue());
-            }
-        }
-
-        return Optional.empty();
-    }
-
-
     public void debugPrintDump() {
         logger.printDebug("");
         logger.printDebug("Dumping debug info...");
@@ -275,9 +288,6 @@ public class VisitorDispatcher extends FormattingConvertor {
         for (final Map.Entry<String, Template> entry : state.templates().entrySet()) {
             logger.printDebug("\t" + entry.getValue());
         }
-
-        logger.printDebug("Scopes:");
-        logger.printDebug(state.debugInfo());
 
         logger.printDebug("Debug dump complete");
     }

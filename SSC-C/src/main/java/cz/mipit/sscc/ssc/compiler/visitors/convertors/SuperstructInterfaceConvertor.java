@@ -39,6 +39,8 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
     public String convert(SSCParser.SuperStructInterfaceContext ctx) {
         Main.logger.printDebug("Entering Superstruct Interface");
 
+        dispatcher.state.inAnInterface = true;
+
         final String ssName = dispatcher.visit(ctx.Identifier());
 
         final StringJoiner joiner = new StringJoiner(
@@ -74,6 +76,8 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
 
         dispatcher.state.popSuperstruct();
 
+        dispatcher.state.inAnInterface = false;
+
         return joiner.toString();
     }
 
@@ -97,6 +101,7 @@ public class SuperstructInterfaceConvertor extends AbstractConvertor<SSCParser.S
                     ),
                     unqualifiedName,
                     s,
+                    dispatcher,
                     fh
             );
 

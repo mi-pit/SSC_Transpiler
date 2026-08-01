@@ -10,7 +10,7 @@ public final class Main {
     /**
      * Acts as argv[0]
      */
-    public static final String SSCC_NAME = "SSC Transpiler";
+    public static final String SSCC_NAME = "sscc";
 
     private Main() {
     }

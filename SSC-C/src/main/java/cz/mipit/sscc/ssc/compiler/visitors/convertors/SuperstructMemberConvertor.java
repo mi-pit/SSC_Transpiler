@@ -73,6 +73,7 @@ public class SuperstructMemberConvertor extends AbstractConvertor<SSCParser.Supe
         if (declarationCtx.staticAssertDeclaration() != null) {
             final String s = dispatcher.visitChildren(ctx);
             dispatcher.addExternalDeclarationToEmitAfter(s);
+            return;
         }
 
         // declarationSpecifiers initDeclaratorList? ';'

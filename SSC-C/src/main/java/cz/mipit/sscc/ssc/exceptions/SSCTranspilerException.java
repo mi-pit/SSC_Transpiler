@@ -1,7 +1,6 @@
 package cz.mipit.sscc.ssc.exceptions;
 
-import cz.mipit.sscc.file.File;
-import cz.mipit.sscc.ssc.exceptions.data.EnumeratedLine;
+import cz.mipit.sscc.ssc.exceptions.data.ErrorContext;
 import cz.mipit.sscc.ssc.exceptions.data.ErrorMessage;
 import cz.mipit.sscc.ssc.exceptions.data.Locator;
 import cz.mipit.sscc.util.collection.Enumerated;
@@ -15,6 +14,7 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import java.util.ArrayList;
 import java.util.List;
 
+import static cz.mipit.sscc.ssc.exceptions.data.ErrorContext.getApparentContext;
 import static cz.mipit.sscc.util.color.ConsoleColorFactory.COLOR_DEFAULT;
 import static cz.mipit.sscc.util.color.ConsoleColorFactory.Color;
 import static cz.mipit.sscc.util.color.ConsoleColorFactory.Ground;
@@ -33,100 +33,141 @@ public class SSCTranspilerException extends RuntimeException {
 
     public static final String LINENO_SEPARATOR = " | ";
 
+    private static final int LINES_BEFORE_PREV = 0;
+    private static final int LINES_AFTER_PREV = 0;
 
-    private final File currentFile;
     private final Type type;
     private final List<ErrorMessage> errorMessages;
 
     /* Base constructor */
     private SSCTranspilerException(
             Type type,
-            File currentFile,
             List<ErrorMessage> errorMessages
     ) {
         this.type = requireNonNull(type);
 
         this.errorMessages = requireNonNull(errorMessages);
-
-        this.currentFile = requireNonNull(currentFile);
     }
 
     private SSCTranspilerException(
             Type type,
-            File currentFile,
             ErrorMessage errorMessage
     ) {
-        this(type, currentFile, List.of(errorMessage));
+        this(type, List.of(errorMessage));
     }
 
-    protected SSCTranspilerException(
-            Type type,
-            String message, ParseTree offendingCtx,
-            CommonTokenStream tokens, File currentFile
+    private SSCTranspilerException(
+            final Type type,
+            final String message,
+            final ErrorContext errorContext,
+            final ParseTree offendingCtx,
+            final CommonTokenStream tokens
     ) {
         this(
                 type,
-                currentFile,
-                ErrorMessage.fromLines(
+                ErrorMessage.fromErrorContext(
                         message,
-                        EnumeratedLine.getLines(
-                                requireNonNull(offendingCtx, "Context"),
-                                requireNonNull(tokens, "Token stream"),
-                                LINES_BEFORE, LINES_AFTER
-                        ),
-                        new Locator(offendingCtx, tokens)
+                        errorContext,
+                        new Locator(offendingCtx, tokens, errorContext.lastLineNumber()),
+                        type.toColor()
                 )
         );
     }
 
     protected SSCTranspilerException(
             Type type,
-            String message, Token offendingToken,
-            CommonTokenStream tokens, File currentFile
+            String message,
+            ParseTree offendingCtx,
+            CommonTokenStream tokens
+    ) {
+
+        this(
+                type,
+                message,
+                getApparentContext(
+                        requireNonNull(offendingCtx, "Context"),
+                        requireNonNull(tokens, "Token stream"),
+                        LINES_BEFORE,
+                        LINES_AFTER
+                ),
+                offendingCtx,
+                tokens
+        );
+    }
+
+    public SSCTranspilerException(
+            Type type,
+            String message,
+            ErrorContext apparentContext,
+            Token offendingToken
     ) {
         this(
                 type,
-                currentFile,
-                ErrorMessage.fromLines(
+                ErrorMessage.fromErrorContext(
                         message,
-                        EnumeratedLine.getLines(
-                                offendingToken,
-                                tokens,
-                                LINES_BEFORE,
-                                LINES_AFTER
-                        ),
-                        new Locator(offendingToken)
+                        apparentContext,
+                        new Locator(offendingToken, apparentContext.lastLineNumber()),
+                        type.toColor()
                 )
+        );
+    }
+
+
+    protected SSCTranspilerException(
+            Type type,
+            String message,
+            Token offendingToken,
+            CommonTokenStream tokens
+    ) {
+        this(
+                type,
+                message,
+                getApparentContext(
+                        offendingToken,
+                        tokens,
+                        LINES_BEFORE,
+                        LINES_AFTER
+                ),
+                offendingToken
         );
     }
 
     protected SSCTranspilerException(
             Type type,
-            String message, List<ParseTree> offenders,
-            CommonTokenStream tokens, File currentFile
+            String message,
+            List<ParseTree> offenders,
+            CommonTokenStream tokens
     ) {
         this(
                 type,
-                currentFile,
-                getErrorMessages(message, offenders, tokens)
+                getErrorMessages(message, offenders, tokens, type)
         );
     }
 
     public static List<ErrorMessage> getErrorMessages(
             final String message,
-            List<ParseTree> offenders,
-            CommonTokenStream tokens
+            final List<ParseTree> offenders,
+            final CommonTokenStream tokens,
+            final Type type
     ) {
         final List<ErrorMessage> list = new ArrayList<>();
         for (final Enumerated<ParseTree> offender : Enumerator.of(offenders)) {
-            final int linesBefore = offender.index() == 0 ? LINES_BEFORE : 0;
-            final int linesAfter = offender.index() == 0 ? LINES_AFTER : 0;
+            final int linesBefore = offender.index() == 0 ? LINES_BEFORE : LINES_BEFORE_PREV;
+            final int linesAfter = offender.index() == 0 ? LINES_AFTER : LINES_AFTER_PREV;
             final String actualMessage = offender.index() == 0 ? message : "Previous definition here:";
 
-            final ErrorMessage errorMessage = ErrorMessage.fromLines(
+            final ErrorContext ctx = getApparentContext(
+                    offender.item(),
+                    tokens,
+                    linesBefore,
+                    linesAfter
+            );
+
+            final ErrorMessage errorMessage = ErrorMessage.fromErrorContext(
                     actualMessage,
-                    EnumeratedLine.getLines(offender.item(), tokens, linesBefore, linesAfter),
-                    new Locator(offender.item(), tokens)
+                    ctx,
+                    new Locator(offender.item(), tokens, ctx.lastLineNumber()),
+                    type.toColor()
             );
             list.add(errorMessage);
         }
@@ -136,25 +177,19 @@ public class SSCTranspilerException extends RuntimeException {
 
     @Override
     public String getMessage() {
-        return createMessage(type, currentFile, errorMessages);
+        return createMessage(type, errorMessages);
     }
 
 
     public static String createMessage(
             final Type type,
-            final File currentFile,
             final List<ErrorMessage> errorMessages
     ) {
-        final ConsoleColor color = type.toColor();
-
-        final StringBuilder sBuilder = new StringBuilder(color.toString());
+        final StringBuilder sBuilder = new StringBuilder(type.toColor().toString());
         sBuilder
                 .append(type.humanReadableName())
-                .append(" while processing file '")
+                .append(":")
                 .append(COLOR_DEFAULT)
-                .append(currentFile.fullName())
-                .append(color)
-                .append("':")
                 .append(lineSeparator());
 
         for (final ErrorMessage errorMessage : errorMessages) {

@@ -18,13 +18,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.SequencedCollection;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -115,9 +116,17 @@ public final class SSCCompiler implements Compiler {
         // files to be deleted if binary is produced
         final Set<Path> outputtedFiles = ConcurrentHashMap.newKeySet();
 
-        final int totalFailed = goThroughAllFiles(filesToCompile, outputtedFiles);
+        final Map<File, ExitValue> fileExitValues = goThroughAllFiles(filesToCompile, outputtedFiles);
+        final Collection<ExitValue> exitValues = fileExitValues.values();
+        final long totalFailed = exitValues
+                .stream()
+                .filter(ExitValue::isFailure)
+                .count();
         if (totalFailed != 0) {
-            return errReturn(ExitValue.TRANSPILATION_FAIL, "Could not process " + totalFailed + " file(s)");
+            return errReturn(
+                    exitValues.stream().reduce(ExitValue.REDUCTION).get(),
+                    "Could not process " + totalFailed + " file(s)"
+            );
         }
 
         if (options.compileTarget().isPresent()) {
@@ -148,9 +157,11 @@ public final class SSCCompiler implements Compiler {
      *
      * @return number of files where processing failed
      */
-    private int goThroughAllFiles(final Set<Path> filesToCompile,
-                                  final Set<Path> outputtedFiles) {
-        final AtomicInteger totalFailed = new AtomicInteger();
+    private Map<File, ExitValue> goThroughAllFiles(
+            final Set<Path> filesToCompile,
+            final Set<Path> outputtedFiles
+    ) {
+        final Map<File, ExitValue> exitValues = new ConcurrentHashMap<>();
 
         getFileStream(options).forEach(fileArg -> {
             if (fileArg.getFileType() != FileType.SSC) {
@@ -169,28 +180,19 @@ public final class SSCCompiler implements Compiler {
                     final Path file = processed.get();
                     outputtedFiles.add(file);
                     filesToCompile.add(file);
+                    exitValues.put(fileArg, ExitValue.SUCCESS);
                 } else {
-                    totalFailed.getAndIncrement();
+                    exitValues.put(fileArg, ExitValue.TRANSPILATION_FAIL);
                 }
             } catch (RuntimeException | IOException | InterruptedException e) {
-                totalFailed.getAndIncrement();
-
-                final boolean shouldPrintStackTrace = options.verbose() || options.debug();
-                Logger.errReturn(
-                        ExitValue.INTERNAL_ERROR,
-                        "Caught exception while processing file '%s'%s",
-                        fileArg.fullName(),
-                        (shouldPrintStackTrace ? "" : " (run with verbose or debug option to see stack trace)")
-                );
-
-                if (shouldPrintStackTrace) {
-                    e.printStackTrace(System.err);
-                }
+                exitValues.put(fileArg, ExitValue.fromException(e));
+                logger.printException(e);
             } finally {
                 logger.printVerboseFilename("Processed", fileArg.absolutePathString());
             }
         });
-        return totalFailed.get();
+
+        return exitValues;
     }
 
     private Optional<Path> transpileFile(final File file,
@@ -251,7 +253,7 @@ public final class SSCCompiler implements Compiler {
         if (options.formatOnly()) {
             result = result
                     .lines()
-                    .map(line -> line.stripTrailing())
+                    .map(line -> line.stripTrailing() + "\n")
                     .collect(Collectors.joining("\n"));
         }
 
