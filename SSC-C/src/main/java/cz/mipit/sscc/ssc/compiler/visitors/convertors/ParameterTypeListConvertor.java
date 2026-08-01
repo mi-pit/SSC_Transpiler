@@ -115,6 +115,11 @@ public class ParameterTypeListConvertor extends AbstractConvertor<SSCParser.Para
                 final String constS = isConst ? "const " : "";
                 return constS + "struct " + superstruct.name() + " *" + constP + newIdentifier;
             }
+
+            @Override
+            public boolean isCompound() {
+                return true;
+            }
         };
 
         dispatcher.state.addSuperstructVariable(selfReferenceVariable, ctx);

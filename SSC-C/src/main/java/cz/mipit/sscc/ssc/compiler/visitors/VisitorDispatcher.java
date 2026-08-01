@@ -289,9 +289,6 @@ public class VisitorDispatcher extends FormattingConvertor {
             logger.printDebug("\t" + entry.getValue());
         }
 
-        logger.printDebug("Scopes:");
-        logger.printDebug(state.debugInfo());
-
         logger.printDebug("Debug dump complete");
     }
 

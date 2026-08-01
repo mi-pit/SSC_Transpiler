@@ -113,13 +113,20 @@ public final class LambdaFunction {
 
             assignmentsBeforeLambda.add(staticCaptureIdent + " = " + variable.getIdentifier() + ";");
 
-            final String staticDecl = "static " + staticVariable + " = 0;";
+            final String staticDecl = "static " + staticVariable
+                                      + " = " + getStaticVariableInitializer(variable.isCompound()) + ";";
             dispatcher.addExternalDeclarationToEmitBefore(staticDecl);
 
             final String un = capturesMayBeUnused ? "__attribute__((unused)) " : "";
             final String localDecl = un + localVariable + " = " + staticCaptureIdent + ";";
             bodybuilder.add(localDecl);
         }
+    }
+
+    private static String getStaticVariableInitializer(boolean isCompound) {
+        if (isCompound)
+            return "{}";
+        return "0";
     }
 
     public String getName() {

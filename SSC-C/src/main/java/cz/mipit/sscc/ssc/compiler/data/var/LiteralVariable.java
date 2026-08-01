@@ -12,6 +12,7 @@ public final class LiteralVariable extends LambdaVariable {
     private final List<SSCParser.DeclarationSpecifierContext> declSpecs;
     private final SSCParser.DeclaratorContext declarator;
     private final VisitorDispatcher dispatcher;
+    private final boolean isCompound;
 
     public LiteralVariable(
             VisitorDispatcher dispatcher,
@@ -26,6 +27,16 @@ public final class LiteralVariable extends LambdaVariable {
 
         this.declSpecs = Objects.requireNonNull(declSpecs);
         this.declarator = Objects.requireNonNull(declarator);
+
+        this.isCompound = declSpecs
+                .stream()
+                .map(SSCParser.DeclarationSpecifierContext::typeSpecifier)
+                .filter(Objects::nonNull)
+                .anyMatch(typeSpec ->
+                        typeSpec.superStructSpecifier() != null
+                        || typeSpec.structOrUnionSpecifier() != null
+                        || typeSpec.templateDispatch() != null
+                );
     }
 
     public String getDeclarationForLambda(
@@ -57,6 +68,10 @@ public final class LiteralVariable extends LambdaVariable {
                 .collect(Collectors.joining(" ", "", " "));
     }
 
+    @Override
+    public boolean isCompound() {
+        return isCompound;
+    }
 
     public String toString() {
         return "LiteralVariable{ " + declSpecs.stream().map(dispatcher::getLiteral).collect(Collectors.joining(" "))

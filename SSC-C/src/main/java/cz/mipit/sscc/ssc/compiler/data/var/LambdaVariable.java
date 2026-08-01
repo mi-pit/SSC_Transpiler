@@ -8,4 +8,5 @@ public abstract class LambdaVariable extends Variable {
     }
 
     abstract public String getDeclarationForLambda(boolean removeConst, String newIdentifier);
+    abstract public boolean isCompound();
 }

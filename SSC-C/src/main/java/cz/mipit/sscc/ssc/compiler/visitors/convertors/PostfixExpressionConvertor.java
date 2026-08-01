@@ -176,10 +176,23 @@ public class PostfixExpressionConvertor
 
     private void ensureExpressionPointerLevel(SuperstructVariable ssVar, ParseTree ctx, ArrowOrDot arrowOrDot) {
         if (arrowOrDot == ArrowOrDot.Dot && !ssVar.getPointers().isEmpty()) {
-            throw dispatcher.getSSCLanguageException("Cannot access non-local superstruct variable using `.`", ctx);
+            throw dispatcher.getSSCLanguageException(
+                    "Cannot access non-local superstruct variable using '.'",
+                    ctx
+            );
         }
-        if (arrowOrDot == ArrowOrDot.Arrow && ssVar.getPointers().size() != 1) {
-            throw dispatcher.getSSCLanguageException("Variable '" + ssVar.getIdentifier() + "' is not a pointer to struct", ctx);
+        final int ptrLvl = ssVar.getPointers().size();
+        if (arrowOrDot == ArrowOrDot.Arrow && ptrLvl != 1) {
+            final String hintString;
+            if (ptrLvl == 0) {
+                hintString = "(use '.')";
+            } else {
+                hintString = "(dereference with " + "*".repeat(ptrLvl) + ")";
+            }
+            throw dispatcher.getSSCLanguageException(
+                    "Variable '" + ssVar.getIdentifier() + "' is not a pointer to struct " + hintString,
+                    ctx
+            );
         }
     }
 
@@ -251,7 +264,7 @@ public class PostfixExpressionConvertor
             }
         }
 
-        ensureExpressionPointerLevel(ssVar, ctx, arrowOrDot);
+        ensureExpressionPointerLevel(ssVar, ctx.primaryExpression(), arrowOrDot);
 
         final StringBuilder selfRef = new StringBuilder();
 
